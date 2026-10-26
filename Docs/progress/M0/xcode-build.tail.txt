@@ -1,0 +1,25 @@
+    cd /Users/armando/Projects/Coding/prometh-app
+    builtin-RegisterExecutionPolicyException /Users/armando/Projects/Coding/prometh-app/build/NativDevelopmentDerivedData/Build/Products/Debug/Nativ.app
+
+Validate /Users/armando/Projects/Coding/prometh-app/build/NativDevelopmentDerivedData/Build/Products/Debug/Nativ.app (in target 'Nativ' from project 'Nativ')
+    cd /Users/armando/Projects/Coding/prometh-app
+    builtin-validationUtility /Users/armando/Projects/Coding/prometh-app/build/NativDevelopmentDerivedData/Build/Products/Debug/Nativ.app -no-validate-extension -infoplist-subpath Contents/Info.plist
+
+Touch /Users/armando/Projects/Coding/prometh-app/build/NativDevelopmentDerivedData/Build/Products/Debug/Nativ.app (in target 'Nativ' from project 'Nativ')
+    cd /Users/armando/Projects/Coding/prometh-app
+    /usr/bin/touch -c /Users/armando/Projects/Coding/prometh-app/build/NativDevelopmentDerivedData/Build/Products/Debug/Nativ.app
+
+RegisterWithLaunchServices /Users/armando/Projects/Coding/prometh-app/build/NativDevelopmentDerivedData/Build/Products/Debug/Nativ.app (in target 'Nativ' from project 'Nativ')
+    cd /Users/armando/Projects/Coding/prometh-app
+    builtin-lsregisterurl --record-path /Users/armando/Projects/Coding/prometh-app/build/NativDevelopmentDerivedData/Build/Intermediates.noindex/XCBuildData/registered-launchservices.txt -- /System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister -f -R -trusted /Users/armando/Projects/Coding/prometh-app/build/NativDevelopmentDerivedData/Build/Products/Debug/Nativ.app
+
+PruneExplicitPrecompiledModules /Users/armando/Projects/Coding/prometh-app/build/NativDevelopmentDerivedData/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+
+PruneExplicitPrecompiledModules /Users/armando/Projects/Coding/prometh-app/build/NativDevelopmentDerivedData/Build/Intermediates.noindex/ExplicitPrecompiledModules
+
+PruneExplicitPrecompiledModules /Users/armando/Projects/Coding/prometh-app/build/NativDevelopmentDerivedData/SDKExplicitPrecompiledModules
+
+note: Run script build phase 'Install GitHub OAuth MCP server' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'Nativ' from project 'Nativ')
+note: Run script build phase 'Build mlx-vlm-server resource' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'NativServerKit' from project 'Nativ')
+** BUILD SUCCEEDED **
+
