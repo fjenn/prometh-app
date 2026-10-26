@@ -35,6 +35,9 @@ enum PromethSearchBootstrap {
             return SearXNGSupervisor.shared.baseURL()
         }
         applyDefaultsIfUnset()
+        PromethGenerateVideoTool.run = { arguments in
+            try await PromethMediaWorker.generate(argumentsJSON: arguments)
+        }
         ChatViewModel.ChatEndpointResolver.resolve = { settings, sessionID in
             let mode = PromethModeTable.mode(for: sessionID)
             let tight = PromethMemoryPolicy.shouldUnloadOther(ProcessInfo.processInfo.physicalMemory)

@@ -22,6 +22,8 @@ Edits to upstream Nativ files are limited to the rows below. Each code edit is m
 | S6 | `Sources/Nativ/Features/Browsing/Providers/SearXNGBrowsingProvider.swift` | `prometh-embedded` sentinel resolves to the per-launch loopback URL. The provider fetches 8 results, dedupes, and sorts by score. |
 | S8 | `Sources/Nativ/Features/Chat/ChatToolRegistry.swift` | When the Prometh shell is on, and the process is not an XCTest host, advertised native tools pass through `PromethToolVisibility`. |
 | S7 | `Sources/Nativ/Features/Chat/ChatViewModel.swift` | `ChatEndpointResolver` (nil unless Prometh installs it) rewrites the queued host, port, API key, and model for an Evil chat. A dropped llama-server connection uses the human interruption string. Metrics fetches stay `try?`. |
+| S12 | `Sources/Nativ/AppDelegate.swift` | When the Prometh shell is on, and the process is not XCTest, an empty or 8-bit image model id becomes the catalog 4-bit FLUX.2 Klein id. `ImageGenerationViewModel.fallbackModelID` is unchanged. |
+| S13 | `Sources/Nativ/Features/Chat/ChatToolRegistry.swift` | `generate_video` is advertised only when the Prometh shell is on, video is enabled, and the process is not XCTest. The handler stays compiled. |
 | S9 | `Sources/Nativ/Features/Chat/ChatViewModel.swift`, `Tools/ChatWebSearchTool.swift` | Citation and persona sections, and the `<search_results>` block. The block is omitted under XCTest so existing JSON fixtures stay exact. |
 | note | `Sources/Nativ/Features/VoiceCapture/Parakeet/ParakeetTranscriber.swift` | The loaded CoreAI session is stored as `Any`. XCTest realizes every class, and completing `Session` metadata jumps through CoreAI, which is not installed on macOS 26. Loading and transcription still use the real session. |
 

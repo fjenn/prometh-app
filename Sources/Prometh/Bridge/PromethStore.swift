@@ -43,6 +43,7 @@ final class PromethStore: ObservableObject {
     private var modes: [String: BehaviorMode] = [:]
     private var stopped: Set<UUID> = []
     private var revealed: Set<String> = []
+    private var localMedia: [UUID: [Message]] = [:]
     private var cancellable: AnyCancellable?
 
     init(model: NativModel) {
@@ -513,15 +514,63 @@ final class PromethStore: ObservableObject {
     }
 
     func artifactURL(_ artifact: PromethArtifact) -> URL {
-        persistence.directory.appendingPathComponent(artifact.filename)
+        let direct = persistence.directory.appendingPathComponent(artifact.filename)
+        if FileManager.default.fileExists(atPath: direct.path) { return direct }
+        return persistence.directory
+            .appendingPathComponent("Media", isDirectory: true)
+            .appendingPathComponent(artifact.filename)
+    }
+
+    func offerVideo() {
+        state.selected.insert(.video)
+        modelDetails["Video"] = "Video is not ready yet. Your draft is still here."
+        settingsTab = "Capabilities"
+        settingsOpen = true
+        resumePreparation(.video)
     }
 
     func saveArtifact(_ artifact: PromethArtifact) {
-        error = "Images and video are not available yet."
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = artifact.filename
+        panel.begin { response in
+            guard response == .OK, let destination = panel.url else { return }
+            try? FileManager.default.copyItem(at: self.artifactURL(artifact), to: destination)
+        }
     }
 
     func editArtifact(_ artifact: PromethArtifact, prompt: String, trim: (Double, Double)?) {
-        error = "Images and video are not available yet."
+        guard artifact.kind == "video", let trim,
+              let duration = PromethVideoPlan.trimDuration(start: trim.0, end: trim.1)
+        else {
+            error = "Images and video are not available yet."
+            return
+        }
+        let source = artifactURL(artifact)
+        let filename = "clip-\(UUID().uuidString).mp4"
+        let dest = persistence.directory.appendingPathComponent(filename)
+        let chatID = state.selectedChatID
+        Task {
+            do {
+                try await PromethMediaWorker.trim(source: source, dest: dest, start: trim.0, end: trim.1)
+                var next = artifact
+                next.id = UUID()
+                next.parentID = artifact.id
+                next.version = artifact.version + 1
+                next.filename = filename
+                next.trimStart = trim.0
+                next.trimEnd = trim.1
+                next.duration = duration
+                next.prompt = prompt.isEmpty ? artifact.prompt : prompt
+                var message = Message(role: "assistant", text: "", status: "complete", artifact: next)
+                message.id = next.id
+                if let chatID {
+                    self.localMedia[chatID, default: []].append(message)
+                }
+                self.reload()
+            } catch {
+                self.error = PromethInterruptedError.llamaUnavailable.errorDescription
+            }
+        }
     }
 
     func measuredVideoArtifact(_ artifact: PromethArtifact) async throws -> PromethArtifact { artifact }
@@ -775,7 +824,10 @@ except Exception as error:
 
     private func conversation(_ session: ChatSession, messages: [ChatTranscriptMessage]) -> Conversation {
         let key = session.id.uuidString
-        let visible = messages.filter { $0.role == .user || $0.role == .assistant || $0.role == .error }
+        let visible = messages.filter { message in
+            message.role == .user || message.role == .assistant || message.role == .error
+                || (message.role == .tool && message.toolName == PromethGenerateVideoTool.toolName)
+        }
         return Conversation(
             id: session.id,
             title: session.displayTitle,
@@ -789,8 +841,15 @@ except Exception as error:
                         assistantText: message.content
                     )
                 }
+                if message.toolName == PromethGenerateVideoTool.toolName {
+                    item.artifact = PromethVideoResult.artifact(from: message.content, prompt: "")
+                    if message.toolStatus == .running || message.toolStatus == .preparing {
+                        item.status = "preparing"
+                    }
+                    if item.artifact != nil { item.text = "" }
+                }
                 return item
-            },
+            } + (localMedia[session.id] ?? []),
             draft: drafts[key] ?? "",
             attachments: [],
             updated: session.updatedAt

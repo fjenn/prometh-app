@@ -54,6 +54,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @MainActor UNUserNotif
         )
         // PROMETH-SEAM: S5 S6 S9 — embedded search defaults and local reader. No-op under XCTest.
         PromethSearchBootstrap.start()
+        // PROMETH-SEAM: S12 — Prometh's 4-bit image model replaces Nativ's 8-bit fallback.
+        if PromethFlags.promethShell && !PromethFlags.isRunningUnitTests {
+            let resolved = PromethImageDefaults.resolved(current: model.settings.imageGenerationModelID)
+            if resolved != model.settings.imageGenerationModelID {
+                var settings = model.settings
+                settings.imageGenerationModelID = resolved
+                model.settings = settings
+            }
+        }
         runtime.onUpdate = { [weak self] in
             self?.updateStatusItemButton()
         }
