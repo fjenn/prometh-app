@@ -4,6 +4,7 @@ struct PromethSettingsView:View {
     @ObservedObject var store:PromethStore
     @State var resetConfirmation=false
     @State var samplesConfirmation=false
+    @State var creditsOpen=false
     var tabs:[String] {
         var names = store.isPreview ? ["Appearance","Capabilities","Privacy & data","Preview"] : ["Appearance","Capabilities","Privacy & data"]
         names.append("Advanced")
@@ -40,6 +41,7 @@ struct PromethSettingsView:View {
             .onExitCommand{store.settingsOpen=false}
             .confirmationDialog("Clear this prototype's data?",isPresented:$resetConfirmation){Button("Clear & restart",role:.destructive){store.resetData()};Button("Cancel",role:.cancel){}}message:{Text("Only this prototype's chats, choices and connectors are reset.")}
             .confirmationDialog("Replace conversations with samples?",isPresented:$samplesConfirmation){Button("Restore samples",role:.destructive){store.restoreSamples()};Button("Cancel",role:.cancel){}}
+            .sheet(isPresented:$creditsOpen){PromethCreditsSheet()}
     }
     var appearance:some View {
         VStack(alignment:.leading,spacing:24) {
@@ -113,7 +115,7 @@ struct PromethSettingsView:View {
         }
     }
     var privacy:some View {
-        VStack(alignment:.leading,spacing:18){Text("Your data stays on this Mac.").font(.headline);Text("No product account. Chats, skills and preferences are stored in this app's own folder.").foregroundStyle(.secondary).lineSpacing(5);Button("Export current conversation…"){store.exportChat()};Button("Show local data folder"){NSWorkspace.shared.open(store.persistence.directory)};Divider();Text("About local inference").font(.headline);Text("Local models run in Prometh’s own packaged runtimes. Downloads come directly from Hugging Face at pinned revisions with verified checksums. Web search and connected apps send requests only when enabled. Working memory varies by task; 16 GB hardware certification is pending. Video generation is silent text-to-video; editing currently supports real trimming.").font(.system(size:12)).lineSpacing(5).foregroundStyle(.secondary);Button("Clear local data…",role:.destructive){resetConfirmation=true}}
+        VStack(alignment:.leading,spacing:18){Text("Your data stays on this Mac.").font(.headline);Text("No product account. Chats, skills and preferences are stored in this app's own folder.").foregroundStyle(.secondary).lineSpacing(5);Button("Export current conversation…"){store.exportChat()};Button("Show local data folder"){NSWorkspace.shared.open(store.persistence.directory)};Divider();Text("About local inference").font(.headline);Text("Local models run in Prometh’s own packaged runtimes. Downloads come directly from Hugging Face at pinned revisions with verified checksums. Web search and connected apps send requests only when enabled. Working memory varies by task; 16 GB hardware certification is pending. Video generation is silent text-to-video; editing currently supports real trimming.").font(.system(size:12)).lineSpacing(5).foregroundStyle(.secondary);Button("Credits"){creditsOpen=true};Button("Clear local data…",role:.destructive){resetConfirmation=true}}
     }
     var preview:some View {
         VStack(alignment:.leading,spacing:17){Button("Restart onboarding"){store.restartOnboarding()};Picker("Hardware scenario",selection:Binding(get:{store.state.hardware},set:{store.setHardware($0)})){ForEach(Hardware.allCases,id:\.self){Text($0.rawValue)}};Text("Actual Mac: "+store.macSpecs.summary).font(.caption).foregroundStyle(.secondary);Text("Scenarios demonstrate availability. They do not measure model requirements.").font(.caption).foregroundStyle(.secondary);Divider();Toggle("Fail capability preparation",isOn:Binding(get:{store.failPreparation},set:{store.setPreparationFailure($0)}));Toggle("Fail next chat or media request",isOn:$store.failNextResponse);Toggle("Voice permission denied scenario",isOn:$store.voice.denied);Button("Show expired Gmail connector"){store.expireConnection();store.openCustomize("Plugins")};Button("Restore sample conversations…"){samplesConfirmation=true};Button("Clear local data…",role:.destructive){resetConfirmation=true}}
