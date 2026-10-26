@@ -1,0 +1,7 @@
+{
+  "name" : "offline-chat",
+  "networkProbe" : "BLOCKED URLError\n",
+  "offline" : "PROMETH_OFFLINE=1 points the inference child at http:\/\/127.0.0.1:9 and sets HF_HUB_OFFLINE=1. Wi-Fi stays on.",
+  "passed" : true,
+  "reply" : "Hello there, greetings to you."
+}

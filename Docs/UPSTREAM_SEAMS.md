@@ -17,6 +17,7 @@ Edits to upstream Nativ files are limited to the rows below. Each code edit is m
 | S4 | `Sources/Nativ/AppDelegate.swift` | Menu bar extra only when `menuBarExtra` is on. Routines only when `routines` is on. Last window closes the Prometh shell. Support directory is created on launch. `model` is visible to the Prometh shell. |
 | S4 | `Sources/Nativ/Features/Windowing/NativApplicationCommands.swift` | With `promethShell` on, New chat, Settings, and Customize post to the Prometh shell. With the flag off, the Nativ commands are unchanged. |
 | S10 | `Sources/Nativ/SoftwareUpdater.swift`, `AppDelegate.swift` | `start()` returns immediately unless `sparkleUpdater` is on (default off). |
+| S11 | `Sources/Nativ/NativSettings.swift` `launchEnvironment` | When `PROMETH_OFFLINE=1`, the mlx-vlm child gets `HF_HUB_OFFLINE=1` and HTTP(S) proxies pointed at `http://127.0.0.1:9`. Loopback stays in `NO_PROXY`. This does not change the Mac's network. |
 | note | `Sources/Nativ/Features/VoiceCapture/Parakeet/ParakeetTranscriber.swift` | The loaded CoreAI session is stored as `Any`. XCTest realizes every class, and completing `Session` metadata jumps through CoreAI, which is not installed on macOS 26. Loading and transcription still use the real session. |
 
 ## S2 support-directory files

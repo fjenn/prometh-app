@@ -1427,6 +1427,21 @@ struct NativSettings: Codable, Equatable {
         if let modelConfigsJSON = encodedModelConfigs {
             environment["NATIV_MODEL_CONFIGS"] = modelConfigsJSON
         }
+        // PROMETH-SEAM: S11. Prometh-only offline simulation. The Mac's network
+        // stays up. The inference child is pointed at an unreachable proxy and
+        // Hugging Face is forced offline so a prepared local model cannot fetch.
+        if ProcessInfo.processInfo.environment["PROMETH_OFFLINE"] == "1" {
+            let unreachable = "http://127.0.0.1:9"
+            environment["HF_HUB_OFFLINE"] = "1"
+            environment["HF_HUB_DISABLE_TELEMETRY"] = "1"
+            environment["TRANSFORMERS_OFFLINE"] = "1"
+            environment["HF_DATASETS_OFFLINE"] = "1"
+            environment["HF_ENDPOINT"] = unreachable
+            environment["HTTPS_PROXY"] = unreachable
+            environment["HTTP_PROXY"] = unreachable
+            environment["ALL_PROXY"] = unreachable
+            environment["NO_PROXY"] = "127.0.0.1,localhost,::1"
+        }
         return environment
     }
 

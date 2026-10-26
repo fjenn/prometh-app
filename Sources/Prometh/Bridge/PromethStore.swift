@@ -37,6 +37,8 @@ final class PromethStore: ObservableObject {
 
     private let chat: ChatViewModel
     private let sessions = ChatSessionStore()
+    private let preparation = PreparationCoordinator()
+    private var selfTestRetried = false
     private var drafts: [String: String] = [:]
     private var modes: [String: BehaviorMode] = [:]
     private var stopped: Set<UUID> = []
@@ -60,6 +62,13 @@ final class PromethStore: ObservableObject {
         if model.settings.normalized().languageModelID?.isEmpty == false {
             restored.preparations[Capability.chat.rawValue] = Preparation(progress: 1, status: .ready)
         }
+        for key in Array(restored.preparations.keys) {
+            guard var preparation = restored.preparations[key] else { continue }
+            if preparation.status == .downloading || preparation.status == .preparing || preparation.status == .checking {
+                preparation.status = .paused
+                restored.preparations[key] = preparation
+            }
+        }
         state = restored
         drafts = restored.drafts
         modes = restored.modes
@@ -73,6 +82,14 @@ final class PromethStore: ObservableObject {
         }.store(in: &voiceBag)
         reload()
         persist()
+        preparation.attach(self)
+        if ProcessInfo.processInfo.environment["PROMETH_SELFTEST_DRIVE"] == "catalog" {
+            Task { await driveCatalogSelfTest() }
+        } else if ProcessInfo.processInfo.environment["PROMETH_SELFTEST_DRIVE"] == "offline" {
+            Task { await driveOfflineSelfTest() }
+        } else if ProcessInfo.processInfo.environment["PROMETH_SELFTEST_DRIVE"] == "corrupt" {
+            Task { await driveCorruptSelfTest() }
+        }
     }
 
     private var voiceBag = Set<AnyCancellable>()
@@ -108,21 +125,33 @@ final class PromethStore: ObservableObject {
     }
 
     func available(_ capability: Capability) -> Bool {
-        if capability == .chat { return true }
-        if state.hardware == .storage { return false }
-        if capability == .video, state.hardware == .everyday { return false }
-        return macSpecs.memoryGB >= 16
+        blockReason(capability) == nil
     }
 
-    func limitLabel(_ capability: Capability) -> String {
-        state.hardware == .storage ? "Not enough space" : "Needs more memory"
-    }
-
-    func fitNote(_ capability: Capability) -> String {
+    func blockReason(_ capability: Capability) -> String? {
         if state.hardware == .storage {
             return "Not enough space for \(capability.rawValue.lowercased())."
         }
-        return "We checked this Mac. There isn't enough memory for a capable \(capability.rawValue.lowercased()) model."
+        if capability == .video, state.hardware == .everyday {
+            return "Video needs more memory."
+        }
+        guard let catalog = try? ModelCatalogLoader.bundled() else { return nil }
+        return CatalogFit.reason(
+            capability: capability,
+            models: catalog.preparationModels(for: capability),
+            headroom: catalog.storagePolicy.macOSHeadroomBytes,
+            memoryGB: macSpecs.memoryGB,
+            freeBytes: CatalogFit.freeBytes(at: persistence.directory)
+        )
+    }
+
+    func limitLabel(_ capability: Capability) -> String {
+        blockReason(capability) ?? "Needs more memory"
+    }
+
+    func fitNote(_ capability: Capability) -> String {
+        blockReason(capability)
+            ?? "We checked this Mac. There isn't enough memory for a capable \(capability.rawValue.lowercased()) model."
     }
 
     func toggle(_ capability: Capability) {
@@ -200,28 +229,22 @@ final class PromethStore: ObservableObject {
 
     func pausePreparation(_ capability: Capability) {
         guard state.preparations[capability.rawValue]?.status != .ready else { return }
-        var preparation = state.preparations[capability.rawValue] ?? Preparation()
-        preparation.status = .paused
-        state.preparations[capability.rawValue] = preparation
+        preparation.pause(capability)
     }
 
     func cancelPreparation(_ capability: Capability) {
-        state.preparations[capability.rawValue] = Preparation(progress: 0, status: .cancelled)
+        preparation.cancel(capability)
     }
 
     func retryPreparation(_ capability: Capability) { resumePreparation(capability) }
 
     func resumePreparation(_ capability: Capability) {
-        guard state.selected.contains(capability) else { return }
-        if capability == .chat, model.settings.normalized().languageModelID?.isEmpty == false {
-            state.preparations[capability.rawValue] = Preparation(progress: 1, status: .ready)
-            modelDetails[capability.rawValue] = capability.phrase
-            return
-        }
-        var preparation = state.preparations[capability.rawValue] ?? Preparation()
-        preparation.status = .queued
-        state.preparations[capability.rawValue] = preparation
-        modelDetails[capability.rawValue] = "Waiting"
+        preparation.resume(capability)
+    }
+
+    func verifyPreparation(_ capability: Capability) {
+        CatalogLog.append("action=download-verify capability=\(capability.rawValue)", support: persistence.directory)
+        preparation.verify(capability)
     }
 
     func prepareEvil() {
@@ -494,6 +517,221 @@ final class PromethStore: ObservableObject {
     func measuredVideoArtifact(_ artifact: PromethArtifact) async throws -> PromethArtifact { artifact }
 
     func resolveTool(_ approved: Bool) { pendingTool = nil }
+
+    func preparationModels(_ capability: Capability) -> [CatalogModel] {
+        (try? ModelCatalogLoader.bundled())?.preparationModels(for: capability) ?? []
+    }
+
+    func catalogReady(_ capability: Capability) -> Bool {
+        guard let catalog = try? ModelCatalogLoader.bundled() else { return false }
+        let models = catalog.preparationModels(for: capability)
+        guard !models.isEmpty else { return false }
+        for model in models {
+            let folder = CatalogPaths.folder(root: CatalogPaths.modelsRoot(support: persistence.directory), model: model)
+            for file in model.files {
+                let url = folder.appendingPathComponent(file.path)
+                if (try? CatalogHash.matches(file, at: url)) != true { return false }
+            }
+        }
+        return true
+    }
+
+    func applyPreparation(_ key: String, _ preparation: Preparation, detail: String?) {
+        state.preparations[key] = preparation
+        if let detail { modelDetails[key] = detail }
+    }
+
+    func preparationProgress(_ key: String) -> Double {
+        state.preparations[key]?.progress ?? 0
+    }
+
+    func markReady(_ capability: Capability?, key: String? = nil) {
+        let name = key ?? capability?.rawValue ?? ""
+        applyPreparation(name, Preparation(progress: 1, status: .ready), detail: capability?.phrase ?? "Ready")
+    }
+
+    func notePaused(_ capability: Capability?, key: String? = nil) {
+        let name = key ?? capability?.rawValue ?? ""
+        var preparation = state.preparations[name] ?? Preparation()
+        guard preparation.status != .ready else { return }
+        preparation.status = .paused
+        applyPreparation(name, preparation, detail: "Paused")
+    }
+
+    func pinCatalogModel(_ model: CatalogModel) {
+        var settings = self.model.settings
+        settings.languageModelID = model.repo
+        settings.modelSearchPath = CatalogPaths.hub(support: persistence.directory).path
+        self.model.settings = settings
+        CatalogLog.append(
+            "pinned name=\(model.name) revision=\(model.revision)",
+            support: persistence.directory
+        )
+    }
+
+    func finishPauseSelfTestIfNeeded(key: String, path: String, offset: Int64) async {
+        guard ProcessInfo.processInfo.environment["PROMETH_PREP_AUTOPAUSE"] == "1" else { return }
+        guard key == Capability.chat.rawValue else { return }
+        try? await Task.sleep(nanoseconds: 8_000_000_000)
+        resumePreparation(.chat)
+    }
+
+    func finishFailureSelfTestIfNeeded(key: String, message: String) async {
+        guard ProcessInfo.processInfo.environment["PROMETH_SELFTEST_DRIVE"] == "catalog" else { return }
+        guard key == Capability.chat.rawValue, !selfTestRetried else { return }
+        selfTestRetried = true
+        try? await Task.sleep(nanoseconds: 8_000_000_000)
+        resumePreparation(.chat)
+    }
+
+    func finishSelfTestIfNeeded(key: String) async {
+        guard ProcessInfo.processInfo.environment["PROMETH_SELFTEST_DRIVE"] == "catalog" else { return }
+        guard key == Capability.chat.rawValue else { return }
+        try? await Task.sleep(nanoseconds: 12_000_000_000)
+        writeCatalogReport(passed: true)
+    }
+
+    private func driveCatalogSelfTest() async {
+        state.onboardingComplete = false
+        state.step = 3
+        state.selected = [.chat]
+        state.evilEnabled = false
+        resumePreparation(.chat)
+    }
+
+    private func driveCorruptSelfTest() async {
+        guard let catalog = try? ModelCatalogLoader.bundled(), let safe = catalog.model(id: "safe") else { return }
+        let folder = CatalogPaths.folder(root: CatalogPaths.modelsRoot(support: persistence.directory), model: safe)
+        let target = folder.appendingPathComponent("tokenizer_config.json")
+        guard var data = try? Data(contentsOf: target), !data.isEmpty else {
+            writeSelfTest("prep-corrupt", ["name": "prep-corrupt", "passed": false, "error": "missing tokenizer_config.json"])
+            return
+        }
+        let before = data[0]
+        data[0] ^= 0xFF
+        try? data.write(to: target)
+        CatalogLog.append("corrupt flipped path=tokenizer_config.json byte=\(before)", support: persistence.directory)
+        settingsOpen = true
+        settingsTab = "Capabilities"
+        verifyPreparation(.chat)
+        let deadline = Date().addingTimeInterval(180)
+        while Date() < deadline {
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            if state.preparations[Capability.chat.rawValue]?.status == .ready,
+               (try? CatalogHash.matches(safe.files.first { $0.path == "tokenizer_config.json" }!, at: target)) == true {
+                writeSelfTest("prep-corrupt", [
+                    "name": "prep-corrupt",
+                    "passed": true,
+                    "file": "tokenizer_config.json",
+                    "action": "download-verify"
+                ])
+                return
+            }
+        }
+        writeSelfTest("prep-corrupt", ["name": "prep-corrupt", "passed": false, "error": "verify did not restore the file"])
+    }
+
+    private func driveOfflineSelfTest() async {
+        enterChat()
+        let deadline = Date().addingTimeInterval(8 * 60)
+        while Date() < deadline, !model.isRunning || model.isModelLoading {
+            try? await Task.sleep(nanoseconds: 500_000_000)
+        }
+        guard model.isRunning, !model.isModelLoading else {
+            CatalogLog.append(
+                "offline not-ready running=\(model.isRunning) loading=\(model.isModelLoading)",
+                support: persistence.directory
+            )
+            writeOfflineReport(reply: "", passed: false)
+            return
+        }
+        setDraft("Say hello in five words.")
+        send()
+        while Date() < deadline {
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            reload()
+            if let reply = current?.messages.last(where: { $0.role == "assistant" }),
+               reply.status == "complete", !reply.text.isEmpty {
+                writeOfflineReport(reply: reply.text, passed: true)
+                return
+            }
+        }
+        let reply = current?.messages.last?.text ?? ""
+        CatalogLog.append("offline timed-out reply=\(reply)", support: persistence.directory)
+        writeOfflineReport(reply: reply, passed: false)
+    }
+
+    private func writeCatalogReport(passed: Bool) {
+        guard let catalog = try? ModelCatalogLoader.bundled(), let safe = catalog.model(id: "safe") else { return }
+        let folder = CatalogPaths.folder(root: CatalogPaths.modelsRoot(support: persistence.directory), model: safe)
+        var files: [[String: String]] = []
+        for file in safe.files {
+            let url = folder.appendingPathComponent(file.path)
+            let matched = (try? CatalogHash.matches(file, at: url)) == true
+            let size = CatalogHash.byteCount(url).map(String.init) ?? "missing"
+            files.append([
+                "path": file.path,
+                "bytes": size,
+                "expectedBytes": String(file.size),
+                "revision": safe.revision,
+                "matched": matched ? "true" : "false",
+                "friendlyName": safe.name
+            ])
+        }
+        let log = (try? String(contentsOf: persistence.directory.appendingPathComponent("preparation.log"), encoding: .utf8)) ?? ""
+        let report: [String: Any] = [
+            "name": "catalog-chat",
+            "passed": passed && files.allSatisfy { $0["matched"] == "true" },
+            "revision": safe.revision,
+            "friendlyName": safe.name,
+            "files": files,
+            "preparationLog": log,
+            "openChatEnabled": chatReady
+        ]
+        writeSelfTest("catalog-chat", report)
+    }
+
+    private func writeOfflineReport(reply: String, passed: Bool) {
+        let probe = offlineProbe()
+        let report: [String: Any] = [
+            "name": "offline-chat",
+            "passed": passed && !reply.isEmpty && probe.contains("BLOCKED"),
+            "reply": reply,
+            "networkProbe": probe,
+            "offline": "PROMETH_OFFLINE=1 points the inference child at http://127.0.0.1:9 and sets HF_HUB_OFFLINE=1. Wi-Fi stays on."
+        ]
+        writeSelfTest("offline-chat", report)
+    }
+
+    private func offlineProbe() -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+        process.arguments = ["-c", """
+import os, urllib.request
+os.environ['HTTPS_PROXY']='http://127.0.0.1:9'
+os.environ['HTTP_PROXY']='http://127.0.0.1:9'
+os.environ['HF_HUB_OFFLINE']='1'
+try:
+    urllib.request.urlopen('https://huggingface.co', timeout=5)
+    print('REACHED')
+except Exception as error:
+    print('BLOCKED', type(error).__name__)
+"""]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+        try? process.run()
+        process.waitUntilExit()
+        return String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+    }
+
+    private func writeSelfTest(_ name: String, _ report: [String: Any]) {
+        let override = ProcessInfo.processInfo.environment["PROMETH_SELFTEST_OUTPUT"]
+        let url = URL(fileURLWithPath: override ?? persistence.directory.appendingPathComponent("selftest-\(name).json").path)
+        guard let data = try? JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys]) else { return }
+        try? data.write(to: url)
+        CatalogLog.append("selftest wrote \(url.path) passed=\(report["passed"] ?? false)", support: persistence.directory)
+    }
 
     private func rememberDraft() {
         guard let id = state.selectedChatID else { return }

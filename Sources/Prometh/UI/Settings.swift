@@ -53,7 +53,7 @@ struct PromethSettingsView:View {
                 VStack(alignment:.leading,spacing:8){
                     if store.state.selected.contains(c){
                         PreparationRow(store:store,capability:c)
-                        HStack{Text("\(store.sizeLabel(c))").font(.caption).foregroundStyle(.secondary);Spacer();if c != .chat{Button("Remove"){store.toggle(c)}}}
+                        HStack{Text("\(store.sizeLabel(c))").font(.caption).foregroundStyle(.secondary);Spacer();Button("Download / verify"){store.verifyPreparation(c)};if c != .chat{Button("Remove"){store.toggle(c)}}}
                     }else{
                         HStack(spacing:12){Text(c.rawValue).font(.system(size:15,weight:.medium));Spacer();Text("\(store.sizeLabel(c))").font(.caption).foregroundStyle(.secondary);Button("Add"){store.toggle(c);if store.state.selected.contains(c){store.resumePreparation(c)}}}
                         Text(store.available(c) ? c.detail:store.fitNote(c)).font(.caption).foregroundStyle(.secondary).opacity(store.available(c) ? 1:0.7)

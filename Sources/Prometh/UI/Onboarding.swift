@@ -181,7 +181,7 @@ struct OnboardingView: View {
                         Divider().opacity(0.45).padding(.top,6)
                         HStack {
                             Text("\(store.state.selected.filter{store.state.preparations[$0.rawValue]?.status == .ready}.count) of \(store.state.selected.count) ready").font(.system(size:12)).foregroundStyle(.secondary)
-                            Spacer();Button("Open chat"){store.enterChat()}.buttonStyle(PrimaryButton()).disabled(!store.chatReady).opacity(store.chatReady ? 1:0.5)
+                            Spacer();Button("Open chat"){store.enterChat()}.buttonStyle(PrimaryButton()).disabled(!store.chatReady).opacity(store.chatReady ? 1:0.5).accessibilityIdentifier("prometh.open-chat")
                         }.padding(.top,12)
                     }
                 }

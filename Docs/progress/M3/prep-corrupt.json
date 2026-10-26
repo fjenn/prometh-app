@@ -1,0 +1,6 @@
+{
+  "action" : "download-verify",
+  "file" : "tokenizer_config.json",
+  "name" : "prep-corrupt",
+  "passed" : true
+}

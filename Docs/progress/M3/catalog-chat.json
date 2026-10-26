@@ -1,0 +1,74 @@
+{
+  "files" : [
+    {
+      "bytes" : "17336",
+      "expectedBytes" : "17336",
+      "friendlyName" : "Gemma 4 E4B · Safe",
+      "matched" : "true",
+      "path" : "chat_template.jinja",
+      "revision" : "475b9088d29754a3379866cf5aeb6b41acd313c2"
+    },
+    {
+      "bytes" : "6628",
+      "expectedBytes" : "6628",
+      "friendlyName" : "Gemma 4 E4B · Safe",
+      "matched" : "true",
+      "path" : "config.json",
+      "revision" : "475b9088d29754a3379866cf5aeb6b41acd313c2"
+    },
+    {
+      "bytes" : "208",
+      "expectedBytes" : "208",
+      "friendlyName" : "Gemma 4 E4B · Safe",
+      "matched" : "true",
+      "path" : "generation_config.json",
+      "revision" : "475b9088d29754a3379866cf5aeb6b41acd313c2"
+    },
+    {
+      "bytes" : "5146800534",
+      "expectedBytes" : "5146800534",
+      "friendlyName" : "Gemma 4 E4B · Safe",
+      "matched" : "true",
+      "path" : "model.safetensors",
+      "revision" : "475b9088d29754a3379866cf5aeb6b41acd313c2"
+    },
+    {
+      "bytes" : "240961",
+      "expectedBytes" : "240961",
+      "friendlyName" : "Gemma 4 E4B · Safe",
+      "matched" : "true",
+      "path" : "model.safetensors.index.json",
+      "revision" : "475b9088d29754a3379866cf5aeb6b41acd313c2"
+    },
+    {
+      "bytes" : "1316",
+      "expectedBytes" : "1316",
+      "friendlyName" : "Gemma 4 E4B · Safe",
+      "matched" : "true",
+      "path" : "processor_config.json",
+      "revision" : "475b9088d29754a3379866cf5aeb6b41acd313c2"
+    },
+    {
+      "bytes" : "32169626",
+      "expectedBytes" : "32169626",
+      "friendlyName" : "Gemma 4 E4B · Safe",
+      "matched" : "true",
+      "path" : "tokenizer.json",
+      "revision" : "475b9088d29754a3379866cf5aeb6b41acd313c2"
+    },
+    {
+      "bytes" : "2740",
+      "expectedBytes" : "2740",
+      "friendlyName" : "Gemma 4 E4B · Safe",
+      "matched" : "true",
+      "path" : "tokenizer_config.json",
+      "revision" : "475b9088d29754a3379866cf5aeb6b41acd313c2"
+    }
+  ],
+  "friendlyName" : "Gemma 4 E4B · Safe",
+  "name" : "catalog-chat",
+  "openChatEnabled" : true,
+  "passed" : true,
+  "preparationLog" : "2026-10-26T20:28:12Z stage=failed reason=injected\n2026-10-26T20:28:12Z stage=failed key=Chat message=Preparation interrupted. Try again.\n2026-10-26T20:28:20Z stage=downloading path=chat_template.jinja offset=0\n2026-10-26T20:28:21Z stage=checking path=chat_template.jinja\n2026-10-26T20:28:21Z stage=downloading path=config.json offset=0\n2026-10-26T20:28:21Z stage=checking path=config.json\n2026-10-26T20:28:21Z stage=downloading path=generation_config.json offset=0\n2026-10-26T20:28:21Z stage=checking path=generation_config.json\n2026-10-26T20:28:21Z stage=downloading path=model.safetensors offset=0\n2026-10-26T20:28:46Z pause path=model.safetensors offset=517961490\n2026-10-26T20:28:46Z stage=paused key=Chat path=model.safetensors offset=517961490\n2026-10-26T20:28:54Z resume path=model.safetensors offset=517961490\n2026-10-26T20:28:54Z stage=downloading path=model.safetensors offset=517961490\n2026-10-26T20:32:17Z stage=checking path=model.safetensors\n2026-10-26T20:32:18Z stage=downloading path=model.safetensors.index.json offset=0\n2026-10-26T20:32:19Z stage=checking path=model.safetensors.index.json\n2026-10-26T20:32:19Z stage=downloading path=processor_config.json offset=0\n2026-10-26T20:32:19Z stage=checking path=processor_config.json\n2026-10-26T20:32:19Z stage=downloading path=tokenizer.json offset=0\n2026-10-26T20:32:23Z stage=checking path=tokenizer.json\n2026-10-26T20:32:23Z stage=downloading path=tokenizer_config.json offset=0\n2026-10-26T20:32:23Z stage=checking path=tokenizer_config.json\n2026-10-26T20:32:23Z verified model=safe revision=475b9088d29754a3379866cf5aeb6b41acd313c2 files=8\n2026-10-26T20:32:23Z pinned name=Gemma 4 E4B · Safe revision=475b9088d29754a3379866cf5aeb6b41acd313c2\n2026-10-26T20:32:23Z stage=ready key=Chat\n",
+  "revision" : "475b9088d29754a3379866cf5aeb6b41acd313c2"
+}

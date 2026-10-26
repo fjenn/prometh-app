@@ -422,6 +422,8 @@ targets:
       - path: Sources/Prometh/Flags/PromethFlags.swift
       - path: Sources/Prometh/UI/Design.swift
       - path: Sources/Prometh/UI/Domain.swift
+      - path: Sources/Prometh/Catalog/ModelCatalog.swift
+      - path: Sources/Prometh/Catalog/CatalogDownloader.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: studio.prometh.PromethTests
