@@ -158,8 +158,7 @@ final class RoutineStore: ObservableObject {
             appropriateFor: nil,
             create: true
         )) ?? FileManager.default.homeDirectoryForCurrentUser
-        let directory = base
-            .appendingPathComponent("Nativ", isDirectory: true)
+        let directory = PromethIdentity.appendingSupportDirectory(to: base) // PROMETH-SEAM: S2
             .appendingPathComponent("Routines", isDirectory: true)
         try? FileManager.default.createDirectory(
             at: directory,

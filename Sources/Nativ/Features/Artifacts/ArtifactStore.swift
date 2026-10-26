@@ -18,15 +18,14 @@ final class ArtifactStore: ObservableObject {
             let support = fileManager
                 .urls(for: .applicationSupportDirectory, in: .userDomainMask)
                 .first ?? fileManager.temporaryDirectory
-            let nativDirectory = support.appendingPathComponent("Nativ", isDirectory: true)
+            let nativDirectory = PromethIdentity.appendingSupportDirectory(to: support) // PROMETH-SEAM: S2
             let caches = fileManager
                 .urls(for: .cachesDirectory, in: .userDomainMask)
                 .first ?? fileManager.temporaryDirectory
 
             return Self(
                 indexURL: nativDirectory.appendingPathComponent("Artifacts Index.json"),
-                cacheDirectory: caches
-                    .appendingPathComponent("Nativ", isDirectory: true)
+                cacheDirectory: PromethIdentity.appendingSupportDirectory(to: caches) // PROMETH-SEAM: S2
                     .appendingPathComponent("Artifacts", isDirectory: true),
                 favoritesURL: nativDirectory.appendingPathComponent("Artifact Favorites.json"),
                 displayNamesURL: nativDirectory.appendingPathComponent("Artifact Names.json")

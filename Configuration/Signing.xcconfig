@@ -4,9 +4,11 @@
 // Build-product name. Override in Signing.local.xcconfig (or on the
 // xcodebuild command line) so parallel worktrees produce distinguishable
 // app bundles instead of all writing Nativ.app.
-NATIV_PRODUCT_NAME = Nativ
+// PROMETH-SEAM: S1 — product name and bundle id. Finn's DEVELOPMENT_TEAM
+// belongs in the git-ignored Signing.local.xcconfig, not Nativ's team.
+NATIV_PRODUCT_NAME = Prometh
 
-NATIV_BUNDLE_IDENTIFIER = dev.local.Nativ
+NATIV_BUNDLE_IDENTIFIER = studio.prometh.Prometh
 NATIV_SERVER_KIT_BUNDLE_IDENTIFIER = dev.local.NativServerKit
 NATIV_EXTENSION_SDK_BUNDLE_IDENTIFIER = dev.local.NativExtensionSDK
 NATIV_VOICE_EXTENSION_BUNDLE_IDENTIFIER = $(NATIV_BUNDLE_IDENTIFIER).VoiceDictationExtension

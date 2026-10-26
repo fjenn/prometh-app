@@ -115,8 +115,9 @@ actor SystemTelemetryRecorder {
     nonisolated static let storageBudgetBytes = 1_000_000_000
     nonisolated static let minimumFreeBytes: Int64 = 1024 * 1024 * 1024
     nonisolated static var defaultDirectory: URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("Nativ/Diagnostics", isDirectory: true)
+        PromethIdentity.appendingSupportDirectory(to:
+            FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        ).appendingPathComponent("Diagnostics", isDirectory: true) // PROMETH-SEAM: S2
     }
 
     private let directory: URL

@@ -126,10 +126,18 @@ private struct NativApplication: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
-        WindowGroup("Nativ", id: "main") {
-            NativWindowRoot(appDelegate: appDelegate)
+        // PROMETH-SEAM: S4 — Prometh shell instead of the Control Panel when the flag is on.
+        WindowGroup(PromethFlags.promethShell ? PromethIdentity.productName : "Nativ", id: "main") {
+            if PromethFlags.promethShell {
+                PromethRootView()
+            } else {
+                NativWindowRoot(appDelegate: appDelegate)
+            }
         }
-        .defaultSize(width: 1240, height: 720)
+        .defaultSize(
+            width: PromethFlags.promethShell ? 1280 : 1240,
+            height: PromethFlags.promethShell ? 830 : 720
+        )
         .defaultPosition(.center)
         .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unifiedCompact(showsTitle: false))

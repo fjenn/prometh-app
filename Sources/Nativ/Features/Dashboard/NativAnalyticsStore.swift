@@ -229,8 +229,7 @@ final class NativAnalyticsStore {
             in: .userDomainMask
         ).first ?? FileManager.default.homeDirectoryForCurrentUser
 
-        return applicationSupport
-            .appendingPathComponent("Nativ", isDirectory: true)
+        return PromethIdentity.appendingSupportDirectory(to: applicationSupport) // PROMETH-SEAM: S2
             .appendingPathComponent("Analytics.sqlite3")
     }
 

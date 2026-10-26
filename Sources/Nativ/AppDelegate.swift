@@ -46,6 +46,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @MainActor UNUserNotif
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // PROMETH-SEAM: S2 — create Prometh's folder without touching Nativ's.
+        try? FileManager.default.createDirectory(
+            at: PromethIdentity.applicationSupportDirectory,
+            withIntermediateDirectories: true
+        )
         runtime.onUpdate = { [weak self] in
             self?.updateStatusItemButton()
         }
@@ -66,7 +71,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @MainActor UNUserNotif
                 }
             }
         }
-        setUpRoutines()
+        // PROMETH-SEAM: S4 — hidden features stay compiled; flags only skip wiring.
+        if PromethFlags.routines {
+            setUpRoutines()
+        }
         model.onMenuStateChanged = { [weak self] in
             self?.statusMenuController.modelStateDidChange()
         }
@@ -74,8 +82,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @MainActor UNUserNotif
         extensionManager.onRecordsChanged = { [weak self] in
             self?.statusMenuController.rebuildMenu()
         }
-        configureStatusItem()
-        statusMenuController.start()
+        if PromethFlags.menuBarExtra {
+            configureStatusItem()
+            statusMenuController.start()
+        }
         extensionManager.launch(
             context: NativExtensionHostContext(
                 transcriptionConfiguration: { [weak self] in
@@ -105,13 +115,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @MainActor UNUserNotif
         if WelcomePreferences.hasCompleted {
             model.startServer()
         }
-        DispatchQueue.main.async { [softwareUpdater] in
-            softwareUpdater.start()
+        // PROMETH-SEAM: S10
+        if PromethFlags.sparkleUpdater {
+            DispatchQueue.main.async { [softwareUpdater] in
+                softwareUpdater.start()
+            }
         }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        false
+        // PROMETH-SEAM: S4 — the Prometh window is the app. Nativ's panel stays resident.
+        PromethFlags.promethShell
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {

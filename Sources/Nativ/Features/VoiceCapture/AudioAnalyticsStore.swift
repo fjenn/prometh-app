@@ -490,8 +490,7 @@ final class AudioAnalyticsStore: ObservableObject {
                 create: true
             ))
             ?? FileManager.default.temporaryDirectory
-        return applicationSupport
-            .appendingPathComponent("Nativ", isDirectory: true)
+        return PromethIdentity.appendingSupportDirectory(to: applicationSupport) // PROMETH-SEAM: S2
             .appendingPathComponent("Voice Analytics.json")
     }
 

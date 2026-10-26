@@ -94,7 +94,9 @@ final class MCPProjectFilesystemTests: XCTestCase {
         if let config, let support = FileManager.default.urls(
             for: .applicationSupportDirectory, in: .userDomainMask
         ).first {
-            let managedDirectory = support.appendingPathComponent("Nativ/MCP")
+            let managedDirectory = support
+                .appendingPathComponent(PromethIdentity.supportDirectoryName)
+                .appendingPathComponent("MCP")
                 .appendingPathComponent(config.id.uuidString.replacingOccurrences(of: "-", with: "_"))
             try? FileManager.default.removeItem(at: managedDirectory)
         }

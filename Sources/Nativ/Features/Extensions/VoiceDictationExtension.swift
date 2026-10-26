@@ -114,7 +114,7 @@ final class VoiceDictationExtension: NativHostExtension {
         included: true,
         enabledByDefault: false,
         runtime: .extensionFoundation,
-        runtimeBundleIdentifier: "dev.local.Nativ.VoiceDictationExtension",
+        runtimeBundleIdentifier: PromethIdentity.bundleIdentifier + ".VoiceDictationExtension", // PROMETH-SEAM: S2
         contributions: .init(
             sidebar: [
                 .init(

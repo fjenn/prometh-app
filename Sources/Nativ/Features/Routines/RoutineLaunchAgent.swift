@@ -2,9 +2,10 @@ import AppKit
 import Foundation
 
 enum RoutineLaunchAgent {
-    private static let labelPrefix = "dev.local.Nativ.routine."
+    // PROMETH-SEAM: S2 — launchd labels must not match Nativ.app.
+    private static let labelPrefix = PromethIdentity.bundleIdentifier + ".routine."
     private static let reconciliationQueue = DispatchQueue(
-        label: "dev.local.Nativ.routine-launch-agent",
+        label: PromethIdentity.bundleIdentifier + ".routine-launch-agent",
         qos: .utility
     )
 

@@ -7,7 +7,7 @@
 	<key>CFBundleDisplayName</key>
 	<string>$(NATIV_PRODUCT_NAME)</string>
 	<key>CFBundleIconFile</key>
-	<string>NotificationAppIcon</string>
+	<string>AppIcon</string>
 	<key>CFBundleIconName</key>
 	<string>AppIcon</string>
 	<key>CFBundleExecutable</key>
@@ -42,11 +42,11 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2025 Prince Canuma &amp; contributors</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Nativ records your microphone for dictation, voice notes, and meeting capture.</string>
+	<string>Prometh records your microphone for dictation, voice notes, and meeting capture.</string>
 	<key>NSAudioCaptureUsageDescription</key>
-	<string>Nativ records system audio when you start an audio capture.</string>
+	<string>Prometh records system audio when you start an audio capture.</string>
 	<key>NSScreenCaptureUsageDescription</key>
-	<string>Nativ uses ScreenCaptureKit to record system audio when you start an audio capture.</string>
+	<string>Prometh uses ScreenCaptureKit to record system audio when you start an audio capture.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NativGitHubAppClientID</key>

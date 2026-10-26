@@ -79,8 +79,7 @@ final class RoutineScheduler {
             appropriateFor: nil,
             create: true
         )) ?? FileManager.default.homeDirectoryForCurrentUser
-        let directory = base
-            .appendingPathComponent("Nativ", isDirectory: true)
+        let directory = PromethIdentity.appendingSupportDirectory(to: base) // PROMETH-SEAM: S2
             .appendingPathComponent("Routines", isDirectory: true)
             .appendingPathComponent("triggers", isDirectory: true)
         try? FileManager.default.createDirectory(

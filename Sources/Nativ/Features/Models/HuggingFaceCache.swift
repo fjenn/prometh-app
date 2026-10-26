@@ -147,8 +147,7 @@ enum HuggingFaceTokenMetadataCache {
             in: .userDomainMask
         ).first
         let baseURL = applicationSupport ?? FileManager.default.homeDirectoryForCurrentUser
-        return baseURL
-            .appendingPathComponent("Nativ", isDirectory: true)
+        return PromethIdentity.appendingSupportDirectory(to: baseURL) // PROMETH-SEAM: S2
             .appendingPathComponent("HuggingFaceTokenMetadata.plist")
     }
 }

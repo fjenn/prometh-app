@@ -5,8 +5,9 @@ import ZIPFoundation
 actor ParakeetModelStore {
     static let shared = ParakeetModelStore()
     static let archiveURL = URL(string: "https://huggingface.co/nativ-community/parakeet-redux-coreai-fp16/resolve/main/parakeet-redux-coreai-fp16.zip?download=true")!
-    static let cacheDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-        .appendingPathComponent("Nativ/SpeechModels", isDirectory: true)
+    static let cacheDirectory = PromethIdentity.appendingSupportDirectory(
+        to: FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+    ).appendingPathComponent("SpeechModels", isDirectory: true) // PROMETH-SEAM: S2
 
     typealias Download = @Sendable (URL) async throws -> (URL, URLResponse)
     private let root: URL

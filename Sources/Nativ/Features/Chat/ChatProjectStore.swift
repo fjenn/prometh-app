@@ -376,8 +376,7 @@ final class ChatProjectStore: ObservableObject {
                 in: .userDomainMask
             ).first ?? fileManager.temporaryDirectory
         return
-            applicationSupport
-            .appendingPathComponent("Nativ", isDirectory: true)
+            PromethIdentity.appendingSupportDirectory(to: applicationSupport) // PROMETH-SEAM: S2
             .appendingPathComponent("Projects", isDirectory: true)
             .appendingPathComponent("projects.json")
     }

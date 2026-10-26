@@ -333,8 +333,7 @@ struct IntegrationProfileManager {
     }
 
     private var integrationsSupportURL: URL {
-        applicationSupportDirectory
-            .appendingPathComponent("Nativ", isDirectory: true)
+        PromethIdentity.appendingSupportDirectory(to: applicationSupportDirectory) // PROMETH-SEAM: S2
             .appendingPathComponent("Integrations", isDirectory: true)
     }
 

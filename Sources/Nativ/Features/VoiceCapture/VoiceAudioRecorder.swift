@@ -161,8 +161,7 @@ final class VoiceAudioRecorder {
                 appropriateFor: nil,
                 create: true
             )
-            let directory = applicationSupport
-                .appendingPathComponent("Nativ", isDirectory: true)
+            let directory = PromethIdentity.appendingSupportDirectory(to: applicationSupport) // PROMETH-SEAM: S2
                 .appendingPathComponent("Voice Recordings", isDirectory: true)
             try FileManager.default.createDirectory(
                 at: directory,

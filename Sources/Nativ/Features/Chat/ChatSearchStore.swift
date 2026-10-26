@@ -21,7 +21,7 @@ final class ChatSearchStore {
     }
 
     static var defaultURL: URL {
-        URL.applicationSupportDirectory.appending(path: "Nativ/Chat/Search.sqlite")
+        PromethIdentity.applicationSupportDirectory.appending(path: "Chat/Search.sqlite") // PROMETH-SEAM: S2
     }
 
     private let url: URL

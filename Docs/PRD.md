@@ -660,3 +660,4 @@ The Open WebUI, Hark, Dots, and Underdog materials, and the aesthetic references
 7. Nativ's model browser: hidden (feature flag), not shown under Advanced.
 8. Updater: off for now.
 9. Push: commit each milestone and push ONLY the `prometh` branch to origin (fjenn/prometh-app). Never push main, never force-push, never touch upstream.
+10. Composio: Finn's COMPOSIO_API_KEY is in ~/.config/prometh/composio.env (chmod 600, KEY=VALUE). For M8, read it from there (or env) at runtime; never commit it, never print it in logs or reports. Use Composio's SDK/developer flow with one Composio user_id per Prometh install so each user connects their own accounts.

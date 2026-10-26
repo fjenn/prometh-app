@@ -258,14 +258,23 @@ class ModelAggregate:
         }
 
 
+def prometh_support_dir() -> str:
+    # PROMETH-SEAM: S2 — never read or write Nativ.app's Application Support.
+    override = os.environ.get("PROMETH_SUPPORT_DIR", "").strip()
+    if override:
+        return os.path.expanduser(override)
+    analytics = os.environ.get("MLX_PLATFORM_ANALYTICS_DB_PATH", "").strip()
+    if analytics:
+        return os.path.dirname(os.path.expanduser(analytics))
+    return os.path.expanduser("~/Library/Application Support/Prometh")
+
+
 def analytics_db_path() -> str:
     configured_path = os.environ.get("MLX_PLATFORM_ANALYTICS_DB_PATH")
     if configured_path:
         return os.path.expanduser(configured_path)
 
-    return os.path.expanduser(
-        "~/Library/Application Support/Nativ/Analytics.sqlite3"
-    )
+    return os.path.join(prometh_support_dir(), "Analytics.sqlite3")
 
 
 def bucket_start_unix(timestamp: float, granularity: str) -> float:
@@ -1480,9 +1489,7 @@ def install_metrics_overlay() -> None:
         if not routine_id.strip():
             raise HTTPException(status_code=400, detail="A routine id is required.")
 
-        directory = os.path.expanduser(
-            "~/Library/Application Support/Nativ/Routines/triggers"
-        )
+        directory = os.path.join(prometh_support_dir(), "Routines", "triggers")
         os.makedirs(directory, exist_ok=True)
         path = os.path.join(directory, f"{uuid.uuid4().hex}.json")
         with open(path, "w", encoding="utf-8") as handle:

@@ -643,8 +643,7 @@ final class MCPHostManager: ObservableObject {
         ).first else {
             return nil
         }
-        return support
-            .appendingPathComponent("Nativ", isDirectory: true)
+        return PromethIdentity.appendingSupportDirectory(to: support) // PROMETH-SEAM: S2
             .appendingPathComponent("MCP", isDirectory: true)
             .appendingPathComponent(slug(id), isDirectory: true)
     }

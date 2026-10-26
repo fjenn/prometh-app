@@ -17,7 +17,7 @@ struct ServerAPIKeychain: ServerAPICredentialStoring {
     let account: String
 
     init(
-        service: String = "dev.local.Nativ.server-api-key",
+        service: String = PromethIdentity.bundleIdentifier + ".server-api-key", // PROMETH-SEAM: S2
         account: String = "nativ-server"
     ) {
         self.service = service
@@ -97,7 +97,7 @@ struct HuggingFaceCredentialKeychain: HuggingFaceCredentialStoring {
     let account: String
 
     init(
-        service: String = "dev.local.Nativ.huggingface-token",
+        service: String = PromethIdentity.bundleIdentifier + ".huggingface-token", // PROMETH-SEAM: S2
         account: String = "nativ-huggingface"
     ) {
         self.service = service
@@ -1667,8 +1667,7 @@ struct NativSettings: Codable, Equatable {
         ).first
         let baseURL = applicationSupport ?? FileManager.default.homeDirectoryForCurrentUser
         return
-            baseURL
-            .appendingPathComponent("Nativ", isDirectory: true)
+            PromethIdentity.appendingSupportDirectory(to: baseURL) // PROMETH-SEAM: S2
             .appendingPathComponent("Settings.plist")
     }
 }

@@ -24,8 +24,7 @@ final class ArtifactSearchIndex: ObservableObject {
         let support = FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)
             .first ?? FileManager.default.temporaryDirectory
-        storageURL = support
-            .appendingPathComponent("Nativ", isDirectory: true)
+        storageURL = PromethIdentity.appendingSupportDirectory(to: support) // PROMETH-SEAM: S2
             .appendingPathComponent("Artifact Vectors.json")
         vectors = Self.load(storageURL)
         indexedCount = vectors.count

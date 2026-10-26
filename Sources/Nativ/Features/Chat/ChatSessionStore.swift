@@ -501,8 +501,7 @@ final class MediaAssetStore: @unchecked Sendable {
         } else {
             let support = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
                 ?? fileManager.temporaryDirectory
-            self.rootDirectory = support
-                .appendingPathComponent("Nativ", isDirectory: true)
+            self.rootDirectory = PromethIdentity.appendingSupportDirectory(to: support) // PROMETH-SEAM: S2
                 .appendingPathComponent("MediaAssets", isDirectory: true)
         }
     }
@@ -848,13 +847,11 @@ struct ChatSessionStore {
         } else {
             let support = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
                 ?? fileManager.temporaryDirectory
-            self.chatDirectory = support
-                .appendingPathComponent("Nativ", isDirectory: true)
+            self.chatDirectory = PromethIdentity.appendingSupportDirectory(to: support) // PROMETH-SEAM: S2
                 .appendingPathComponent("Chat", isDirectory: true)
             let caches = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first
                 ?? fileManager.temporaryDirectory
-            self.legacyChatDirectory = caches
-                .appendingPathComponent("Nativ", isDirectory: true)
+            self.legacyChatDirectory = PromethIdentity.appendingSupportDirectory(to: caches) // PROMETH-SEAM: S2
                 .appendingPathComponent("Chat", isDirectory: true)
         }
     }

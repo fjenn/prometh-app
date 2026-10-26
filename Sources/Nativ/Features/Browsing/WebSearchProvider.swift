@@ -239,7 +239,7 @@ protocol WebSearchCredentialStoring {
 }
 
 struct KeychainWebSearchCredentialStore: WebSearchCredentialStoring {
-    private let servicePrefix = "dev.local.Nativ.web-search."
+    private let servicePrefix = PromethIdentity.bundleIdentifier + ".web-search." // PROMETH-SEAM: S2
 
     func load(for provider: WebSearchProvider) throws -> String? {
         try keychain(for: provider).load()

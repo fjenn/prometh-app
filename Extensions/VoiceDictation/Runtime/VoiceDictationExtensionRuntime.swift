@@ -64,7 +64,7 @@ private final class VoiceDictationExtensionRuntime: AppExtension {
     @AppExtensionPoint.Bind
     var boundExtensionPoint: AppExtensionPoint {
         AppExtensionPoint.Identifier(
-            host: "dev.local.Nativ",
+            host: "studio.prometh.Prometh", // PROMETH-SEAM: S1 must be a StaticString literal
             name: "nativ-extension"
         )
     }

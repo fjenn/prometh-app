@@ -72,6 +72,8 @@ final class SoftwareUpdater: NSObject, ObservableObject, SPUUpdaterDelegate {
     }
 
     func start() {
+        // PROMETH-SEAM: S10 — Prometh must not offer Nativ updates.
+        guard PromethFlags.sparkleUpdater else { return }
         updaterController.startUpdater()
     }
 

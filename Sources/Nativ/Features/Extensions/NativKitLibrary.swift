@@ -162,8 +162,7 @@ final class NativKitLibrary {
             for: .applicationSupportDirectory,
             in: .userDomainMask
         ).first ?? fileManager.homeDirectoryForCurrentUser
-        return applicationSupport
-            .appendingPathComponent("Nativ", isDirectory: true)
+        return PromethIdentity.appendingSupportDirectory(to: applicationSupport) // PROMETH-SEAM: S2
             .appendingPathComponent("Kits.json")
     }
 }

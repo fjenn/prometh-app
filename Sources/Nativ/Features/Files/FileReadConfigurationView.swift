@@ -3,7 +3,7 @@ import SwiftUI
 
 extension Notification.Name {
     static let fileReadConfigurationDidChange = Notification.Name(
-        "dev.local.Nativ.file-read-configuration-did-change"
+        PromethIdentity.bundleIdentifier + ".file-read-configuration-did-change" // PROMETH-SEAM: S2
     )
 }
 

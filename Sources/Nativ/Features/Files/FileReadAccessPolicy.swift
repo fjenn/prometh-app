@@ -25,6 +25,8 @@ struct FileReadAccessPolicy: Sendable {
         "!**/known_hosts", "!**/token", "!**/stored_tokens", "!**/auth.json",
         "!**/*.key", "!**/*.pem", "!**/*.p12", "!**/*.pfx", "!**/*.jks",
         "!**/Library/Application Support/Nativ/**",
+        // PROMETH-SEAM: S2 — keep Nativ's folder blocked and block Prometh's too.
+        "!**/Library/Application Support/\(PromethIdentity.supportDirectoryName)/**",
     ]
 
     let rootURL: URL

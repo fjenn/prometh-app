@@ -775,8 +775,7 @@ final class NativExtensionManager: ObservableObject {
         let applicationSupport =
             fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-        return applicationSupport
-            .appendingPathComponent("Nativ", isDirectory: true)
+        return PromethIdentity.appendingSupportDirectory(to: applicationSupport) // PROMETH-SEAM: S2
             .appendingPathComponent("Extensions", isDirectory: true)
     }
 }

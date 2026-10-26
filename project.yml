@@ -53,6 +53,18 @@ schemes:
       config: Debug
       targets:
         - NativTests
+  Prometh:
+    build:
+      targets:
+        Nativ: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - PromethTests
+        - PromethUITests
+        - NativTests
 targets:
   NativExtensionSDK:
     type: framework
@@ -113,6 +125,14 @@ targets:
       - path: Sources/Nativ
         excludes:
           - ModelProviderIcons
+      # PROMETH-SEAM: S3
+      - path: Sources/Prometh
+        excludes:
+          - "Resources/**"
+      - path: Sources/Prometh/Resources
+        type: folder
+        buildPhase: resources
+        optional: true
       - path: Sources/Nativ/ModelProviderIcons
         type: folder
         buildPhase: resources
@@ -149,6 +169,17 @@ targets:
           set -euo pipefail
           "$SRCROOT/scripts/install_github_mcp_server.sh" \
             "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/MCPServers"
+      # PROMETH-SEAM: S3
+      - name: Copy PromethRuntime
+        basedOnDependencyAnalysis: false
+        script: |
+          set -euo pipefail
+          runtime_src="${SRCROOT}/PromethRuntime"
+          runtime_dst="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/PromethRuntime"
+          mkdir -p "${runtime_dst}"
+          if [[ -d "${runtime_src}" ]]; then
+            cp -R "${runtime_src}/." "${runtime_dst}/"
+          fi
     settings:
       base:
         ARCHS: arm64
@@ -160,7 +191,8 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Configuration/Nativ.entitlements
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Configuration/Nativ-Info.plist
-        INFOPLIST_KEY_CFBundleDisplayName: Nativ
+        INFOPLIST_KEY_CFBundleDisplayName: Prometh # PROMETH-SEAM: S1
+        PRODUCT_MODULE_NAME: Nativ
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.utilities
         EX_ENABLE_EXTENSION_POINT_GENERATION: YES
         MARKETING_VERSION: 0.4.3
@@ -195,6 +227,8 @@ targets:
     platform: macOS
     sources:
       - path: Tests/NativTests
+      - path: Sources/Prometh/Identity/PromethIdentity.swift
+      - path: Sources/Prometh/Flags/PromethFlags.swift
       - path: Sources/Nativ/NativSettings.swift
       - path: Sources/Nativ/NativRuntimeSettingsController.swift
       - path: Sources/Nativ/ReleaseVersion.swift
@@ -380,3 +414,31 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.local.NativTests
         GENERATE_INFOPLIST_FILE: YES
+  PromethTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests/PromethTests
+      - path: Sources/Prometh/Identity/PromethIdentity.swift
+      - path: Sources/Prometh/Flags/PromethFlags.swift
+      - path: Sources/Prometh/UI/Design.swift
+      - path: Sources/Prometh/UI/Domain.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: studio.prometh.PromethTests
+        GENERATE_INFOPLIST_FILE: YES
+        MACOSX_DEPLOYMENT_TARGET: "26.0"
+        SWIFT_VERSION: "6.3"
+  PromethUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: Tests/PromethUITests
+    dependencies:
+      - target: Nativ
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: studio.prometh.PromethUITests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Nativ
+        MACOSX_DEPLOYMENT_TARGET: "26.0"

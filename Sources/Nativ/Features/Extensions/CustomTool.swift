@@ -309,7 +309,7 @@ protocol CustomToolCredentialStoring {
 struct CustomToolKeychain: CustomToolCredentialStoring {
     let service: String
 
-    init(service: String = "dev.local.Nativ.custom-http-tool") {
+    init(service: String = PromethIdentity.bundleIdentifier + ".custom-http-tool") { // PROMETH-SEAM: S2
         self.service = service
     }
 

@@ -22,7 +22,10 @@ enum DefaultSpeechModel {
 actor ParakeetTranscriber {
     static let shared = ParakeetTranscriber()
     private let directory: URL?
-    private var session: Session?
+    // Type-erased so realizing this actor does not complete CoreAI metadata.
+    // XCTest realizes every class while loading NativTests; CoreAI is absent
+    // on macOS 26, and a stored Session would jump through a missing symbol.
+    private var session: Any?
     private var isPrepared = false
     // Actors are reentrant at CoreAI awaits. Explicitly serialize whole utterances.
     private var busy = false
@@ -42,7 +45,7 @@ actor ParakeetTranscriber {
         try Task.checkCancellation()
         guard !isPrepared else { return }
         try await loadSessionIfNeeded()
-        try await session!.warmUp()
+        try await loadedSession()!.warmUp()
         try Task.checkCancellation()
         isPrepared = true
     }
@@ -55,13 +58,17 @@ actor ParakeetTranscriber {
         let mel = try ParakeetAudio.preprocess(samples)
         try await loadSessionIfNeeded()
         try Task.checkCancellation()
-        let result = try await session!.transcribe(mel)
+        let result = try await loadedSession()!.transcribe(mel)
         isPrepared = true
         return result
     }
 
+    private func loadedSession() -> Session? {
+        session as? Session
+    }
+
     private func loadSessionIfNeeded() async throws {
-        if session == nil {
+        if loadedSession() == nil {
             let directory: URL
             if let override = self.directory { directory = override }
             else { directory = try await ParakeetModelStore.shared.directory() }
