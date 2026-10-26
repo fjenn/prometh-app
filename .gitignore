@@ -12,3 +12,10 @@ __pycache__/
 AGENTS.md
 /Configuration/Signing.local.xcconfig
 .prometh-logs/
+PromethRuntime/reader/vendor/
+PromethRuntime/reader/.venv/
+PromethRuntime/searxng/.venv/
+PromethRuntime/searxng/dist/
+PromethRuntime/searxng/work/
+PromethRuntime/searxng/src/
+PromethRuntime/**/__pycache__/

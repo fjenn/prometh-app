@@ -207,7 +207,9 @@ enum ChatToolRegistry {
             displayDescription: "Work on documents, code, websites, and shared terminals beside chat.",
             configuration: nil
         ))
-        return tools
+        // PROMETH-SEAM: S8 — hide Nativ tools in the Prometh shell. Unit tests
+        // still see the full list. The tools themselves stay compiled.
+        return tools.filter { PromethToolVisibility.allowsCurrent($0.definition.function.name) }
     }
 }
 

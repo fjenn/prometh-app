@@ -4,7 +4,11 @@ struct PromethSettingsView:View {
     @ObservedObject var store:PromethStore
     @State var resetConfirmation=false
     @State var samplesConfirmation=false
-    var tabs:[String] {store.isPreview ? ["Appearance","Capabilities","Privacy & data","Preview"]:["Appearance","Capabilities","Privacy & data"]}
+    var tabs:[String] {
+        var names = store.isPreview ? ["Appearance","Capabilities","Privacy & data","Preview"] : ["Appearance","Capabilities","Privacy & data"]
+        names.append("Advanced")
+        return names
+    }
     var body:some View {
         HStack(spacing:0) {
             VStack(alignment:.leading,spacing:7) {
@@ -25,6 +29,7 @@ struct PromethSettingsView:View {
                         case "Appearance":appearance
                         case "Capabilities":capabilities
                         case "Privacy & data":privacy
+                        case "Advanced":advanced
                         default:preview
                         }
                     }.frame(maxWidth:.infinity,alignment:.leading)
@@ -63,6 +68,38 @@ struct PromethSettingsView:View {
             VStack(alignment:.leading,spacing:10){HStack{Text("Evil chat · optional").font(.headline);Spacer();Button("Download / verify"){store.prepareEvil()}};DisclosureGroup("Details"){Text(store.modelDetails["Evil"] ?? "Qwen3.5 heretic · Q4_K_M · 5.63 GB weights · text input").font(.caption).foregroundStyle(.secondary)}}.padding(17).background(.primary.opacity(0.025),in:RoundedRectangle(cornerRadius:14))
             Text("Downloads show selected weight sizes, not working memory. Heavy chat, speech, image and video jobs run one at a time; the previous engine unloads before another family runs. Keep 12 GiB free for macOS, plus selected downloads.").font(.caption).foregroundStyle(.secondary)
             if store.state.hardware == .storage {Button("Review capability choices"){store.settingsOpen=false;store.state.step=1;store.state.onboardingComplete=false}}
+        }
+    }
+    var advanced:some View {
+        VStack(alignment:.leading,spacing:18) {
+            Text("Search and reading stay on this Mac. API providers are optional and are never the default.").font(.system(size:13)).foregroundStyle(.secondary)
+            DisclosureGroup("Search status") {
+                VStack(alignment:.leading,spacing:8) {
+                    Text(SearXNGSupervisor.shared.statusText).font(.system(size:12, design:.monospaced))
+                    Button("Restart search") {
+                        SearXNGSupervisor.shared.stop()
+                        Task { await SearXNGSupervisor.shared.start() }
+                    }
+                    Button("SearXNG source code") {
+                        if let url = URL(string: PromethSearchCredits.searxngSourceURL) {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }
+                }.padding(.top, 8)
+            }
+            DisclosureGroup("Page reader") {
+                Text("On-device reader. No API key.").font(.system(size:12)).foregroundStyle(.secondary).padding(.top, 8)
+            }
+            if PromethFlags.keyedSearchProviders {
+                DisclosureGroup("API search providers") {
+                    WebBrowsingSettingsView()
+                        .frame(minHeight: 280)
+                        .padding(.top, 8)
+                }
+            }
+            if CommandLine.arguments.contains(where: { $0.hasPrefix("--prometh-flags") }) {
+                Text("Launch flags are active for this session.").font(.caption).foregroundStyle(.secondary)
+            }
         }
     }
     var privacy:some View {

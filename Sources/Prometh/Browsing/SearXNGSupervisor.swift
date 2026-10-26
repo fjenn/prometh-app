@@ -1,6 +1,42 @@
 import Foundation
 import Security
 
+enum PromethPython {
+    /// Reader packages live in a provisioned venv, never in a committed vendor tree.
+    static func reader() -> URL? {
+        executable(
+            override: "PROMETH_READER_PYTHON",
+            relatives: [
+                "reader/.venv/bin/python3",
+                "searxng/dist/runtime/python/bin/python3",
+            ]
+        )
+    }
+
+    static func searxng() -> URL? {
+        executable(
+            override: "PROMETH_SEARXNG_PYTHON",
+            relatives: [
+                "searxng/dist/runtime/python/bin/python3",
+                "searxng/.venv/bin/python3",
+            ]
+        )
+    }
+
+    private static func executable(override: String, relatives: [String]) -> URL? {
+        if let path = ProcessInfo.processInfo.environment[override],
+           FileManager.default.isExecutableFile(atPath: path) {
+            return URL(fileURLWithPath: path)
+        }
+        for relative in relatives {
+            if let url = PromethRuntimeLocator.url(relative: relative) {
+                return url
+            }
+        }
+        return nil
+    }
+}
+
 enum PromethRuntimeLocator {
     static func url(relative: String) -> URL? {
         let manager = FileManager.default
@@ -58,7 +94,7 @@ final class SearXNGSupervisor: @unchecked Sendable {
             let port = try Self.reservePort()
             let process = Process()
             process.executableURL = python
-            process.arguments = [
+            var arguments = [
                 "-m", "granian",
                 "--interface", "wsgi",
                 "--host", "127.0.0.1",
@@ -66,6 +102,14 @@ final class SearXNGSupervisor: @unchecked Sendable {
                 "--workers", "1",
                 "searx.webapp:application",
             ]
+            if let launcher = PromethRuntimeLocator.url(relative: "searxng/launch.py") {
+                arguments = [
+                    launcher.path,
+                    "--parent", String(ProcessInfo.processInfo.processIdentifier),
+                    "--",
+                ] + arguments
+            }
+            process.arguments = arguments
             process.environment = Self.childEnvironment(settings: settings)
             process.currentDirectoryURL = python
                 .deletingLastPathComponent()
@@ -102,7 +146,7 @@ final class SearXNGSupervisor: @unchecked Sendable {
     }
 
     private func interpreter() async throws -> URL {
-        if let existing = PromethRuntimeLocator.url(relative: "searxng/dist/runtime/python/bin/python3") {
+        if let existing = PromethPython.searxng() {
             return existing
         }
         guard let archive = PromethRuntimeLocator.url(
@@ -148,6 +192,8 @@ final class SearXNGSupervisor: @unchecked Sendable {
             SearxEngineTooManyRequests: 30
             cf_SearxEngineCaptcha: 300
             cf_SearxEngineAccessDenied: 300
+        valkey:
+          url: false
         engines:
           - name: google
             disabled: true
@@ -158,6 +204,14 @@ final class SearXNGSupervisor: @unchecked Sendable {
           - name: google videos
             disabled: true
           - name: google scholar
+            disabled: true
+          - name: google cse
+            disabled: true
+          - name: google cse images
+            disabled: true
+          - name: google play apps
+            disabled: true
+          - name: google play movies
             disabled: true
           - name: bing
             disabled: true
@@ -182,6 +236,8 @@ final class SearXNGSupervisor: @unchecked Sendable {
           - name: startpage images
             disabled: true
           - name: duckduckgo
+            disabled: false
+          - name: duckduckgo web
             disabled: false
           - name: duckduckgo news
             disabled: false

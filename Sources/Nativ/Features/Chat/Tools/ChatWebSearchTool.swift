@@ -87,22 +87,7 @@ struct ChatWebSearchToolExecutor {
     }
 
     private static func searchResultMarkup(_ results: [WebSearchResult]) -> String {
-        var lines = ["<search_results>"]
-        for (index, result) in results.enumerated() {
-            let title = xmlAttribute(result.title)
-            let url = xmlAttribute(result.url)
-            lines.append("<result index=\"\(index + 1)\" title=\"\(title)\" url=\"\(url)\" />")
-        }
-        lines.append("</search_results>")
-        return lines.joined(separator: "\n")
-    }
-
-    private static func xmlAttribute(_ value: String) -> String {
-        value
-            .replacingOccurrences(of: "&", with: "&amp;")
-            .replacingOccurrences(of: "\"", with: "&quot;")
-            .replacingOccurrences(of: "<", with: "&lt;")
-            .replacingOccurrences(of: ">", with: "&gt;")
+        CitationMarkup.searchResultsBlock(results.map { CitationMarkup.Item(title: $0.title, url: $0.url) })
     }
 
     private func encoded(_ value: some Encodable) throws -> String {

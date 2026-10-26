@@ -18,6 +18,10 @@ Edits to upstream Nativ files are limited to the rows below. Each code edit is m
 | S4 | `Sources/Nativ/Features/Windowing/NativApplicationCommands.swift` | With `promethShell` on, New chat, Settings, and Customize post to the Prometh shell. With the flag off, the Nativ commands are unchanged. |
 | S10 | `Sources/Nativ/SoftwareUpdater.swift`, `AppDelegate.swift` | `start()` returns immediately unless `sparkleUpdater` is on (default off). |
 | S11 | `Sources/Nativ/NativSettings.swift` `launchEnvironment` | When `PROMETH_OFFLINE=1`, the mlx-vlm child gets `HF_HUB_OFFLINE=1` and HTTP(S) proxies pointed at `http://127.0.0.1:9`. Loopback stays in `NO_PROXY`. This does not change the Mac's network. |
+| S5 | `Sources/Nativ/Features/Browsing/WebSearchProvider.swift`, `WebBrowsingProviderClient.swift`, `WebBrowsingRuntime.swift`, `WebSearchSettingsView.swift` | `local` page reader, `configurationKind: .none`, keyless. |
+| S6 | `Sources/Nativ/Features/Browsing/Providers/SearXNGBrowsingProvider.swift` | `prometh-embedded` sentinel resolves to the per-launch loopback URL. The provider fetches 8 results, dedupes, and sorts by score. |
+| S8 | `Sources/Nativ/Features/Chat/ChatToolRegistry.swift` | When the Prometh shell is on, and the process is not an XCTest host, advertised native tools pass through `PromethToolVisibility`. |
+| S9 | `Sources/Nativ/Features/Chat/ChatViewModel.swift`, `Tools/ChatWebSearchTool.swift` | Citation and persona sections, and the `<search_results>` block. The block is omitted under XCTest so existing JSON fixtures stay exact. |
 | note | `Sources/Nativ/Features/VoiceCapture/Parakeet/ParakeetTranscriber.swift` | The loaded CoreAI session is stored as `Any`. XCTest realizes every class, and completing `Session` metadata jumps through CoreAI, which is not installed on macOS 26. Loading and transcription still use the real session. |
 
 ## S2 support-directory files
@@ -51,4 +55,4 @@ Edits to upstream Nativ files are limited to the rows below. Each code edit is m
 - `Sources/Nativ/Features/Chat/ChatSearchStore.swift` (`Nativ/Chat/Search.sqlite`)
 - `Sources/Nativ/Features/VoiceCapture/Parakeet/ParakeetModelStore.swift` (`Nativ/SpeechModels`)
 
-`NativTests` compiles `PromethIdentity.swift` and `PromethFlags.swift` because those upstream files are built into the test bundle directly.
+`NativTests` compiles `PromethIdentity.swift`, `PromethFlags.swift`, `PromethToolVisibility.swift`, and `CitationMarkup.swift` because those upstream files are built into the test bundle directly.

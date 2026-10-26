@@ -85,21 +85,20 @@ final class ReaderSupervisor: @unchecked Sendable {
         let running = process?.isRunning == true && port != nil
         lock.unlock()
         if running { return }
-        guard let python = PromethRuntimeLocator.url(relative: "searxng/dist/runtime/python/bin/python3"),
+        guard let python = PromethPython.reader(),
               let script = PromethRuntimeLocator.url(relative: "reader/reader_server.py") else {
             return
         }
-        let vendor = PromethRuntimeLocator.url(relative: "reader/vendor")
         guard let port = try? SearXNGPort.reserve() else { return }
         let process = Process()
         process.executableURL = python
-        process.arguments = [script.path, String(port)]
+        process.arguments = [script.path, String(port), "--parent", String(ProcessInfo.processInfo.processIdentifier)]
         var environment = [
-            "PATH": "/usr/bin:/bin:/opt/homebrew/bin",
+            "PATH": "/usr/bin:/bin:/opt/homebrew/bin:/usr/local/bin",
             "HOME": FileManager.default.homeDirectoryForCurrentUser.path,
             "LANG": "en_US.UTF-8",
-            "PYTHONPATH": vendor?.path ?? "",
             "PYTHONNOUSERSITE": "1",
+            "PYTHONDONTWRITEBYTECODE": "1",
         ]
         if ProcessInfo.processInfo.environment["PROMETH_OFFLINE"] == "1" {
             environment["HTTP_PROXY"] = "http://127.0.0.1:9"

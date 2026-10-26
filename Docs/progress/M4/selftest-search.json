@@ -1,0 +1,35 @@
+{
+  "port": 58391,
+  "passed": true,
+  "listeners": [
+    "127.0.0.1"
+  ],
+  "query": "python programming language",
+  "engines": "github,arxiv,wikipedia,wikidata",
+  "resultCount": 40,
+  "domains": [
+    "arxiv.org",
+    "github.com"
+  ],
+  "unresponsive": [],
+  "reads": [
+    {
+      "url": "https://arxiv.org/abs/1402.0087v1",
+      "domain": "arxiv.org",
+      "status": 200,
+      "extractor": "trafilatura",
+      "title": "[1402.0087v1] A novel datatype architecture support for programming languages",
+      "published": null,
+      "chars": 2070
+    },
+    {
+      "url": "https://github.com/python/cpython",
+      "domain": "github.com",
+      "status": 200,
+      "extractor": "trafilatura",
+      "title": "GitHub - python/cpython: The Python programming language \u00b7 GitHub",
+      "published": null,
+      "chars": 6650
+    }
+  ]
+}

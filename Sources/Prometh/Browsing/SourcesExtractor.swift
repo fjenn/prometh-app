@@ -80,12 +80,7 @@ enum SourcesExtractor {
     }
 
     private static func citedIndices(in text: String) -> Set<Int> {
-        guard let expression = try? NSRegularExpression(pattern: "\\[(\\d+)\\]") else { return [] }
-        let range = NSRange(text.startIndex..., in: text)
-        return Set(expression.matches(in: text, range: range).compactMap { match in
-            guard let slice = Range(match.range(at: 1), in: text) else { return nil }
-            return Int(text[slice])
-        })
+        CitationMarkup.citedIndices(in: text)
     }
 }
 

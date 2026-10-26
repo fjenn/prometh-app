@@ -1,4 +1,6 @@
-trafilatura>=2.0,<2.3
-newspaper4k
-readability-lxml
-justext
+# Direct pins. The full hash lock is requirements.lock.
+# Install with: pip install --require-hashes -r requirements.lock
+trafilatura==2.2.0
+newspaper4k==0.9.6
+readability-lxml==0.9
+jusText==3.0.2

@@ -7,8 +7,11 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
+import threading
+import time
 import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.error import URLError
@@ -60,27 +63,61 @@ def _public_ipv4(octets: list[int]) -> bool:
     return True
 
 
+def _ambiguous_numeric(host: str) -> bool:
+    labels = host.split(".")
+    if not labels:
+        return False
+    for label in labels:
+        lowered = label.lower()
+        if lowered.startswith("0x"):
+            digits = lowered[2:]
+            if not digits or any(char not in "0123456789abcdef" for char in digits):
+                return False
+        elif not label.isdigit():
+            return False
+    return True
+
+
+def _public_ipv6(host: str) -> bool:
+    host = host.lower()
+    if host in ("::", "::1") or host.startswith("::ffff:"):
+        return False
+    return not host.startswith(("fc", "fd", "fe8", "fe9", "fea", "feb"))
+
+
 def policy_allows(url: str) -> bool:
-    """Refuse private hosts and credential queries before any fetch."""
+    """Refuse private hosts and credential queries before any fetch.
+
+    Mirrors Nativ ``WebReadURLPolicy``: loopback, link-local, RFC1918,
+    credential userinfo, sensitive query names, and ambiguous numeric hosts.
+    """
     parsed = urlparse(url.strip())
     if parsed.scheme not in ("http", "https"):
         return False
     if parsed.username or parsed.password:
         return False
-    host = (parsed.hostname or "").lower().strip("[]")
+    if len(url.strip()) > 2048:
+        return False
+    host = (parsed.hostname or "").lower().strip("[].")
     if not host or host in ("localhost", "localhost.localdomain"):
         return False
     if host.endswith((".localhost", ".local", ".internal", ".lan", ".home")):
         return False
     octets = _ipv4(host)
-    if octets is not None and not _public_ipv4(octets):
+    if octets is not None:
+        if not _public_ipv4(octets):
+            return False
+    elif _ambiguous_numeric(host):
         return False
-    if ":" in host and (host == "::1" or host.startswith(("fc", "fd", "fe8", "fe9", "fea", "feb"))):
+    elif ":" in host:
+        if not _public_ipv6(host):
+            return False
+    elif "." not in host:
         return False
     query_names = [item.split("=", 1)[0].lower() for item in parsed.query.split("&") if item]
     if any(name in SENSITIVE_QUERY for name in query_names):
         return False
-    return "." in host or octets is not None
+    return True
 
 
 class _Redirects(HTTPRedirectHandler):
@@ -129,8 +166,23 @@ def _field(document: object, name: str) -> str | None:
     return text or None
 
 
+def _html_title(html: str) -> str | None:
+    match = re.search(r"(?is)<title[^>]*>(.*?)</title>", html)
+    if not match:
+        return None
+    text = re.sub(r"\s+", " ", match.group(1)).strip()
+    return text or None
+
+
 def extract(html: str, url: str) -> tuple[str, str | None, str | None, str]:
     """Return text, title, published, extractor name. First usable result wins."""
+    text, title, published, name = _extract_chain(html, url)
+    if not title:
+        title = _html_title(html)
+    return text, title, published, name
+
+
+def _extract_chain(html: str, url: str) -> tuple[str, str | None, str | None, str]:
     try:
         import trafilatura
 
@@ -151,7 +203,7 @@ def extract(html: str, url: str) -> tuple[str, str | None, str | None, str]:
         from newspaper import Article
 
         article = Article(url)
-        article.set_html(html)
+        article.html = html
         article.parse()
         if article.text and len(article.text.strip()) >= 200:
             published = article.publish_date.date().isoformat() if article.publish_date else None
@@ -232,11 +284,33 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, {"ok": False, "error": str(error), "url": url})
 
 
+def watch_parent(parent_pid: int) -> None:
+    """Exit when the launching app is gone, including after kill -9 (reparent to init)."""
+
+    def loop() -> None:
+        while True:
+            try:
+                os.kill(parent_pid, 0)
+            except OSError:
+                os._exit(0)
+            if parent_pid == 1:
+                os._exit(0)
+            time.sleep(1)
+
+    threading.Thread(target=loop, name="parent-watch", daemon=True).start()
+
+
 def main() -> None:
     host = "127.0.0.1"
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 0
+    args = sys.argv[1:]
+    port = int(args[0]) if args else 0
+    if "--parent" in args:
+        watch_parent(int(args[args.index("--parent") + 1]))
     server = ThreadingHTTPServer((host, port), Handler)
-    print(f"LISTENING {server.server_address[1]}", flush=True)
+    bound_host, bound_port = server.server_address[:2]
+    if bound_host not in ("127.0.0.1", "localhost"):
+        raise SystemExit(f"refusing to listen on {bound_host}")
+    print(f"LISTENING {bound_port}", flush=True)
     server.serve_forever()
 
 
