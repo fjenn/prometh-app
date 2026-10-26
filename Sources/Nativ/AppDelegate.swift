@@ -56,12 +56,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @MainActor UNUserNotif
         PromethSearchBootstrap.start()
         // PROMETH-SEAM: S12 — Prometh's 4-bit image model replaces Nativ's 8-bit fallback.
         if PromethFlags.promethShell && !PromethFlags.isRunningUnitTests {
-            let resolved = PromethImageDefaults.resolved(current: model.settings.imageGenerationModelID)
-            if resolved != model.settings.imageGenerationModelID {
-                var settings = model.settings
-                settings.imageGenerationModelID = resolved
-                model.settings = settings
+            var settings = model.settings
+            var changed = false
+            let image = PromethImageDefaults.resolved(current: settings.imageGenerationModelID)
+            if image != settings.imageGenerationModelID {
+                settings.imageGenerationModelID = image
+                changed = true
             }
+            // PROMETH-SEAM: S14 — Whisper is the dictation default. Parakeet stays installed.
+            let speech = PromethVoiceDefaults.speechModel(current: settings.speechToTextModelID)
+            if speech != settings.speechToTextModelID {
+                settings.speechToTextModelID = speech
+                changed = true
+            }
+            if changed { model.settings = settings }
         }
         runtime.onUpdate = { [weak self] in
             self?.updateStatusItemButton()
@@ -70,7 +78,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @MainActor UNUserNotif
             self?.updateStatusItemButton()
         }
         runtime.start()
+        // PROMETH-SEAM: S14 — the Prometh shell does not preload Parakeet.
         if #available(macOS 27.0, *),
+           !PromethFlags.promethShell,
            DefaultSpeechModel.isPreferred(selectedModelID: model.settings.normalized().speechToTextModelID) {
             speechPreparationTask = Task(priority: .utility) {
                 do {

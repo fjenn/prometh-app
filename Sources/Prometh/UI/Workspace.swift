@@ -63,6 +63,7 @@ struct WorkspaceView: View {
         VStack(spacing:10) {
             Button{store.voice.sampleTurn()}label:{FluidOrb(speaking:store.voice.phase=="Speaking")}.buttonStyle(.plain).accessibilityLabel("Record or finish speaking")
             Text(store.voice.phase).font(.system(size:12)).foregroundStyle(.secondary).lineLimit(3)
+            if !store.voice.recovery.isEmpty {Text(store.voice.recovery).font(.system(size:11)).foregroundStyle(.secondary)}
             if !store.voice.transcript.isEmpty {ScrollView{Text(store.voice.transcript).font(.system(size:13)).textSelection(.enabled)}.frame(maxHeight:100)}
             HStack{Button(store.voice.muted ? "Unmute":"Mute"){store.voice.toggleMute()};Button("Interrupt"){store.voice.interrupt()};Button("End voice"){store.voice.end()}}.font(.caption)
         }.frame(maxWidth:680)

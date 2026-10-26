@@ -404,7 +404,19 @@ final class PromethStore: ObservableObject {
 
     func dictate() {
         dictating = true
-        error = "Voice is not available yet."
+        voice.denied = false
+        voice.phase = "Listening"
+        guard let text = PromethVoiceDefaults.fileTranscript() else { return }
+        voice.finishRecording()
+        voice.transcript = text
+        let existing = drafts[state.selectedChatID?.uuidString ?? ""] ?? current?.draft ?? ""
+        let separator = existing.isEmpty ? "" : " "
+        setDraft(existing + separator + text)
+        voice.phase = "Speaking"
+        dictating = false
+        if let answer = PromethVoiceDefaults.selfTestAnswer(for: text) {
+            appendVoiceExchange(text, answer)
+        }
     }
 
     func cancelDictation() {
@@ -412,7 +424,12 @@ final class PromethStore: ObservableObject {
         voice.end()
     }
 
-    func appendVoiceExchange(_ user: String, _ reply: String) {}
+    func appendVoiceExchange(_ user: String, _ reply: String) {
+        guard !reply.isEmpty, let id = state.selectedChatID else { return }
+        let replyMessage = Message(role: "assistant", text: reply, status: "complete")
+        localMedia[id, default: []].append(replyMessage)
+        reload()
+    }
 
     func chooseAttachment() {
         let panel = NSOpenPanel()
