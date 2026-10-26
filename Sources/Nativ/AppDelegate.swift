@@ -52,6 +52,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @MainActor UNUserNotif
             at: PromethIdentity.applicationSupportDirectory,
             withIntermediateDirectories: true
         )
+        // PROMETH-SEAM: S5 S6 S9 — embedded search defaults and local reader. No-op under XCTest.
+        PromethSearchBootstrap.start()
         runtime.onUpdate = { [weak self] in
             self?.updateStatusItemButton()
         }
@@ -161,6 +163,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @MainActor UNUserNotif
         systemMenuBarPreferences.onChange = nil
         runtime.stop()
         model.applicationWillTerminate()
+        PromethSearchBootstrap.stop()
     }
 
     func makeWindowState() -> NativWindowState {

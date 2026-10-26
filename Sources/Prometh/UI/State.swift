@@ -58,6 +58,8 @@ struct SourceLink: Codable, Equatable, Identifiable {
     var id: String { url }
     let title: String
     let url: String
+    var index: Int? = nil
+    var published: String? = nil
 }
 
 struct Message: Identifiable, Codable, Equatable {

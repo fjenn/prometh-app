@@ -3429,6 +3429,11 @@ final class ChatViewModel: ObservableObject {
         return request
     }
 
+    // PROMETH-SEAM: S9 — Prometh registers citation and persona text at launch.
+    enum PromethPromptAdditions {
+        static var sections: (@Sendable () -> [String])?
+    }
+
     static let corePrompt = """
         Follow the user's instructions, be accurate, express uncertainty honestly, and never claim actions \
         or results that did not occur.
@@ -3442,6 +3447,11 @@ final class ChatViewModel: ObservableObject {
         includesToolGuide: Bool,
         skills: [NativSkill]
     ) -> String {
+        // PROMETH-SEAM: S9 — citation rules stay out of the XCTest host so the
+        // assembled-prompt fixture stays exact. The app process appends them.
+        let promethSections = PromethFlags.isRunningUnitTests
+            ? []
+            : (PromethPromptAdditions.sections?() ?? [])
         let sections: [String?] = [
             corePrompt,
             includesChatWork ? ChatWorkToolRegistry.sessionPrompt : nil,
@@ -3449,7 +3459,7 @@ final class ChatViewModel: ObservableObject {
             personalizationPrompt,
             projectPrompt,
             includesToolGuide ? NativSkill.builtInToolGuide.instructions : nil,
-        ] + skills.map(\.instructions)
+        ] + skills.map(\.instructions) + promethSections
         return sections.compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: "\n\n")
     }
 

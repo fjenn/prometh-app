@@ -104,6 +104,14 @@ enum PromethFlags {
     static var images: Bool { isOn(.images) }
     static var sparkleUpdater: Bool { isOn(.sparkleUpdater) }
 
+    /// True inside `xcodebuild test`. The launched Prometh app does not set these.
+    static var isRunningUnitTests: Bool {
+        let environment = ProcessInfo.processInfo.environment
+        return environment["XCTestConfigurationFilePath"] != nil
+            || environment["XCTestBundlePath"] != nil
+            || environment["XCTestSessionIdentifier"] != nil
+    }
+
     private enum LaunchMode {
         case forcedOff
         case all

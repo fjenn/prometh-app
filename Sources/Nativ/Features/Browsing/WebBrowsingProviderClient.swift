@@ -87,7 +87,33 @@ struct WebBrowsingProviderRegistry: Sendable {
             ParallelBrowsingProvider(transport: transport)
         case .searxng:
             SearXNGBrowsingProvider(transport: transport)
+        case .local: // PROMETH-SEAM: S5
+            LocalReaderBrowsingProvider()
         }
+    }
+}
+
+/// Prometh installs the real reader at launch. Tests leave this nil.
+enum PromethLocalReaderHook {
+    static var read: (@Sendable ([String], String?) async throws -> [WebBrowsingProviderDocument])?
+}
+
+struct LocalReaderBrowsingProvider: WebBrowsingProviderClient {
+    let provider = WebSearchProvider.local
+
+    func search(
+        access: WebSearchProviderAccess,
+        query: String,
+        limit: Int
+    ) async throws -> [WebSearchResult] {
+        throw WebReadError.unsupportedProvider(provider)
+    }
+
+    func read(apiKey: String, urls: [String], focus: String?) async throws -> [WebBrowsingProviderDocument] {
+        guard let read = PromethLocalReaderHook.read else {
+            throw WebReadError.unsupportedProvider(provider)
+        }
+        return try await read(urls, focus)
     }
 }
 

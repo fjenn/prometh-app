@@ -114,7 +114,7 @@ struct ToolsPage:View {
             toolRow("Web search",detail:"Find information and include sources in replies.",enabled:$store.state.webSearch)
             Divider()
             toolRow("Read attachments",detail:"Work with images, documents, audio and video you attach.",enabled:Binding(get:{store.state.fileReadingEnabled != false},set:{store.state.fileReadingEnabled=$0}))
-            Text("Web search currently uses Wikipedia. Results are fetched online only when enabled; sources link to retrieved pages. Only files you choose are read.").font(.system(size:11)).foregroundStyle(.secondary)
+            Text("Web search runs on this Mac and includes sources in replies. Pages are fetched only when search is enabled. Only files you choose are read.").font(.system(size:11)).foregroundStyle(.secondary)
         }
     }
     func toolRow(_ name:String,detail:String,enabled:Binding<Bool>)->some View {

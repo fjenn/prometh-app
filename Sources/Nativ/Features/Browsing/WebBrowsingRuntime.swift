@@ -26,11 +26,16 @@ struct WebBrowsingRuntime {
                 && (try? credentials.load(for: provider)) != nil
         case .instanceURL:
             return preferences.endpoint(for: provider) != nil
+        case .none: // PROMETH-SEAM: S5
+            return true
         }
     }
 
     func search(query: String, limit: Int) async throws -> [WebSearchResult] {
         let provider = preferences.searchProvider
+        if ProcessInfo.processInfo.environment["PROMETH_OFFLINE"] == "1" {
+            throw WebBrowsingError.providerUnavailable(provider)
+        }
         let access = try searchAccess(for: provider)
         return try await execute(provider: provider) {
             try await searchService.search(
@@ -46,7 +51,10 @@ struct WebBrowsingRuntime {
         guard let provider = preferences.provider(for: .read) else {
             throw WebReadError.pageReaderNotConfigured(preferences.searchProvider)
         }
-        let apiKey = try credential(for: provider)
+        if ProcessInfo.processInfo.environment["PROMETH_OFFLINE"] == "1" {
+            throw WebBrowsingError.providerUnavailable(provider)
+        }
+        let apiKey = provider.metadata.configurationKind == .none ? "" : try credential(for: provider)
         return try await execute(provider: provider) {
             try await readService.read(
                 provider: provider,
@@ -79,6 +87,8 @@ struct WebBrowsingRuntime {
                 throw WebBrowsingError.missingEndpoint(provider)
             }
             return .instance(endpoint)
+        case .none: // PROMETH-SEAM: S5 — the on-device reader does not search
+            throw WebBrowsingError.providerUnavailable(provider)
         }
     }
 

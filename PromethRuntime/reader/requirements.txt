@@ -1,0 +1,4 @@
+trafilatura>=2.0,<2.3
+newspaper4k
+readability-lxml
+justext

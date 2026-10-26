@@ -61,6 +61,8 @@ final class WebBrowsingSettingsViewModel: ObservableObject {
             draftConfiguration = ""
         case .instanceURL:
             draftConfiguration = preferences.endpoint(for: provider)?.absoluteString ?? ""
+        case .none: // PROMETH-SEAM: S5
+            draftConfiguration = ""
         }
         revealsKey = false
         status = nil
@@ -118,6 +120,14 @@ final class WebBrowsingSettingsViewModel: ObservableObject {
     }
 
     func testAndConnect() async -> Bool {
+        if selectedProvider.metadata.configurationKind == .none {
+            preferences.pageReaderProvider = selectedProvider
+            preferences.setCredentialIssue(nil, for: selectedProvider)
+            connectionStates[selectedProvider] = .connected
+            status = .connected("On-device reader is ready.")
+            notifyConfigurationChanged()
+            return true
+        }
         let value = draftConfiguration.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !value.isEmpty, !isTesting else { return false }
         let provider = selectedProvider
@@ -131,6 +141,8 @@ final class WebBrowsingSettingsViewModel: ObservableObject {
                 return false
             }
             access = .instance(endpoint)
+        case .none: // PROMETH-SEAM: S5
+            return true
         }
         let hadConfiguredSearch = hasConfiguration(for: searchProvider)
         let hadConfiguredReader = resolvedPageReaderProvider.map {
@@ -213,6 +225,10 @@ final class WebBrowsingSettingsViewModel: ObservableObject {
                 try credentials.remove(for: provider)
             case .instanceURL:
                 preferences.setEndpoint(nil, for: provider)
+            case .none: // PROMETH-SEAM: S5
+                if preferences.pageReaderProvider == provider {
+                    preferences.pageReaderProvider = nil
+                }
             }
             preferences.setCredentialIssue(nil, for: provider)
             connectionStates[provider] = .disconnected
@@ -252,6 +268,10 @@ final class WebBrowsingSettingsViewModel: ObservableObject {
                 connectionStates[provider] = preferences.endpoint(for: provider) == nil
                     ? .disconnected
                     : .connected
+            case .none: // PROMETH-SEAM: S5
+                connectionStates[provider] = preferences.pageReaderProvider == provider
+                    ? .connected
+                    : .disconnected
             }
         }
     }
@@ -394,6 +414,8 @@ struct WebBrowsingSettingsView: View {
             "Open \(provider.metadata.displayName) API key setup"
         case .instanceURL:
             "Open \(provider.metadata.displayName) setup documentation"
+        case .none: // PROMETH-SEAM: S5
+            "Open \(provider.metadata.displayName) documentation"
         }
     }
 
@@ -497,6 +519,8 @@ struct WebBrowsingSettingsView: View {
             "Browsing requests are sent to the selected third-party provider. API keys stay in Keychain."
         case .instanceURL:
             "Search requests are sent directly to this SearXNG instance. Nativ does not host or manage it."
+        case .none: // PROMETH-SEAM: S5
+            "Pages are fetched by Prometh and read on this Mac. No API key is sent."
         }
     }
 
@@ -551,6 +575,10 @@ struct WebBrowsingSettingsView: View {
         case .instanceURL:
             TextField("https://search.example.com", text: $viewModel.draftConfiguration)
                 .textFieldStyle(.roundedBorder)
+        case .none: // PROMETH-SEAM: S5
+            Text("On-device reader. No API key.")
+                .legacyTextStyle(.supporting)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -571,6 +599,8 @@ struct WebBrowsingSettingsView: View {
         case .apiKey:
             "Remove Key"
         case .instanceURL:
+            "Disconnect"
+        case .none: // PROMETH-SEAM: S5
             "Disconnect"
         }
     }

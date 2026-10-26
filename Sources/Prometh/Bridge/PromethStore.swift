@@ -304,6 +304,7 @@ final class PromethStore: ObservableObject {
     }
 
     func send() {
+        PromethPromptAdditionsMode.current = current?.mode.rawValue ?? BehaviorMode.safe.rawValue
         if current == nil { newChat() }
         guard let id = state.selectedChatID else { return }
         if chat.currentSessionID != id { select(id) }
@@ -770,7 +771,17 @@ except Exception as error:
             id: session.id,
             title: session.displayTitle,
             mode: modes[key] ?? .safe,
-            messages: visible.map(present),
+            messages: visible.map { message in
+                var item = present(message)
+                if message.role == .assistant {
+                    item.sourceLinks = SourcesExtractor.links(
+                        before: message.id,
+                        in: messages,
+                        assistantText: message.content
+                    )
+                }
+                return item
+            },
             draft: drafts[key] ?? "",
             attachments: [],
             updated: session.updatedAt

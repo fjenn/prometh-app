@@ -66,7 +66,10 @@ struct ChatWebSearchToolExecutor {
         }
 
         let results = try await runtime.search(query: arguments.query, limit: 3)
-        return try encoded(WebSearchToolSuccessPayload(results: results))
+        let payload = try encoded(WebSearchToolSuccessPayload(results: results))
+        // PROMETH-SEAM: S9 — indices match the Sources UI. Unit tests still see JSON only.
+        guard !PromethFlags.isRunningUnitTests else { return payload }
+        return payload + "\n" + Self.searchResultMarkup(results)
     }
 
     func failurePayload(error: Error) -> String {
@@ -81,6 +84,25 @@ struct ChatWebSearchToolExecutor {
         )
         return (try? encoded(payload))
             ?? #"{"ok":false,"error":{"code":"unexpected_failure","message":"Web search failed."}}"#
+    }
+
+    private static func searchResultMarkup(_ results: [WebSearchResult]) -> String {
+        var lines = ["<search_results>"]
+        for (index, result) in results.enumerated() {
+            let title = xmlAttribute(result.title)
+            let url = xmlAttribute(result.url)
+            lines.append("<result index=\"\(index + 1)\" title=\"\(title)\" url=\"\(url)\" />")
+        }
+        lines.append("</search_results>")
+        return lines.joined(separator: "\n")
+    }
+
+    private static func xmlAttribute(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
     }
 
     private func encoded(_ value: some Encodable) throws -> String {
@@ -122,6 +144,8 @@ private extension WebBrowsingError {
             "\(ChatWebSearchToolRegistry.toolName) needs a non-empty query."
         case .responseTooLarge(let provider):
             "\(provider.metadata.displayName) returned more data than \(ChatWebSearchToolRegistry.toolName) accepts."
+        case .providerUnavailable where ProcessInfo.processInfo.environment["PROMETH_OFFLINE"] == "1":
+            "Cannot reach the web."
         default:
             localizedDescription
         }

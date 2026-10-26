@@ -9,7 +9,14 @@ struct SearXNGBrowsingProvider: WebBrowsingProviderClient {
         query: String,
         limit: Int
     ) async throws -> [WebSearchResult] {
-        let instanceURL = try access.instanceURL(for: provider)
+        var instanceURL = try access.instanceURL(for: provider)
+        // PROMETH-SEAM: S6 — the stored URL is the sentinel; the live port changes per launch.
+        if instanceURL.host?.lowercased() == "prometh-embedded" {
+            guard let resolved = await PromethSearXNGEndpoint.resolve?() else {
+                throw WebBrowsingError.providerUnavailable(provider)
+            }
+            instanceURL = resolved
+        }
         let searchURL = instanceURL.appendingPathComponent("search", isDirectory: false)
         guard var components = URLComponents(
             url: searchURL,
@@ -31,10 +38,31 @@ struct SearXNGBrowsingProvider: WebBrowsingProviderClient {
             for: request,
             provider: provider
         )
-        return response.results.prefix(limit).compactMap {
-            WebSearchResult(title: $0.title, url: $0.url, snippet: $0.content)
+        let cap = max(limit, 8)
+        let ranked = response.results.enumerated().sorted { lhs, rhs in
+            let left = lhs.element.score ?? 0
+            let right = rhs.element.score ?? 0
+            if left == right { return lhs.offset < rhs.offset }
+            return left > right
         }
+        var seen: Set<String> = []
+        var results: [WebSearchResult] = []
+        for item in ranked {
+            guard let result = WebSearchResult(
+                title: item.element.title,
+                url: item.element.url,
+                snippet: item.element.content
+            ), seen.insert(result.url).inserted else { continue }
+            results.append(result)
+            if results.count == cap { break }
+        }
+        return results
     }
+}
+
+/// Prometh's supervisor fills this in. Tests that talk to a stub instance never call it.
+enum PromethSearXNGEndpoint {
+    static var resolve: (@Sendable () async -> URL?)?
 }
 
 private struct SearXNGSearchResponse: Decodable {
@@ -45,4 +73,23 @@ private struct SearXNGSearchResult: Decodable {
     let title: String?
     let url: String?
     let content: String?
+    let score: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case title, url, content, score
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        title = try container.decodeIfPresent(String.self, forKey: .title)
+        url = try container.decodeIfPresent(String.self, forKey: .url)
+        content = try container.decodeIfPresent(String.self, forKey: .content)
+        if let number = try? container.decodeIfPresent(Double.self, forKey: .score) {
+            score = number
+        } else if let text = try? container.decodeIfPresent(String.self, forKey: .score), let number = Double(text) {
+            score = number
+        } else {
+            score = nil
+        }
+    }
 }

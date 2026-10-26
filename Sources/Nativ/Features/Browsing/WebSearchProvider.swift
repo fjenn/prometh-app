@@ -14,6 +14,7 @@ enum WebBrowsingCapability: Hashable, Sendable {
 enum WebSearchProviderConfigurationKind: Equatable, Sendable {
     case apiKey
     case instanceURL
+    case none // PROMETH-SEAM: S5 — keyless on-device reader
 }
 
 enum WebSearchProvider: String, CaseIterable, Identifiable, Sendable {
@@ -25,6 +26,7 @@ enum WebSearchProvider: String, CaseIterable, Identifiable, Sendable {
     case tavily
     case parallel
     case searxng
+    case local // PROMETH-SEAM: S5
 
     var id: String { rawValue }
 
@@ -35,10 +37,10 @@ enum WebSearchProvider: String, CaseIterable, Identifiable, Sendable {
     func supports(_ capability: WebBrowsingCapability) -> Bool {
         switch capability {
         case .search:
-            true
+            self != .local
         case .read:
             switch self {
-            case .exa, .nimble, .firecrawl, .tavily, .parallel:
+            case .exa, .nimble, .firecrawl, .tavily, .parallel, .local:
                 true
             case .brave, .perplexity, .searxng:
                 false
@@ -98,6 +100,13 @@ enum WebSearchProvider: String, CaseIterable, Identifiable, Sendable {
                 logoResourceName: "SearXNG",
                 configurationKind: .instanceURL,
                 setupURL: .webSearchURL("https://docs.searxng.org/dev/search_api.html")
+            )
+        case .local: // PROMETH-SEAM: S5
+            WebSearchProviderMetadata(
+                displayName: "On-device reader",
+                logoResourceName: "OnDeviceReader",
+                configurationKind: .none,
+                setupURL: .webSearchURL("https://trafilatura.readthedocs.io/")
             )
         }
     }
