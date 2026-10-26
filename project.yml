@@ -130,7 +130,6 @@ targets:
         excludes:
           - "Resources/**"
       - path: Sources/Prometh/Resources
-        type: folder
         buildPhase: resources
         optional: true
       - path: Sources/Nativ/ModelProviderIcons

@@ -11,14 +11,22 @@ struct NativApplicationCommands: Commands {
             CheckForUpdatesCommand(updater: appDelegate.softwareUpdater.updater)
         }
 
+        // PROMETH-SEAM: S4 — the Prometh shell uses the reference command menu.
         CommandGroup(replacing: .newItem) {
-            Button("New Chat") {
-                perform(.newChat)
-            }
-            .keyboardShortcut("n")
+            if PromethFlags.promethShell {
+                Button("New chat") {
+                    NotificationCenter.default.post(name: .promethNewChat, object: nil)
+                }
+                .keyboardShortcut("n")
+            } else {
+                Button("New Chat") {
+                    perform(.newChat)
+                }
+                .keyboardShortcut("n")
 
-            Button("New Window", action: openNewWindow)
-                .keyboardShortcut("n", modifiers: [.command, .shift])
+                Button("New Window", action: openNewWindow)
+                    .keyboardShortcut("n", modifiers: [.command, .shift])
+            }
         }
 
         CommandGroup(replacing: .sidebar) {
@@ -48,11 +56,23 @@ struct NativApplicationCommands: Commands {
             .keyboardShortcut("0", modifiers: .command)
         }
 
+        // PROMETH-SEAM: S4 — Settings and Customize stay on the Prometh shell.
         CommandGroup(replacing: .appSettings) {
-            Button("Settings…") {
-                perform(.openTab(.settings))
+            if PromethFlags.promethShell {
+                Button("Settings…") {
+                    NotificationCenter.default.post(name: .promethOpenSettings, object: nil)
+                }
+                .keyboardShortcut(",")
+                Button("Customize…") {
+                    NotificationCenter.default.post(name: .promethOpenCustomize, object: nil)
+                }
+                .keyboardShortcut("c", modifiers: [.command, .shift])
+            } else {
+                Button("Settings…") {
+                    perform(.openTab(.settings))
+                }
+                .keyboardShortcut(",")
             }
-            .keyboardShortcut(",")
         }
     }
 

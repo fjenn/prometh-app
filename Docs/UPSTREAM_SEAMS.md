@@ -13,8 +13,9 @@ Edits to upstream Nativ files are limited to the rows below. Each code edit is m
 | S2 | `Sources/Nativ/Features/Files/FileReadAccessPolicy.swift` | File search still blocks `Application Support/Nativ` and also blocks `Application Support/Prometh`. |
 | S2 | `PythonDistribution/Overlay/nativ_server.py` | Analytics and routine-trigger paths default to Prometh and honor `PROMETH_SUPPORT_DIR` / `MLX_PLATFORM_ANALYTICS_DB_PATH`. |
 | S3 | `project.yml` | `Sources/Prometh`, `PromethTests`, `PromethUITests`, runtime copy phase. |
-| S4 | `Sources/Nativ/Main.swift` | `promethShell` (default on) presents `PromethRootView` instead of `NativWindowRoot`. |
-| S4 | `Sources/Nativ/AppDelegate.swift` | Menu bar extra only when `menuBarExtra` is on. Routines only when `routines` is on. Last window closes the Prometh shell. Support directory is created on launch. |
+| S4 | `Sources/Nativ/Main.swift` | `promethShell` (default on) presents `PromethRootView` instead of `NativWindowRoot`. The shell receives the app delegate's `NativModel`. |
+| S4 | `Sources/Nativ/AppDelegate.swift` | Menu bar extra only when `menuBarExtra` is on. Routines only when `routines` is on. Last window closes the Prometh shell. Support directory is created on launch. `model` is visible to the Prometh shell. |
+| S4 | `Sources/Nativ/Features/Windowing/NativApplicationCommands.swift` | With `promethShell` on, New chat, Settings, and Customize post to the Prometh shell. With the flag off, the Nativ commands are unchanged. |
 | S10 | `Sources/Nativ/SoftwareUpdater.swift`, `AppDelegate.swift` | `start()` returns immediately unless `sparkleUpdater` is on (default off). |
 | note | `Sources/Nativ/Features/VoiceCapture/Parakeet/ParakeetTranscriber.swift` | The loaded CoreAI session is stored as `Any`. XCTest realizes every class, and completing `Session` metadata jumps through CoreAI, which is not installed on macOS 26. Loading and transcription still use the real session. |
 

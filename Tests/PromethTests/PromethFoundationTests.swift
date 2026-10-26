@@ -83,5 +83,34 @@ final class PromethFoundationTests: XCTestCase {
         XCTAssertEqual(PromethDesign.windowMinHeight, 650)
         XCTAssertEqual(Capability.chat.gigabytes, 5.18)
         XCTAssertEqual(Capability.images.gigabytes, 4.62)
+        var selected: Set<Capability> = [.chat]
+        let before = selected.reduce(0) { $0 + $1.gigabytes }
+        selected.insert(.images)
+        XCTAssertEqual(selected.reduce(0) { $0 + $1.gigabytes } - before, 4.62, accuracy: 0.001)
+    }
+
+    func testPromethUICopyHasNoRepositoryIdentifiers() throws {
+        let ui = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Sources/Prometh/UI")
+        let repo = #/[A-Za-z][A-Za-z0-9-]*\/[A-Za-z0-9._-]+/#
+        let literal = #/"(?:[^"\\]|\\.)*"/#
+        var matches: [String] = []
+        let files = try FileManager.default.contentsOfDirectory(at: ui, includingPropertiesForKeys: nil)
+        for file in files where file.pathExtension == "swift" {
+            let source = try String(contentsOf: file, encoding: .utf8)
+            for line in source.components(separatedBy: "\n") {
+                guard line.contains("Text(") || line.contains("Label(") else { continue }
+                if line.contains("DisclosureGroup(\"Details\")") { continue }
+                for item in line.matches(of: literal) {
+                    let quoted = String(item.0)
+                    guard let found = quoted.firstMatch(of: repo) else { continue }
+                    matches.append("\(file.lastPathComponent): \(found.0)")
+                }
+            }
+        }
+        XCTAssertEqual(matches, [])
     }
 }

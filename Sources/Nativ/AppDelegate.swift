@@ -5,7 +5,8 @@ import UserNotifications
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, @MainActor UNUserNotificationCenterDelegate {
-    private let model = NativModel()
+    // PROMETH-SEAM: S4 — the Prometh shell sends chat through this same model and server.
+    let model = NativModel()
     let softwareUpdater = SoftwareUpdater()
     private let controlPanelDependencies = ControlPanelSharedDependencies()
     let windowRegistry = NativWindowRegistry()
