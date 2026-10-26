@@ -231,6 +231,7 @@ targets:
       - path: Sources/Prometh/Flags/PromethToolVisibility.swift
       - path: Sources/Prometh/Browsing/CitationMarkup.swift
       - path: Sources/Prometh/Video/GenerateVideoTool.swift
+      - path: Sources/Prometh/Connectors/PromethConnectorApproval.swift
       - path: Sources/Nativ/NativSettings.swift
       - path: Sources/Nativ/NativRuntimeSettingsController.swift
       - path: Sources/Nativ/ReleaseVersion.swift
@@ -429,6 +430,7 @@ targets:
       - path: Sources/Prometh/Bridge/ModeRouter.swift
       - path: Sources/Prometh/Bridge/PromethVoice.swift
       - path: Sources/Prometh/Video/MediaPlan.swift
+      - path: Sources/Prometh/Connectors/PromethConnectorApproval.swift
       - path: Sources/Prometh/UI/Design.swift
       - path: Sources/Prometh/UI/Domain.swift
       - path: Sources/Prometh/Catalog/ModelCatalog.swift

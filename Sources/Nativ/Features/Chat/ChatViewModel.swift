@@ -2996,9 +2996,14 @@ final class ChatViewModel: ObservableObject {
                         call: toolCall, rootPath: queuedRequest.toolScope.isProject
                             ? queuedRequest.toolScope.fileWriteRootPath : queuedRequest.settings.fileWriteRootPath)
                 }
-                let operation = ChatToolOperation.classify(
+                var operation = ChatToolOperation.classify(
                     toolName: toolName, customKind: customTool?.kind, workAction: workRequest?.action,
                     isMCP: isMCP, usesNativeFilesystem: usesNativeFilesystem, protectedWrite: protectedWrite)
+                // PROMETH-SEAM: S15 — connectors_execute always waits for the approval sheet.
+                // Standard mode would otherwise treat this MCP tool as external and skip consent.
+                if PromethConnectorApproval.isExecute(toolName) {
+                    operation = .command
+                }
                 let consent = await toolConsentGate.authorize(
                     operation, mode: queuedRequest.accessMode, id: toolMessageID, sessionID: queuedRequest.sessionID
                 ) {
@@ -3188,9 +3193,20 @@ final class ChatViewModel: ObservableObject {
                         let toolName = toolCall.function?.name,
                         host.handlesTool(named: toolName)
                     {
+                        var argumentsJSON = toolCall.function?.arguments
+                        // PROMETH-SEAM: S15 — stamp the approval token only after consent.
+                        // A value supplied by the model is overwritten. The token is not logged.
+                        if PromethConnectorApproval.isExecute(toolName) {
+                            argumentsJSON = PromethConnectorApproval.stamp(
+                                argumentsJSON,
+                                tokenFile: PromethConnectorApproval.tokenFile(
+                                    in: PromethIdentity.applicationSupportDirectory
+                                )
+                            )
+                        }
                         let result = try await host.callTool(
                             named: toolName,
-                            argumentsJSON: toolCall.function?.arguments,
+                            argumentsJSON: argumentsJSON,
                             projectScope: queuedRequest.toolScope,
                             currentProjectScope: { [self] in
                                 toolScope(

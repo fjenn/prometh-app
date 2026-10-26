@@ -13,6 +13,13 @@ enum PromethPython {
         )
     }
 
+    static func composio() -> URL? {
+        executable(
+            override: "PROMETH_COMPOSIO_PYTHON",
+            relatives: ["composio_mcp/.venv/bin/python3"]
+        )
+    }
+
     static func searxng() -> URL? {
         executable(
             override: "PROMETH_SEARXNG_PYTHON",

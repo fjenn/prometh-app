@@ -20,4 +20,5 @@ PromethRuntime/searxng/work/
 PromethRuntime/searxng/src/
 PromethRuntime/llama/bin/
 PromethRuntime/llama/.venv/
+PromethRuntime/composio_mcp/.venv/
 PromethRuntime/**/__pycache__/

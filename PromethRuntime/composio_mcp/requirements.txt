@@ -1,0 +1,4 @@
+# Direct pin. The hash lock is requirements.lock.
+# Install with: python3 scripts/prometh/provision-runtime.py --composio
+# The venv PromethRuntime/composio_mcp/.venv is gitignored.
+mcp==2.3.0

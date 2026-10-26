@@ -23,6 +23,7 @@ final class PromethStore: ObservableObject {
     @Published var search = ""
     @Published var dictating = false
     @Published var pendingTool: PendingTool?
+    @Published var pendingConnectorApproval: PromethConnectorConsent?
     @Published var modelDetails: [String: String] = [:]
 
     let macSpecs = MacSpecs.read()
@@ -36,6 +37,7 @@ final class PromethStore: ObservableObject {
     #endif
 
     private let chat: ChatViewModel
+    private let connectorHost: PromethConnectorHost
     private let sessions = ChatSessionStore()
     private let preparation = PreparationCoordinator()
     private var selfTestRetried = false
@@ -53,6 +55,8 @@ final class PromethStore: ObservableObject {
         isPreview = ProcessInfo.processInfo.arguments.contains("--prometh-preview")
         #endif
         chat = ChatViewModel()
+        connectorHost = PromethConnectorHost()
+        connectorHost.attach(chat)
         var restored = persistence.load() ?? Snapshot()
         if persistence.load() == nil,
            PromethIdentity.supportDirectoryOverride == nil,
@@ -84,6 +88,7 @@ final class PromethStore: ObservableObject {
         }.store(in: &voiceBag)
         reload()
         persist()
+        connectorHost.apply(brokerURL: brokerURL)
         preparation.attach(self)
         if ProcessInfo.processInfo.environment["PROMETH_SELFTEST_DRIVE"] == "catalog" {
             Task { await driveCatalogSelfTest() }
@@ -96,12 +101,40 @@ final class PromethStore: ObservableObject {
 
     private var voiceBag = Set<AnyCancellable>()
 
-    var connectorsAvailable: Bool {
+    var brokerURL: String? {
         let configured = state.connectorBrokerURL?.trimmingCharacters(in: .whitespacesAndNewlines)
         let environment = ProcessInfo.processInfo.environment["PROMETH_BROKER_URL"]?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let value = (configured?.isEmpty == false ? configured : nil) ?? environment
-        return value?.isEmpty == false
+        guard let value, !value.isEmpty else { return nil }
+        return value
+    }
+
+    var connectorsAvailable: Bool { brokerURL != nil }
+
+    func setBroker(_ raw: String) {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        state.connectorBrokerURL = trimmed.isEmpty ? nil : trimmed
+        connectorHost.apply(brokerURL: brokerURL)
+    }
+
+    func approveConnector() {
+        guard let id = pendingConnectorApproval?.id else { return }
+        chat.confirmToolConsent(id)
+    }
+
+    func denyConnector() {
+        guard let id = pendingConnectorApproval?.id else { return }
+        chat.denyToolConsent(id)
+    }
+
+    /// A swipe-away denies only while the tool is still waiting. An approval
+    /// that already moved the tool to running is left alone.
+    func connectorSheetDismissed() {
+        guard let id = pendingConnectorApproval?.id else { return }
+        let stillWaiting = chat.messages.contains { $0.id == id && $0.toolStatus == .awaitingConsent }
+        guard stillWaiting else { return }
+        chat.denyToolConsent(id)
     }
 
     var current: Conversation? { chats.first { $0.id == state.selectedChatID } }
@@ -836,6 +869,12 @@ except Exception as error:
         }.sorted { $0.updated > $1.updated }
         if state.selectedChatID == nil {
             state.selectedChatID = liveID
+        }
+        let waiting = liveMessages.first {
+            $0.toolStatus == .awaitingConsent && PromethConnectorApproval.isExecute($0.toolName)
+        }
+        if waiting?.id != pendingConnectorApproval?.id {
+            pendingConnectorApproval = waiting.map { PromethConnectorConsent(id: $0.id) }
         }
     }
 

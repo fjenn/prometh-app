@@ -97,6 +97,16 @@ struct PromethSettingsView:View {
                         .padding(.top, 8)
                 }
             }
+            TextField(
+                "Connection broker HTTPS address",
+                text: Binding(
+                    get: { store.state.connectorBrokerURL ?? "" },
+                    set: { store.setBroker($0) }
+                )
+            ).textFieldStyle(.roundedBorder)
+            Text("Optional. Leave this empty and connected apps stay hidden. The service key stays out of the app.")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
             if CommandLine.arguments.contains(where: { $0.hasPrefix("--prometh-flags") }) {
                 Text("Launch flags are active for this session.").font(.caption).foregroundStyle(.secondary)
             }
@@ -138,7 +148,7 @@ struct PluginsPage:View {
         VStack(alignment:.leading,spacing:18) {
             Text("Apps your AI can use.").foregroundStyle(.secondary)
             ConnectorsList(store:store)
-            TextField("Connection broker HTTPS address",text:Binding(get:{store.state.connectorBrokerURL ?? ""},set:{store.state.connectorBrokerURL=$0})).textFieldStyle(.roundedBorder)
+            TextField("Connection broker HTTPS address",text:Binding(get:{store.state.connectorBrokerURL ?? ""},set:{store.setBroker($0)})).textFieldStyle(.roundedBorder)
             Text("Optional. A Prometh broker keeps the service key off this Mac app and opens real authorization in your browser. Local AI works without a connection.").font(.system(size:11)).foregroundStyle(.secondary)
         }
     }

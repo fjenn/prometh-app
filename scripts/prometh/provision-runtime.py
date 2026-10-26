@@ -68,17 +68,30 @@ def provision_searxng() -> None:
     ])
 
 
+def provision_composio() -> None:
+    directory = ROOT / "PromethRuntime" / "composio_mcp"
+    python = venv_python(directory / ".venv")
+    run([str(python), "-m", "pip", "install", "--upgrade", "pip"])
+    run([
+        str(python), "-m", "pip", "install", "--require-hashes",
+        "-r", str(directory / "requirements.lock"),
+    ])
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--reader", action="store_true")
     parser.add_argument("--searxng", action="store_true")
+    parser.add_argument("--composio", action="store_true")
     args = parser.parse_args()
-    if not args.reader and not args.searxng:
-        args.reader = args.searxng = True
+    if not args.reader and not args.searxng and not args.composio:
+        args.reader = args.searxng = args.composio = True
     if args.reader:
         provision_reader()
     if args.searxng:
         provision_searxng()
+    if args.composio:
+        provision_composio()
     print("provisioned")
 
 
