@@ -14,6 +14,17 @@ final class PreparationCoordinator {
         self.store = store
     }
 
+    func resumeModel(key: String, modelID: String) {
+        guard let store else { return }
+        guard let catalog = try? ModelCatalogLoader.bundled(),
+              let model = catalog.model(id: modelID),
+              model.enabled
+        else { return }
+        let label = "\(model.name) · \(CatalogSize.decimalGigabytes(model.downloadBytes))"
+        store.modelDetails[key] = label
+        begin(key, models: [model], capability: nil)
+    }
+
     func resume(_ capability: Capability) {
         guard let store else { return }
         guard store.state.selected.contains(capability) else { return }
@@ -83,6 +94,9 @@ final class PreparationCoordinator {
                 }
             }
             store.markReady(capability, key: key)
+            if key == "Evil", let model = models.first {
+                store.modelDetails[key] = "\(model.name) · \(CatalogSize.decimalGigabytes(model.downloadBytes))"
+            }
             CatalogLog.append("stage=ready key=\(key)", support: support)
             await store.finishSelfTestIfNeeded(key: key)
         } catch is CancellationError {

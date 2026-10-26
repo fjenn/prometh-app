@@ -80,6 +80,13 @@ enum ModelCatalogLoader {
     }
 }
 
+enum CatalogSize {
+    /// Decimal gigabytes, two places, matching the onboarding cards.
+    static func decimalGigabytes(_ bytes: Int64) -> String {
+        String(format: "%.2f GB", Double(bytes) / 1_000_000_000)
+    }
+}
+
 enum CatalogPaths {
     static func modelsRoot(support: URL) -> URL {
         support.appendingPathComponent("Models", isDirectory: true)

@@ -35,6 +35,26 @@ enum PromethSearchBootstrap {
             return SearXNGSupervisor.shared.baseURL()
         }
         applyDefaultsIfUnset()
+        ChatViewModel.ChatEndpointResolver.resolve = { settings, sessionID in
+            let mode = PromethModeTable.mode(for: sessionID)
+            let tight = PromethMemoryPolicy.shouldUnloadOther(ProcessInfo.processInfo.physicalMemory)
+            guard mode == BehaviorMode.evil.rawValue else {
+                ChatViewModel.ChatEndpointResolver.presentsLlamaErrors = false
+                if tight { LlamaSupervisor.shared.stop() }
+                return settings
+            }
+            ChatViewModel.ChatEndpointResolver.presentsLlamaErrors = true
+            if tight {
+                await PromethMemory.unloadMLX(baseURL: settings.serverBaseURL, apiKey: settings.serverAPIKey)
+            }
+            let endpoint = try await LlamaSupervisor.shared.ensureRunning()
+            var routed = settings
+            routed.serverHost = endpoint.host
+            routed.serverPort = endpoint.port
+            routed.serverAPIKey = endpoint.apiKey
+            routed.languageModelID = endpoint.alias
+            return routed
+        }
         Task {
             await SearXNGSupervisor.shared.start()
             await ReaderSupervisor.shared.start()
@@ -44,6 +64,7 @@ enum PromethSearchBootstrap {
     static func stop() {
         SearXNGSupervisor.shared.stop()
         ReaderSupervisor.shared.stop()
+        LlamaSupervisor.shared.stop()
     }
 
     /// Writes the embedded search defaults only when the user has not chosen a provider.

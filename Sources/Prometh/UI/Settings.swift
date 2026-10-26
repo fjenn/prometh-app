@@ -65,7 +65,7 @@ struct PromethSettingsView:View {
                     }
                 }.padding(17).background(.primary.opacity(0.025),in:RoundedRectangle(cornerRadius:14))
             }
-            VStack(alignment:.leading,spacing:10){HStack{Text("Evil chat · optional").font(.headline);Spacer();Button("Download / verify"){store.prepareEvil()}};DisclosureGroup("Details"){Text(store.modelDetails["Evil"] ?? "Qwen3.5 heretic · Q4_K_M · 5.63 GB weights · text input").font(.caption).foregroundStyle(.secondary)}}.padding(17).background(.primary.opacity(0.025),in:RoundedRectangle(cornerRadius:14))
+            VStack(alignment:.leading,spacing:10){HStack{Text("Evil chat · optional").font(.headline);Spacer();Button("Download / verify"){store.prepareEvil()}};DisclosureGroup("Details"){Text(store.modelDetails["Evil"] ?? "Qwen3.5 9B Heretic v2 · Evil · 5.63 GB").font(.caption).foregroundStyle(.secondary)}}.padding(17).background(.primary.opacity(0.025),in:RoundedRectangle(cornerRadius:14))
             Text("Downloads show selected weight sizes, not working memory. Heavy chat, speech, image and video jobs run one at a time; the previous engine unloads before another family runs. Keep 12 GiB free for macOS, plus selected downloads.").font(.caption).foregroundStyle(.secondary)
             if store.state.hardware == .storage {Button("Review capability choices"){store.settingsOpen=false;store.state.step=1;store.state.onboardingComplete=false}}
         }

@@ -18,4 +18,6 @@ PromethRuntime/searxng/.venv/
 PromethRuntime/searxng/dist/
 PromethRuntime/searxng/work/
 PromethRuntime/searxng/src/
+PromethRuntime/llama/bin/
+PromethRuntime/llama/.venv/
 PromethRuntime/**/__pycache__/

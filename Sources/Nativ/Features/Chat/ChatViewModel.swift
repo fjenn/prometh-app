@@ -167,7 +167,7 @@ final class ChatViewModel: ObservableObject {
         let sessionID: UUID
         let userMessageID: UUID
         let assistantMessageID: UUID
-        let settings: NativSettings
+        var settings: NativSettings
         let accessMode: ChatAccessMode
         let personalizationSnapshot: String
         var toolScope: ChatToolScope
@@ -2732,6 +2732,14 @@ final class ChatViewModel: ObservableObject {
     }
 
     private func runChatLoop(_ request: QueuedChatRequest) async throws {
+        // PROMETH-SEAM: S7 — Evil turns use llama-server. The default resolver is nil,
+        // which leaves the queued settings unchanged. Nativ-only metrics stay best-effort.
+        var request = request
+        if let resolve = Self.ChatEndpointResolver.resolve {
+            request.settings = try await resolve(request.settings, request.sessionID)
+        } else {
+            Self.ChatEndpointResolver.presentsLlamaErrors = false
+        }
         let client = NativChatClient(
             baseURL: request.settings.serverBaseURL,
             apiKey: request.settings.serverAPIKey,
@@ -3429,6 +3437,14 @@ final class ChatViewModel: ObservableObject {
         return request
     }
 
+    // PROMETH-SEAM: S7 — installed by Prometh at launch. Nil keeps Nativ's endpoint.
+    enum ChatEndpointResolver {
+        static var resolve: ((NativSettings, UUID) async throws -> NativSettings)?
+        static var presentsLlamaErrors = false
+        static let interruptedMessage =
+            "Something interrupted that. Your request is saved. Try again when you're ready."
+    }
+
     // PROMETH-SEAM: S9 — Prometh registers citation and persona text at launch.
     enum PromethPromptAdditions {
         static var sections: (@Sendable () -> [String])?
@@ -3936,6 +3952,9 @@ final class ChatViewModel: ObservableObject {
                     message.streamingToolCalls = []
                     if let urlError = error as? URLError, urlError.code == .timedOut {
                         message.content = "The response timed out. For large prompts, increase Chat Response Timeout in Settings → Advanced, then try again."
+                    } else if ChatEndpointResolver.presentsLlamaErrors, error is URLError {
+                        // PROMETH-SEAM: S7 — a dead llama-server is a human interruption, not a stack trace.
+                        message.content = ChatEndpointResolver.interruptedMessage
                     } else {
                         message.content = error.localizedDescription
                     }

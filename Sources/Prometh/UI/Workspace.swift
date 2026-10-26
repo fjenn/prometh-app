@@ -36,7 +36,7 @@ struct WorkspaceView: View {
     var main:some View {
         VStack(spacing:0) {
             header
-            Rectangle().fill(Color.primary.opacity(0.08)).frame(height:1)
+            Rectangle().fill(isEvil ? Color(hex:0xE06B62).opacity(0.9):Color.primary.opacity(0.08)).frame(height:isEvil ? 2:1)
             if centered {
                 Spacer(minLength:0)
                 composer

@@ -72,6 +72,7 @@ final class PromethStore: ObservableObject {
         state = restored
         drafts = restored.drafts
         modes = restored.modes
+        publishModes()
         revealed = persistence.loadRevealed()
         stopped = Set(restored.stoppedMessageIDs.compactMap(UUID.init(uuidString:)))
         cancellable = chat.objectWillChange.sink { [weak self] _ in
@@ -190,6 +191,9 @@ final class PromethStore: ObservableObject {
     func chooseEvil(_ enabled: Bool) {
         state.evilEnabled = state.evilEnabled || enabled
         state.defaultMode = enabled ? .evil : .safe
+        if enabled {
+            preparation.resumeModel(key: "Evil", modelID: "evil")
+        }
         if revealInChat {
             setMode(enabled ? .evil : .safe)
             revealInChat = false
@@ -203,6 +207,7 @@ final class PromethStore: ObservableObject {
         if mode == .evil { state.evilEnabled = true }
         guard let id = state.selectedChatID else { return }
         modes[id.uuidString] = mode
+        PromethModeTable.set(id, mode.rawValue)
         if let index = chats.firstIndex(where: { $0.id == id }) {
             chats[index].mode = mode
         }
@@ -248,8 +253,7 @@ final class PromethStore: ObservableObject {
     }
 
     func prepareEvil() {
-        modelDetails["Evil"] = "Qwen3.5 heretic · Q4_K_M · 5.63 GB weights · text input"
-        error = "Evil Mode is not ready yet."
+        preparation.resumeModel(key: "Evil", modelID: "evil")
     }
 
     func enterChat() {
@@ -269,7 +273,12 @@ final class PromethStore: ObservableObject {
         guard let id = chat.currentSessionID else { return }
         revealed.insert(id.uuidString)
         persistence.saveRevealed(revealed)
-        modes[id.uuidString] = .safe
+        let opening = PromethModeTable.modeForNewChat(
+            existingChats: chats.count,
+            defaultMode: state.defaultMode.rawValue
+        )
+        modes[id.uuidString] = BehaviorMode(rawValue: opening) ?? .safe
+        PromethModeTable.set(id, opening)
         drafts[id.uuidString] = ""
         state.selectedChatID = id
         reload()
@@ -800,8 +809,16 @@ except Exception as error:
     private func status(for message: ChatTranscriptMessage) -> String {
         if message.isStreaming { return "streaming" }
         if stopped.contains(message.id) { return "stopped" }
-        if message.role == .error { return "stopped" }
+        if message.role == .error { return "failed" }
         return "complete"
+    }
+
+    private func publishModes() {
+        for (key, mode) in modes {
+            if let id = UUID(uuidString: key) {
+                PromethModeTable.set(id, mode.rawValue)
+            }
+        }
     }
 
     private func persist() {
