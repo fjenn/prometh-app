@@ -103,6 +103,83 @@ final class PromethSearchTests: XCTestCase {
         XCTAssertTrue(citationPlain.contains("To get a summary"))
     }
 
+    func testReplyMarkupRendersNestedListsWithBoldAndCitationChip() {
+        let markdown = """
+        Headlines today:
+        * **Sudan** fighting continues [1]
+        * Globally:
+          - Nested quake report [2]
+        1. Ordered item [3]
+        """
+        let rendered = PromethReplyMarkup.attributed(markdown: markdown, cited: [1, 2, 3])
+        let plain = String(rendered.characters)
+        XCTAssertFalse(plain.contains("* **Sudan**"), "Literal asterisk markers must become bullets: \(plain)")
+        XCTAssertFalse(plain.contains("- Nested"), plain)
+        XCTAssertTrue(plain.contains("•"), "Unordered items need a visible bullet: \(plain)")
+        XCTAssertTrue(plain.contains("Sudan"))
+        XCTAssertTrue(plain.contains("Nested quake report"))
+        XCTAssertTrue(plain.contains("Ordered item"))
+        // Nested indent: child line should carry leading whitespace after the rewrite.
+        let nestedLine = plain.split(separator: "\n").first { $0.contains("Nested quake") }
+        XCTAssertNotNil(nestedLine)
+        XCTAssertTrue(nestedLine?.hasPrefix("  ") == true, "Nested item should indent: \(nestedLine ?? "")")
+        var emphasized = false
+        for run in rendered.runs {
+            if run.inlinePresentationIntent?.contains(.stronglyEmphasized) == true {
+                emphasized = true
+            }
+        }
+        XCTAssertTrue(emphasized, "Bold inside a list item must still emphasize")
+        let destinations = rendered.runs.compactMap { $0.link?.absoluteString }
+        XCTAssertTrue(destinations.contains("prometh-cite://1"))
+        XCTAssertTrue(destinations.contains("prometh-cite://2"))
+        XCTAssertTrue(destinations.contains("prometh-cite://3"))
+    }
+
+    func testDistinctDomainHitsMapChipIndicesToSources() {
+        let feed = [
+            PromethSearchContext.Result(title: "R1", url: "https://www.reuters.com/world/a", snippet: "a"),
+            PromethSearchContext.Result(title: "R2", url: "https://www.reuters.com/world/b", snippet: "b"),
+            PromethSearchContext.Result(title: "R3", url: "https://reuters.com/world/c", snippet: "c"),
+            PromethSearchContext.Result(title: "AP", url: "https://apnews.com/article/storm", snippet: "storm"),
+            PromethSearchContext.Result(title: "BBC", url: "https://www.bbc.com/news/world-1", snippet: "world"),
+            PromethSearchContext.Result(title: "Guardian", url: "https://www.theguardian.com/world/x", snippet: "x"),
+            PromethSearchContext.Result(title: "NPR", url: "https://www.npr.org/2026/10/27/y", snippet: "y"),
+        ]
+        let selected = PromethSearchContext.preferDistinctDomains(feed, limit: 5)
+        XCTAssertEqual(selected.count, 5)
+        let hosts = selected.map { PromethSearchContext.normalizedHost($0.url) }
+        XCTAssertEqual(Set(hosts).count, 5, "Each picked source must be a distinct domain: \(hosts)")
+        XCTAssertEqual(hosts.first, "reuters.com")
+        XCTAssertFalse(hosts.filter { $0 == "reuters.com" }.count > 1)
+
+        let bodies: [String: (title: String?, content: String)] = [
+            "https://www.reuters.com/world/a": ("Reuters live", "Sudan fighting continues in the capital."),
+            "https://apnews.com/article/storm": ("AP storm", "A coastal storm knocked out power."),
+            "https://www.bbc.com/news/world-1": ("BBC quake", "A strong earthquake struck the islands."),
+            "https://www.theguardian.com/world/x": (nil, "Zelenskyy urged allies to keep aid flowing."),
+        ]
+        let hits = PromethSearchContext.indexedHits(selected: selected, bodies: bodies)
+        XCTAssertGreaterThanOrEqual(hits.count, 3)
+        XCTAssertEqual(hits.map(\.index), Array(1...hits.count))
+        let note = PromethSearchContext.promptNote(hits: hits)
+        XCTAssertTrue(note.contains("<search_results>"))
+        for hit in hits {
+            XCTAssertTrue(note.contains("index=\"\(hit.index)\""), note)
+            XCTAssertTrue(note.contains("[\(hit.index)] \(hit.title)"), note)
+        }
+        XCTAssertTrue(note.contains("Page text:"))
+        XCTAssertTrue(note.contains("Sudan fighting"))
+        XCTAssertTrue(note.contains("different index for each distinct source"))
+
+        // Chip indices from a model answer must land on the Sources list.
+        let answer = hits.prefix(3).map { "Fact from source [\($0.index)]." }.joined(separator: " ")
+        let cited = CitationMarkup.citedIndices(in: answer)
+        let sourceIndices = Set(hits.map(\.index))
+        XCTAssertEqual(cited.subtracting(sourceIndices), [], "Cited chips must map into Sources: \(cited) vs \(sourceIndices)")
+        XCTAssertGreaterThanOrEqual(cited.count, 3)
+    }
+
     func testCitationRulesNameTheDateAndTheIndexShape() {
         let rules = PromethPrompts.citationRules(date: Date(timeIntervalSince1970: 1_761_500_000))
         XCTAssertTrue(rules.contains("Today's date is"))

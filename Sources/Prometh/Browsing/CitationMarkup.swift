@@ -110,8 +110,9 @@ enum PromethVisibleReply {
 /// Markdown via `AttributedString`, with `[n]` and `[1, 4]` turned into sky chips.
 enum PromethReplyMarkup {
     static func attributed(markdown: String, cited: Set<Int>) -> AttributedString {
-        // `.full` drops paragraph breaks (`A.\n\nB` → `A.B`). Keep whitespace.
-        let prepared = shield(spacing(markdown))
+        // `.full` drops paragraph breaks (`A.\n\nB` → `A.B`). Keep whitespace and
+        // turn list markers into visible bullets before the inline-only parse.
+        let prepared = shield(lists(spacing(markdown)))
         let options = AttributedString.MarkdownParsingOptions(
             interpretedSyntax: .inlineOnlyPreservingWhitespace,
             failurePolicy: .returnPartiallyParsedIfPossible
@@ -136,6 +137,37 @@ enum PromethReplyMarkup {
             value = expression.stringByReplacingMatches(in: value, range: range, withTemplate: template)
         }
         return value
+    }
+
+    /// `.inlineOnlyPreservingWhitespace` leaves `*` / `-` / `1.` as literal text.
+    /// Rewrite those markers into Unicode bullets / numbers with nesting indent.
+    static func lists(_ text: String) -> String {
+        guard let expression = try? NSRegularExpression(
+            pattern: #"^([ \t]*)([-*+]|\d{1,3}\.)[ \t]+(.*)$"#
+        ) else { return text }
+        let bullets = ["•", "◦", "▪"]
+        return text.split(separator: "\n", omittingEmptySubsequences: false).map { line in
+            let value = String(line)
+            let range = NSRange(value.startIndex..., in: value)
+            guard let match = expression.firstMatch(in: value, range: range),
+                  let indentRange = Range(match.range(at: 1), in: value),
+                  let markerRange = Range(match.range(at: 2), in: value),
+                  let bodyRange = Range(match.range(at: 3), in: value) else {
+                return value
+            }
+            let indent = value[indentRange]
+            let marker = String(value[markerRange])
+            let body = String(value[bodyRange])
+            let spaces = indent.reduce(0) { partial, character in
+                partial + (character == "\t" ? 2 : 1)
+            }
+            let level = min(spaces / 2, bullets.count - 1)
+            let pad = String(repeating: "  ", count: level)
+            if marker.hasSuffix(".") {
+                return "\(pad)\(marker) \(body)"
+            }
+            return "\(pad)\(bullets[level]) \(body)"
+        }.joined(separator: "\n")
     }
 
     private static func shield(_ text: String) -> String {

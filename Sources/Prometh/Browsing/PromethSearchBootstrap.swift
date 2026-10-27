@@ -129,38 +129,22 @@ enum PromethWebPrefetch {
         let mapped = results.map {
             PromethSearchContext.Result(title: $0.title, url: $0.url, snippet: $0.snippet)
         }
+        // Distinct domains (3–5) so Sources and [n] chips are not all one site.
+        let selected = PromethSearchContext.preferDistinctDomains(mapped, limit: 5)
+        guard !selected.isEmpty else { return }
         // Publish Sources as soon as search returns so the UI is not blocked on reads.
-        var hits: [PromethSearchContext.Hit] = mapped.enumerated().map { offset, result in
-            PromethSearchContext.Hit(
-                index: offset + 1,
-                title: result.title,
-                url: result.url,
-                snippet: result.snippet,
-                body: ""
-            )
-        }
+        var hits = PromethSearchContext.indexedHits(selected: selected, bodies: [:])
         store(
             userID: userID,
             links: hits.map { SourceLink(title: $0.title, url: $0.url, index: $0.index) },
             note: PromethSearchContext.promptNote(hits: hits)
         )
-        let readable = PromethSearchContext.preferReadable(mapped, limit: 3)
-        let pages = await Self.readPages(readable.map(\.url), focus: String(text.prefix(500)))
-        let byURL = Dictionary(uniqueKeysWithValues: pages.compactMap { page -> (String, WebReadPage)? in
+        let pages = await Self.readPages(selected.map(\.url), focus: String(text.prefix(500)))
+        let bodies = Dictionary(uniqueKeysWithValues: pages.compactMap { page -> (String, (title: String?, content: String))? in
             guard let content = page.content, !content.isEmpty else { return nil }
-            return (page.url, page)
+            return (page.url, (page.title, content))
         })
-        hits = mapped.enumerated().map { offset, result in
-            let page = byURL[result.url]
-            let title = page?.title?.trimmingCharacters(in: .whitespacesAndNewlines)
-            return PromethSearchContext.Hit(
-                index: offset + 1,
-                title: (title?.isEmpty == false ? title! : result.title),
-                url: result.url,
-                snippet: result.snippet,
-                body: page?.content ?? ""
-            )
-        }
+        hits = PromethSearchContext.indexedHits(selected: selected, bodies: bodies)
         store(
             userID: userID,
             links: hits.map { SourceLink(title: $0.title, url: $0.url, index: $0.index) },
@@ -200,7 +184,8 @@ enum PromethWebPrefetch {
         // Sidecar only (trafilatura chain). Skip WKWebView here so a JS shell
         // cannot stall the prefetch ahead of the model turn.
         await ReaderSupervisor.shared.start()
-        return await withTimeout(seconds: 16) {
+        // Five parallel sidecar reads; give the group enough wall time to finish.
+        return await withTimeout(seconds: 22) {
             await withTaskGroup(of: WebReadPage?.self, returning: [WebReadPage].self) { group in
                 for url in urls {
                     group.addTask {

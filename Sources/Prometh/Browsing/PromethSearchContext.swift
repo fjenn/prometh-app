@@ -30,6 +30,70 @@ enum PromethSearchContext {
         return picked
     }
 
+    /// Pick up to `limit` results from distinct registrable hosts so news answers
+    /// are not trapped on a single aggregator domain (every chip becoming `[1]`).
+    static func preferDistinctDomains(_ results: [Result], limit: Int = 5) -> [Result] {
+        let articles = results.filter(isArticleURL)
+        let ordered = articles.isEmpty ? results : articles + results.filter { !isArticleURL($0) }
+        var seenURL: Set<String> = []
+        var seenHost: Set<String> = []
+        var picked: [Result] = []
+        for result in ordered {
+            guard seenURL.insert(result.url).inserted else { continue }
+            let host = normalizedHost(result.url)
+            if !host.isEmpty, !seenHost.insert(host).inserted { continue }
+            picked.append(result)
+            if picked.count == limit { break }
+        }
+        return picked
+    }
+
+    /// Rebuild hits from the selected pages only, reindexed from 1 so `[n]` chips
+    /// match the Sources row. Prefer pages that actually returned body text.
+    static func indexedHits(
+        selected: [Result],
+        bodies: [String: (title: String?, content: String)]
+    ) -> [Hit] {
+        var withBody: [Hit] = []
+        var withoutBody: [Hit] = []
+        for result in selected {
+            let page = bodies[result.url]
+            let title = page?.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let content = page?.content ?? ""
+            let hit = Hit(
+                index: 0,
+                title: (title?.isEmpty == false ? title! : result.title),
+                url: result.url,
+                snippet: result.snippet,
+                body: content
+            )
+            if content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                withoutBody.append(hit)
+            } else {
+                withBody.append(hit)
+            }
+        }
+        // Keep empty-body slots only when we would otherwise drop below 2 sources.
+        let keepEmpty = withBody.count < 2 ? withoutBody : Array(withoutBody.prefix(max(0, 5 - withBody.count)))
+        return (withBody + keepEmpty).enumerated().map { offset, hit in
+            Hit(
+                index: offset + 1,
+                title: hit.title,
+                url: hit.url,
+                snippet: hit.snippet,
+                body: hit.body
+            )
+        }
+    }
+
+    static func normalizedHost(_ urlString: String) -> String {
+        guard let host = URL(string: urlString)?.host?.lowercased() else { return "" }
+        if host.hasPrefix("www.") {
+            return String(host.dropFirst(4))
+        }
+        return host
+    }
+
     static func searchQuery(from text: String) -> String {
         var value = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let strip = [
@@ -59,7 +123,7 @@ enum PromethSearchContext {
             hits.map { CitationMarkup.Item(title: $0.title, url: $0.url) }
         )
         var sections: [String] = [
-            "Searched the web for this question on \(today). The pages below were fetched with the local reader. Cite them with [n]. Summarize 3–5 concrete headlines from the page text; do not only list site names or tell the user to visit the links.",
+            "Searched the web for this question on \(today). The pages below were fetched with the local reader. Cite them with [n], using a different index for each distinct source. Summarize 3–5 concrete headlines from the page text; do not only list site names or tell the user to visit the links.",
             block,
         ]
         for hit in hits {
