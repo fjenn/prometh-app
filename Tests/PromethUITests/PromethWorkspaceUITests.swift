@@ -109,10 +109,11 @@ final class PromethWorkspaceUITests: XCTestCase {
         XCTAssertTrue(waitForReply(in: app, timeout: 180))
         Thread.sleep(forTimeInterval: 0.4)
 
-        let copy = app.descendants(matching: .any).matching(identifier: "prometh.copy").allElementsBound.last
-            ?? app.buttons["Copy response"].allElementsBound.last
-        XCTAssertNotNil(copy)
-        guard let copy else { return }
+        let copyQuery = app.descendants(matching: .any).matching(identifier: "prometh.copy")
+        let copyCount = copyQuery.count
+        let copy = copyCount > 0
+            ? copyQuery.element(boundBy: copyCount - 1)
+            : app.buttons["Copy response"].firstMatch
         XCTAssertTrue(copy.waitForExistence(timeout: 5))
         copy.click()
         var copied = copiedText()
