@@ -1,4 +1,5 @@
 import Foundation
+import NativServerKit
 
 enum PromethPromptAdditionsMode: @unchecked Sendable {
     private static let lock = NSLock()
@@ -47,10 +48,12 @@ enum PromethSearchBootstrap {
             let tight = PromethMemoryPolicy.shouldUnloadOther(ProcessInfo.processInfo.physicalMemory)
             guard mode == BehaviorMode.evil.rawValue else {
                 ChatViewModel.ChatEndpointResolver.presentsLlamaErrors = false
+                NativResponsesClient.adaptsLlamaResponses = false
                 if tight { LlamaSupervisor.shared.stop() }
                 return settings
             }
             ChatViewModel.ChatEndpointResolver.presentsLlamaErrors = true
+            NativResponsesClient.adaptsLlamaResponses = true
             if tight {
                 await PromethMemory.unloadMLX(baseURL: settings.serverBaseURL, apiKey: settings.serverAPIKey)
             }

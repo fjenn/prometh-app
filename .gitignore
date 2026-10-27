@@ -21,4 +21,7 @@ PromethRuntime/searxng/src/
 PromethRuntime/llama/bin/
 PromethRuntime/llama/.venv/
 PromethRuntime/composio_mcp/.venv/
+PromethRuntime/media/fastvideo/
+PromethRuntime/media/.venv/
+PromethRuntime/voice/.venv/
 PromethRuntime/**/__pycache__/

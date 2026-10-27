@@ -8,128 +8,64 @@ enum PromethSearchCredits {
 struct PromethCitationText: View {
     let text: String
     let links: [SourceLink]?
+    var onCite: (Int) -> Void = { _ in }
 
     var body: some View {
-        WrappingCitationText(text: text, links: links ?? [])
+        Text(PromethReplyMarkup.attributed(
+            markdown: text,
+            cited: Set((links ?? []).compactMap(\.index))
+        ))
             .font(.system(size: 15))
             .lineSpacing(6)
             .textSelection(.enabled)
             .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-/// Inline `[n]` chips in the sky accent. Markers without a source are dropped.
-private struct WrappingCitationText: View {
-    let text: String
-    let links: [SourceLink]
-
-    var body: some View {
-        Text(Self.pieces(text: text, links: links))
-    }
-
-    private static func pieces(text: String, links: [SourceLink]) -> AttributedString {
-        let blocks = PromethMarkdown.blocks(in: text)
-        guard !blocks.isEmpty else { return AttributedString(text) }
-        var result = AttributedString()
-        for (index, block) in blocks.enumerated() {
-            if index > 0 {
-                result.append(AttributedString("\n"))
-            }
-            switch block {
-            case .paragraph(let spans):
-                result.append(rendered(spans, links: links, bullet: false))
-            case .bullet(let spans):
-                result.append(rendered(spans, links: links, bullet: true))
-            }
-        }
-        return result
-    }
-
-    private static func rendered(_ spans: [PromethMarkdown.Span], links: [SourceLink], bullet: Bool) -> AttributedString {
-        var result = AttributedString()
-        if bullet {
-            result.append(AttributedString("• "))
-        }
-        for span in spans {
-            switch span {
-            case .text(let value):
-                result.append(cited(value, links: links, strong: false))
-            case .strong(let value):
-                result.append(cited(value, links: links, strong: true))
-            case .code(let value):
-                var code = AttributedString(value)
-                code.font = .system(size: 13, design: .monospaced)
-                result.append(code)
-            }
-        }
-        return result
-    }
-
-    /// A single `[n]` marker becomes a sky chip. A marker with no source is dropped.
-    private static func cited(_ text: String, links: [SourceLink], strong: Bool) -> AttributedString {
-        let known = Set(links.compactMap(\.index))
-        guard let expression = try? NSRegularExpression(pattern: "\\[(\\d+)\\]") else {
-            return styled(text, strong: strong)
-        }
-        let ns = text as NSString
-        let matches = expression.matches(in: text, range: NSRange(location: 0, length: ns.length))
-        var result = AttributedString()
-        var cursor = 0
-        for match in matches {
-            let whole = match.range
-            if whole.location > cursor {
-                result.append(styled(ns.substring(with: NSRange(location: cursor, length: whole.location - cursor)), strong: strong))
-            }
-            let number = Int(ns.substring(with: match.range(at: 1))) ?? 0
-            if known.isEmpty || known.contains(number) {
-                var chip = AttributedString(" \(number) ")
-                chip.font = .system(size: 10, weight: .semibold)
-                chip.foregroundColor = Color.sky
-                chip.backgroundColor = Color.sky.opacity(0.18)
-                if let link = links.first(where: { $0.index == number }), let url = URL(string: link.url) {
-                    chip.link = url
+            .environment(\.openURL, OpenURLAction { url in
+                guard url.scheme == "prometh-cite", let host = url.host, let number = Int(host) else {
+                    return .systemAction
                 }
-                result.append(chip)
-            }
-            cursor = whole.location + whole.length
-        }
-        if cursor < ns.length {
-            result.append(styled(ns.substring(from: cursor), strong: strong))
-        }
-        return result
-    }
-
-    private static func styled(_ text: String, strong: Bool) -> AttributedString {
-        var value = AttributedString(text)
-        if strong {
-            value.font = .system(size: 15, weight: .semibold)
-        }
-        return value
+                onCite(number)
+                return .handled
+            })
     }
 }
 
 struct PromethSourcesRow: View {
     let links: [SourceLink]
+    var messageID: UUID?
+    var focused: Int?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Sources").font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(links) { link in
-                        Button {
-                            if let url = URL(string: link.url) {
-                                NSWorkspace.shared.open(url)
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(links) { link in
+                            Button {
+                                if let url = URL(string: link.url) {
+                                    NSWorkspace.shared.open(url)
+                                }
+                            } label: {
+                                card(link)
                             }
-                        } label: {
-                            card(link)
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(label(link))
+                            .id(anchor(link))
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(label(link))
                     }
+                }
+                .onChange(of: focused) { _, number in
+                    guard let number else { return }
+                    withAnimation { proxy.scrollTo(anchor(number), anchor: .center) }
                 }
             }
         }
+    }
+
+    private func anchor(_ link: SourceLink) -> String { anchor(link.index ?? 0) }
+
+    private func anchor(_ index: Int) -> String {
+        "\(messageID?.uuidString ?? "sources")-\(index)"
     }
 
     private func card(_ link: SourceLink) -> some View {
@@ -150,6 +86,11 @@ struct PromethSourcesRow: View {
         .padding(10)
         .frame(width: 220, alignment: .leading)
         .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12))
+        .overlay {
+            if focused == link.index {
+                RoundedRectangle(cornerRadius: 12).strokeBorder(Color.sky, lineWidth: 1.5)
+            }
+        }
     }
 
     private func label(_ link: SourceLink) -> String {

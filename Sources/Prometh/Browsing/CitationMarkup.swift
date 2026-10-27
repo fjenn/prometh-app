@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 /// `<search_results>` block shared by the web_search tool and the Sources row.
 enum CitationMarkup {
@@ -18,13 +19,20 @@ enum CitationMarkup {
         return lines.joined(separator: "\n")
     }
 
+    /// `[1]`, `[1][4]`, and `[1, 4]` all count. The model often writes the last form.
     static func citedIndices(in text: String) -> Set<Int> {
-        guard let expression = try? NSRegularExpression(pattern: "\\[(\\d+)\\]") else { return [] }
+        guard let expression = try? NSRegularExpression(pattern: #"\[(\d+(?:\s*,\s*\d+)*)\]"#) else { return [] }
         let range = NSRange(text.startIndex..., in: text)
-        return Set(expression.matches(in: text, range: range).compactMap { match in
-            guard let slice = Range(match.range(at: 1), in: text) else { return nil }
-            return Int(text[slice])
-        })
+        var indices: Set<Int> = []
+        for match in expression.matches(in: text, range: range) {
+            guard let slice = Range(match.range(at: 1), in: text) else { continue }
+            for part in text[slice].split(separator: ",") {
+                if let number = Int(part.trimmingCharacters(in: .whitespaces)) {
+                    indices.insert(number)
+                }
+            }
+        }
+        return indices
     }
 
     static func xmlAttribute(_ value: String) -> String {
@@ -33,5 +41,160 @@ enum CitationMarkup {
             .replacingOccurrences(of: "\"", with: "&quot;")
             .replacingOccurrences(of: "<", with: "&lt;")
             .replacingOccurrences(of: ">", with: "&gt;")
+    }
+}
+
+/// Sidebar titles use the first user prompt. A second prompt glued on with no
+/// space, or the same prompt repeated, does not become part of the title.
+enum PromethChatTitle {
+    static func display(customTitle: String?, firstUserText: String?, fallback: String) -> String {
+        if let customTitle {
+            let trimmed = customTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty { return trimmed }
+        }
+        guard let firstUserText else { return fallback }
+        let prompt = firstPrompt(firstUserText)
+        return prompt.isEmpty ? fallback : prompt
+    }
+
+    static func firstPrompt(_ text: String) -> String {
+        var value = collapseExactRepeat(text.trimmingCharacters(in: .whitespacesAndNewlines))
+        if let boundary = value.range(of: #"(?<=[.!?])(?=\p{Lu})"#, options: .regularExpression) {
+            value = String(value[..<boundary.lowerBound])
+        }
+        value = value.split(whereSeparator: \.isNewline).first.map {
+            String($0).trimmingCharacters(in: .whitespaces)
+        } ?? value
+        return truncate(value)
+    }
+
+    /// "Hello?Hello?" is one send that captured the draft twice.
+    static func collapseExactRepeat(_ text: String) -> String {
+        guard text.count >= 2, text.count.isMultiple(of: 2) else { return text }
+        let mid = text.index(text.startIndex, offsetBy: text.count / 2)
+        let head = text[..<mid]
+        return head == text[mid...] ? String(head) : text
+    }
+
+    static func truncate(_ value: String, maxLength: Int = 56) -> String {
+        guard value.count > maxLength else { return value }
+        return "\(value.prefix(maxLength - 1))…"
+    }
+}
+
+/// Tool-call rows are stored with an empty assistant body. That body is not a reply.
+enum PromethVisibleReply {
+    static let retry = "I didn't get that out. Please try again."
+
+    struct Row: Equatable {
+        var text: String
+        var status: String
+        var omit: Bool
+    }
+
+    static func row(content: String, streaming: Bool, hasToolCalls: Bool, laterAnswer: Bool) -> Row {
+        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        if streaming {
+            return Row(text: content, status: "streaming", omit: false)
+        }
+        if trimmed.isEmpty, hasToolCalls, laterAnswer {
+            return Row(text: "", status: "complete", omit: true)
+        }
+        if trimmed.isEmpty {
+            return Row(text: retry, status: "failed", omit: false)
+        }
+        return Row(text: content, status: "complete", omit: false)
+    }
+}
+
+/// Markdown via `AttributedString`, with `[n]` and `[1, 4]` turned into sky chips.
+enum PromethReplyMarkup {
+    static func attributed(markdown: String, cited: Set<Int>) -> AttributedString {
+        let shielded = shield(markdown)
+        let options = AttributedString.MarkdownParsingOptions(
+            interpretedSyntax: .full,
+            failurePolicy: .returnPartiallyParsedIfPossible
+        )
+        let parsed = (try? AttributedString(markdown: shielded, options: options)) ?? AttributedString(shielded)
+        return chips(in: parsed, cited: cited)
+    }
+
+    private static func shield(_ text: String) -> String {
+        guard let expression = try? NSRegularExpression(pattern: #"\[(\d+(?:\s*,\s*\d+)*)\]"#) else {
+            return text
+        }
+        let ns = text as NSString
+        let matches = expression.matches(in: text, range: NSRange(location: 0, length: ns.length))
+        guard !matches.isEmpty else { return text }
+        var result = ""
+        var cursor = 0
+        for match in matches {
+            let whole = match.range
+            if whole.location > cursor {
+                result += ns.substring(with: NSRange(location: cursor, length: whole.location - cursor))
+            }
+            let group = ns.substring(with: match.range(at: 1))
+            for part in group.split(separator: ",") {
+                if let number = Int(part.trimmingCharacters(in: .whitespaces)) {
+                    result += "⟦\(number)⟧"
+                }
+            }
+            cursor = whole.location + whole.length
+        }
+        if cursor < ns.length {
+            result += ns.substring(from: cursor)
+        }
+        return result
+    }
+
+    private static func chips(in parsed: AttributedString, cited: Set<Int>) -> AttributedString {
+        let plain = String(parsed.characters)
+        guard let expression = try? NSRegularExpression(pattern: "⟦(\\d+)⟧") else { return parsed }
+        let matches = expression.matches(in: plain, range: NSRange(plain.startIndex..., in: plain))
+        guard !matches.isEmpty else { return parsed }
+        var result = AttributedString()
+        var cursor = plain.startIndex
+        for match in matches {
+            guard let whole = Range(match.range, in: plain),
+                  let group = Range(match.range(at: 1), in: plain) else { continue }
+            if cursor < whole.lowerBound {
+                result.append(slice(parsed, plain: plain, from: cursor, to: whole.lowerBound))
+            }
+            let number = Int(plain[group]) ?? 0
+            if cited.isEmpty || cited.contains(number) {
+                result.append(chip(number, linked: cited.contains(number)))
+            }
+            cursor = whole.upperBound
+        }
+        if cursor < plain.endIndex {
+            result.append(slice(parsed, plain: plain, from: cursor, to: plain.endIndex))
+        }
+        return result
+    }
+
+    private static func slice(
+        _ text: AttributedString,
+        plain: String,
+        from: String.Index,
+        to: String.Index
+    ) -> AttributedString {
+        let startOffset = plain.distance(from: plain.startIndex, to: from)
+        let endOffset = plain.distance(from: plain.startIndex, to: to)
+        let start = text.characters.index(text.startIndex, offsetBy: startOffset)
+        let end = text.characters.index(text.startIndex, offsetBy: endOffset)
+        return AttributedString(text[start..<end])
+    }
+
+    private static let chipSky = Color(.sRGB, red: 131.0 / 255, green: 207.0 / 255, blue: 240.0 / 255, opacity: 1)
+
+    private static func chip(_ number: Int, linked: Bool) -> AttributedString {
+        var chip = AttributedString(" \(number) ")
+        chip.font = .system(size: 10, weight: .semibold)
+        chip.foregroundColor = chipSky
+        chip.backgroundColor = chipSky.opacity(0.18)
+        if linked {
+            chip.link = URL(string: "prometh-cite://\(number)")
+        }
+        return chip
     }
 }

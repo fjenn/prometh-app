@@ -7,6 +7,9 @@ public struct MLXResponseCompletion: Sendable {
 }
 
 public final class NativResponsesClient: @unchecked Sendable {
+    /// llama.cpp's `/v1/responses` wants flat tool definitions and function-call
+    /// items. Chat-completions tool objects and `role: tool` messages are rejected.
+    public nonisolated(unsafe) static var adaptsLlamaResponses = false
     private let baseURL: URL
     private let apiKey: String?
     private let tenant: String
@@ -60,14 +63,65 @@ public final class NativResponsesClient: @unchecked Sendable {
     }
 
     public static func inputItems(_ messages: [MLXChatMessage]) throws -> [MLXJSONValue] {
-        try conversationMessages(messages).map { message in
-            // Preserve the server's chat-message extensions for reasoning and grouped tool calls.
-            var item = try JSONDecoder().decode(
-                [String: MLXJSONValue].self, from: JSONEncoder().encode(message)
-            )
-            item["type"] = .string("message")
-            return .object(item)
+        if adaptsLlamaResponses {
+            return try llamaInputItems(messages)
         }
+        return try conversationMessages(messages).map { message in
+            // Preserve the server's chat-message extensions for reasoning and grouped tool calls.
+            try messageItem(message)
+        }
+    }
+
+    /// Responses-API items llama.cpp accepts: text messages, function calls, and their outputs.
+    public static func llamaInputItems(_ messages: [MLXChatMessage]) throws -> [MLXJSONValue] {
+        var items: [MLXJSONValue] = []
+        for message in conversationMessages(messages) {
+            if message.role == "tool" {
+                items.append(.object([
+                    "type": .string("function_call_output"),
+                    "call_id": .string(message.toolCallID ?? ""),
+                    "output": .string(message.textContent ?? ""),
+                ]))
+                continue
+            }
+            let calls = message.toolCalls ?? []
+            if message.role == "assistant", !calls.isEmpty {
+                if let text = message.textContent, !text.isEmpty {
+                    items.append(try messageItem(message, includeToolCalls: false))
+                }
+                for call in calls {
+                    items.append(.object([
+                        "type": .string("function_call"),
+                        "name": .string(call.function?.name ?? ""),
+                        "arguments": .string(call.function?.arguments ?? "{}"),
+                        "call_id": .string(call.id ?? ""),
+                    ]))
+                }
+                continue
+            }
+            items.append(try messageItem(message, includeToolCalls: false))
+        }
+        return items
+    }
+
+    public static func llamaTool(_ tool: MLXJSONValue) -> MLXJSONValue {
+        let function = tool["function"] ?? tool
+        var flat: [String: MLXJSONValue] = ["type": .string("function")]
+        if let name = function["name"]?.stringValue { flat["name"] = .string(name) }
+        if let description = function["description"]?.stringValue { flat["description"] = .string(description) }
+        if let parameters = function["parameters"] { flat["parameters"] = parameters }
+        return .object(flat)
+    }
+
+    private static func messageItem(_ message: MLXChatMessage, includeToolCalls: Bool = true) throws -> MLXJSONValue {
+        var item = try JSONDecoder().decode(
+            [String: MLXJSONValue].self, from: JSONEncoder().encode(message)
+        )
+        item["type"] = .string("message")
+        if !includeToolCalls {
+            item.removeValue(forKey: "tool_calls")
+        }
+        return .object(item)
     }
 
     public static func conversationMessages(_ messages: [MLXChatMessage]) -> [MLXChatMessage] {
@@ -95,6 +149,9 @@ public final class NativResponsesClient: @unchecked Sendable {
             payload["instructions"] = .string(instructions)
         }
         payload["input"] = .array(input + (try Self.inputItems(request.contextMessages)))
+        if Self.adaptsLlamaResponses, let tools = payload["tools"]?.arrayValue {
+            payload["tools"] = .array(tools.map(Self.llamaTool))
+        }
         payload["stream"] = .bool(true)
         payload["store"] = .bool(false)
         payload["context_management"] = .array([.object([
@@ -294,7 +351,7 @@ struct MLXResponseStream {
     }
 }
 
-extension MLXJSONValue {
+public extension MLXJSONValue {
     subscript(key: String) -> MLXJSONValue? {
         guard case .object(let object) = self else { return nil }
         return object[key]

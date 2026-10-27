@@ -171,10 +171,11 @@ struct IconButton: View {
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: symbol)
+            Label(title, systemImage: symbol)
+                .labelStyle(.iconOnly)
                 .font(.system(size: 15))
                 .frame(width: 30, height: 30)
-                .contentShape(Circle())
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .help(title)

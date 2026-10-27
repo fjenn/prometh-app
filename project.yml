@@ -177,7 +177,11 @@ targets:
           runtime_dst="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/PromethRuntime"
           mkdir -p "${runtime_dst}"
           if [[ -d "${runtime_src}" ]]; then
-            cp -R "${runtime_src}/." "${runtime_dst}/"
+            rsync -a \
+              --exclude 'media/.venv/' \
+              --exclude 'media/fastvideo/' \
+              --exclude 'voice/.venv/' \
+              "${runtime_src}/" "${runtime_dst}/"
           fi
     settings:
       base:

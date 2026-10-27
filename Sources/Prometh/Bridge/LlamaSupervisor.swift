@@ -107,15 +107,18 @@ final class LlamaSupervisor: @unchecked Sendable {
     }
 
     private static func waitForListening(_ handle: FileHandle) async -> Bool {
-        let deadline = Date().addingTimeInterval(8)
+        // LISTENING is printed only after /health is 200. A cold 9B load can
+        // take longer than the old eight-second race. An empty read is EOF.
+        let deadline = Date().addingTimeInterval(160)
         var buffer = Data()
         while Date() < deadline {
             let chunk = handle.availableData
-            if !chunk.isEmpty {
-                buffer.append(chunk)
-                if String(decoding: buffer, as: UTF8.self).contains("LISTENING ") {
-                    return true
-                }
+            if chunk.isEmpty {
+                return false
+            }
+            buffer.append(chunk)
+            if String(decoding: buffer, as: UTF8.self).contains("LISTENING ") {
+                return true
             }
             try? await Task.sleep(nanoseconds: 50_000_000)
         }

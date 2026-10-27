@@ -7,6 +7,7 @@ struct WorkspaceView: View {
     @Environment(\.accessibilityReduceMotion) var reduceMotion
     @State var sidebar=true;@State var renaming:UUID?;@State var renameText="";@State var deleting:UUID?
     @State var editing:Message?;@State var editText="";@State var sourcePreview=false
+    @State var focusedCitation:Int?;@State var focusedMessage:UUID?
     var isEvil:Bool {store.displayedMode == .evil}
     var body:some View {
         HStack(spacing:0){if sidebar{sidebarView.frame(width:240);Divider()};main}
@@ -66,14 +67,14 @@ struct WorkspaceView: View {
             Text(store.voice.phase).font(.system(size:12)).foregroundStyle(.secondary).lineLimit(3)
             if !store.voice.recovery.isEmpty {Text(store.voice.recovery).font(.system(size:11)).foregroundStyle(.secondary)}
             if !store.voice.transcript.isEmpty {ScrollView{Text(store.voice.transcript).font(.system(size:13)).textSelection(.enabled)}.frame(maxHeight:100)}
-            HStack{Button(store.voice.muted ? "Unmute":"Mute"){store.voice.toggleMute()};Button("Interrupt"){store.voice.interrupt()};Button("End voice"){store.voice.end()}}.font(.caption)
+            HStack{Button(store.voice.muted ? "Unmute":"Mute"){store.voice.toggleMute();store.stopSpeech()};Button("Interrupt"){store.stopSpeech();store.voice.interrupt()};Button("End voice"){store.stopSpeech();store.voice.end()}}.font(.caption)
         }.frame(maxWidth:680)
     }
     var modeMenu:some View {
         Menu{Button("Safe Mode"){store.setMode(.safe)};Button("Evil Mode"){store.setMode(.evil)}}label:{HStack(spacing:4){Text(isEvil ? "Evil Mode":"Safe Mode").font(.system(size:13,weight:.medium));Image(systemName:"chevron.down").font(.system(size:9,weight:.semibold))}.foregroundStyle(.primary.opacity(0.72))}.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().help("Only this chat. New chats start in Safe Mode.").accessibilityLabel("Evil Mode for this chat").accessibilityIdentifier("prometh.mode")
     }
     func transcript(_ c:Conversation)->some View {
-        ScrollViewReader{proxy in ScrollView{LazyVStack(alignment:.leading,spacing:30){ForEach(c.messages){m in messageView(m,chat:c)};Color.clear.frame(height:1).id("bottom")}.frame(maxWidth:760).padding(.horizontal,35).padding(.vertical,30).frame(maxWidth:.infinity)}.onChange(of:c.messages.count){_,_ in if store.isRunning(c.id) || store.voice.isOpen {proxy.scrollTo("bottom",anchor:.bottom)}}.onChange(of:c.messages.last?.text){_,_ in if store.isRunning(c.id) || store.voice.isOpen {proxy.scrollTo("bottom",anchor:.bottom)}}.onChange(of:c.id,initial:true){_,_ in proxy.scrollTo("bottom",anchor:.bottom)}}
+        ScrollViewReader{proxy in ScrollView{LazyVStack(alignment:.leading,spacing:30){ForEach(c.messages){m in messageView(m,chat:c)};Color.clear.frame(height:1).id("bottom")}.frame(maxWidth:760).padding(.horizontal,35).padding(.vertical,30).frame(maxWidth:.infinity)}.onChange(of:c.messages.count){_,_ in if store.isRunning(c.id) || store.voice.isOpen {proxy.scrollTo("bottom",anchor:.bottom)}}.onChange(of:c.messages.last?.text){_,_ in if store.isRunning(c.id) || store.voice.isOpen {proxy.scrollTo("bottom",anchor:.bottom)}}.onChange(of:c.id,initial:true){_,_ in proxy.scrollTo("bottom",anchor:.bottom)}.onChange(of:focusedMessage){_,id in if let id {proxy.scrollTo("sources-\(id.uuidString)",anchor:.center)}}}
     }
     func messageView(_ m:Message,chat:Conversation)->some View {
         VStack(alignment:.leading,spacing:12){if m.role=="user" {HStack{Spacer(minLength:55);VStack(alignment:.leading,spacing:10){Text(m.text).font(.system(size:15)).lineSpacing(5).textSelection(.enabled);ForEach(m.attachments){a in Button{store.previewAttachment=a}label:{Label(a.filename,systemImage:"paperclip")}}}.padding(.horizontal,19).padding(.vertical,14).background(Color.primary.opacity(0.05),in:RoundedRectangle(cornerRadius:21))};HStack{Spacer();Button("Edit"){editText=m.text;editing=m}.buttonStyle(.plain).font(.system(size:10)).foregroundStyle(.secondary)}} else {
@@ -81,15 +82,37 @@ struct WorkspaceView: View {
                 formattedText(m)
                 if m.status=="preparing"{ProgressView().controlSize(.small)}
                 if let a=m.artifact{ArtifactCard(store:store,artifact:a)}
-                if let links=m.sourceLinks,!links.isEmpty {PromethSourcesRow(links:links)}
+                if let links=m.sourceLinks,!links.isEmpty {PromethSourcesRow(links:links,messageID:m.id,focused:focusedMessage==m.id ? focusedCitation:nil).id("sources-\(m.id.uuidString)")}
                 if let names=m.appliedSkillNames,!names.isEmpty{Text("Skills: "+names.joined(separator:", ")).font(.system(size:10)).foregroundStyle(.secondary)}
-                if m.status != "streaming" && m.status != "preparing" && !m.text.isEmpty{HStack(spacing:13){IconButton(symbol:"doc.on.doc",title:"Copy response"){let board=NSPasteboard.general;board.prepareForNewContents();board.setString(m.text,forType:.string)};IconButton(symbol:"arrow.clockwise",title:m.status=="failed" ? "Retry response":"Regenerate response"){store.regenerate(m)};IconButton(symbol:"speaker.wave.2",title:"Read response aloud"){store.voice.readAloud(m.text)};if m.status=="stopped"{Text("Stopped").font(.caption).foregroundStyle(.secondary)};if m.status=="failed"{Button("Try again"){store.regenerate(m)}.font(.caption)}}.foregroundStyle(.secondary)}
+                if m.status != "streaming" && m.status != "preparing" && !m.text.isEmpty{HStack(spacing:13){IconButton(symbol:"doc.on.doc",title:"Copy response"){let board=NSPasteboard.general;board.clearContents();board.setString(m.text,forType:.string);if let path=ProcessInfo.processInfo.environment["PROMETH_COPY_LOG"]{try? m.text.write(to:URL(fileURLWithPath:path),atomically:true,encoding:.utf8)}};IconButton(symbol:"arrow.clockwise",title:m.status=="failed" ? "Retry response":"Regenerate response"){store.regenerate(m)};IconButton(symbol:"speaker.wave.2",title:"Read response aloud"){store.speak(m.text)};if m.status=="stopped"{Text("Stopped").font(.caption).foregroundStyle(.secondary)};if m.status=="failed"{Button("Try again"){store.regenerate(m)}.font(.caption)}}.foregroundStyle(.secondary)}
             }}.frame(maxWidth:.infinity,alignment:.leading).accessibilityIdentifier(m.role == "user" ? "prometh.user":"prometh.reply")
     }
-    @ViewBuilder func formattedText(_ message:Message)->some View {let blocks=message.text.components(separatedBy:"```");VStack(alignment:.leading,spacing:14){ForEach(Array(blocks.enumerated()),id:\.offset){i,block in if i%2==1 {Text(block).font(.system(size:13,design:.monospaced)).textSelection(.enabled).padding(16).frame(maxWidth:.infinity,alignment:.leading).background(.primary.opacity(0.05),in:RoundedRectangle(cornerRadius:14))}else{PromethCitationText(text:block, links:message.sourceLinks)}}}.accessibilityElement(children:.combine).accessibilityIdentifier("prometh.reply")}
+    @ViewBuilder func formattedText(_ message: Message) -> some View {
+        let blocks = message.text.components(separatedBy: "```")
+        VStack(alignment: .leading, spacing: 14) {
+            ForEach(Array(blocks.enumerated()), id: \.offset) { index, block in
+                if index % 2 == 1 {
+                    Text(block)
+                        .font(.system(size: 13, design: .monospaced))
+                        .textSelection(.enabled)
+                        .padding(16)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 14))
+                } else {
+                    PromethCitationText(text: block, links: message.sourceLinks, onCite: { number in
+                        focusedMessage = message.id
+                        focusedCitation = number
+                    })
+                }
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(message.text)
+        .accessibilityIdentifier("prometh.reply")
+    }
     var composer:some View {
         VStack(alignment:.leading,spacing:6) {
-            if store.dictating {HStack{Text("Listening…").font(.system(size:12)).foregroundStyle(.secondary);Spacer();Button("Finish"){store.voice.finishRecording()};Button("Cancel"){store.cancelDictation()}.font(.system(size:12))}}
+            if store.dictating {HStack{Text("Listening…").font(.system(size:12)).foregroundStyle(.secondary);Spacer();Button("Finish"){store.finishDictation()};Button("Cancel"){store.cancelDictation()}.font(.system(size:12))}}
             if let c=store.current,!c.attachments.isEmpty {ScrollView(.horizontal){HStack{ForEach(c.attachments){a in HStack{Button{store.previewAttachment=a}label:{Label(a.filename,systemImage:"paperclip").lineLimit(1)}.buttonStyle(.plain);IconButton(symbol:"xmark",title:"Remove attachment"){store.removeAttachment(a)}}.font(.caption).padding(.horizontal,8).padding(.vertical,4).background(Color.primary.opacity(0.05),in:Capsule())}}}}
             ZStack(alignment:.topLeading){if (store.current?.draft ?? "").isEmpty{Text("Message "+Product.name).font(.system(size:16)).foregroundStyle(.tertiary).padding(.top,8).padding(.leading,4).allowsHitTesting(false)};ComposerEditor(text:Binding(get:{store.current?.draft ?? ""},set:{if store.current==nil{store.newChat()};store.setDraft($0)}),onSend:{store.send($0)}).frame(height:min(130,max(36,CGFloat((store.current?.draft.components(separatedBy:"\n").count ?? 1))*21+16)))}
             HStack(spacing:10) {

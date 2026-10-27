@@ -1,0 +1,17 @@
+W1026 22:49:12.865000 96790 torch/distributed/elastic/multiprocessing/redirects.py:35] NOTE: Redirects are currently not supported in MacOs.
+INFO 10-26 22:49:40.077 [__init__.py:60] MPS (Metal Performance Shaders) is available
+INFO 10-26 22:50:02.705 [prompt_cache.py:80] Prompt cache read skipped for /Users/armando/.cache/fastvideo/prompt_embeds/f126b8989817c9448503185fe26706aa.npy: [Errno 2] No such file or directory: '/Users/armando/.cache/fastvideo/prompt_embeds/f126b8989817c9448503185fe26706aa.npy.json'
+Loading weights:   0%|          | 0/242 [00:00<?, ?it/s]Loading weights:   5%|▌         | 13/242 [00:00<00:01, 120.35it/s]Loading weights:  11%|█         | 27/242 [00:00<00:01, 109.27it/s]Loading weights:  19%|█▊        | 45/242 [00:00<00:01, 133.32it/s]Loading weights:  24%|██▍       | 59/242 [00:00<00:01, 122.79it/s]Loading weights:  32%|███▏      | 77/242 [00:00<00:01, 123.13it/s]Loading weights:  37%|███▋      | 90/242 [00:00<00:01, 123.87it/s]Loading weights:  43%|████▎     | 103/242 [00:00<00:01, 117.00it/s]Loading weights:  48%|████▊     | 117/242 [00:00<00:01, 113.38it/s]Loading weights:  55%|█████▍    | 133/242 [00:01<00:00, 122.30it/s]Loading weights:  61%|██████    | 147/242 [00:01<00:00, 117.86it/s]Loading weights:  68%|██████▊   | 165/242 [00:01<00:00, 132.76it/s]Loading weights:  74%|███████▍  | 179/242 [00:01<00:00, 118.81it/s]Loading weights:  81%|████████▏ | 197/242 [00:01<00:00, 121.45it/s]Loading weights:  88%|████████▊ | 213/242 [00:01<00:00, 129.64it/s]Loading weights:  94%|█████████▍| 227/242 [00:01<00:00, 123.01it/s]Loading weights: 100%|██████████| 242/242 [00:03<00:00, 29.48it/s] Loading weights: 100%|██████████| 242/242 [00:03<00:00, 73.61it/s]
+denoise step 1/3 complete
+denoise step 2/3 complete
+denoise step 3/3 complete
+Prompt encode time: 7.03s
+MLX DiT load time: 0.04s
+MLX denoise time: 249.38s
+Decode/export time: 234.36s
+Total prompt-to-video time: 491.60s
+MLX load peak memory: 0.00 GiB
+MLX denoise peak memory: 3.87 GiB
+MLX active memory after denoise: 1.45 GiB
+Spatial mode: off
+Output written to: Docs/progress/macverify/fastmetal-sample.mp4

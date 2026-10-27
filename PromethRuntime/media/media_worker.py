@@ -1,4 +1,4 @@
-"""Video jobs for Prometh. FastVideo is not downloaded here."""
+"""Video jobs for Prometh. FastVideo is checked out beside this file, not vendored."""
 
 from __future__ import annotations
 
@@ -79,6 +79,67 @@ def poster_command(source: Path, dest: Path) -> list[str]:
     return ["ffmpeg", "-y", "-i", str(source), "-frames:v", "1", str(dest)]
 
 
+def fastvideo_checkout() -> Path | None:
+    override = os.environ.get("PROMETH_FASTVIDEO_SRC")
+    candidates = [Path(override)] if override else []
+    candidates.append(Path(__file__).resolve().parent / "fastvideo")
+    for root in candidates:
+        script = root / "examples/inference/basic/mlx_wan_prompt_to_video.py"
+        if script.is_file():
+            return root
+    return None
+
+
+def fastmetal_root() -> Path | None:
+    override = os.environ.get("PROMETH_FASTMETAL_ROOT")
+    candidates = [Path(override)] if override else []
+    candidates.append(
+        Path.home()
+        / "Library/Application Support/Prometh/Models/FastVideo--FastMetal-1.3B-QAD--2dac0154b217"
+    )
+    for root in candidates:
+        if (root / "mlx_dit.safetensors").is_file() and (root / "vae").is_dir():
+            return root
+    return None
+
+
+def fastvideo_python(checkout: Path) -> str:
+    override = os.environ.get("PROMETH_MEDIA_PYTHON")
+    if override:
+        return override
+    venv = checkout.parent / ".venv" / "bin" / "python3"
+    if venv.is_file():
+        return str(venv)
+    return sys.executable
+
+
+def fastvideo_command(python: str, script: Path, model: Path, prompt: str, output: Path) -> list[str]:
+    return [
+        python,
+        str(script),
+        "--model-root",
+        str(model),
+        "--mlx-checkpoint",
+        str(model),
+        "--prompt",
+        prompt,
+        "--output-path",
+        str(output),
+        "--height",
+        str(HEIGHT),
+        "--width",
+        str(WIDTH),
+        "--num-frames",
+        "81",
+        "--fps",
+        "16",
+        "--decode-backend",
+        "wan-vae",
+        "--seed",
+        "1024",
+    ]
+
+
 class Worker:
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -95,35 +156,76 @@ class Worker:
             except ProcessLookupError:
                 pass
 
-    def _spawn(self, command: list[str]) -> int:
+    def _spawn(
+        self,
+        command: list[str],
+        cwd: Path | None = None,
+        env: dict | None = None,
+        log: Path | None = None,
+    ) -> int:
+        handle = open(log, "ab") if log is not None else subprocess.DEVNULL
         with self._lock:
             if self._cancelled:
+                if log is not None:
+                    handle.close()
                 return -1
             self._process = subprocess.Popen(
                 command,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+                cwd=str(cwd) if cwd else None,
+                env=env,
+                stdout=handle,
+                stderr=subprocess.STDOUT if log is not None else subprocess.DEVNULL,
                 start_new_session=True,
             )
             process = self._process
         code = process.wait()
+        if log is not None:
+            handle.close()
         with self._lock:
             self._process = None
         return code
 
     def generate(self, prompt: str, output: Path, poster: Path) -> dict:
         plan = job_plan(prompt)
-        if os.environ.get("PROMETH_MEDIA_MOCK") != "1":
-            raise RuntimeError("Video is not ready yet.")
         output.parent.mkdir(parents=True, exist_ok=True)
-        if self._spawn(standin_command(output, plan["seconds"])) != 0 or self._cancelled:
+        if os.environ.get("PROMETH_MEDIA_MOCK") == "1":
+            if self._spawn(standin_command(output, plan["seconds"])) != 0 or self._cancelled:
+                output.unlink(missing_ok=True)
+                raise RuntimeError("cancelled" if self._cancelled else "stand-in failed")
+            if self._spawn(poster_command(output, poster)) != 0:
+                raise RuntimeError("poster failed")
+            plan["output"] = str(output)
+            plan["poster"] = str(poster)
+            plan["mock"] = True
+            return plan
+        checkout = fastvideo_checkout()
+        model = fastmetal_root()
+        if checkout is None or model is None:
+            raise RuntimeError("Video is not ready yet.")
+        output = output.expanduser().resolve()
+        poster = poster.expanduser().resolve()
+        output.parent.mkdir(parents=True, exist_ok=True)
+        script = checkout / "examples/inference/basic/mlx_wan_prompt_to_video.py"
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(checkout) + os.pathsep + env.get("PYTHONPATH", "")
+        env["PYTHONNOUSERSITE"] = "1"
+        env["PYTHONUNBUFFERED"] = "1"
+        env["HF_HUB_OFFLINE"] = "1"
+        log = output.with_suffix(".log")
+        code = self._spawn(
+            fastvideo_command(fastvideo_python(checkout), script, model, prompt, output),
+            cwd=checkout,
+            env=env,
+            log=log,
+        )
+        if code != 0 or self._cancelled or not output.is_file():
             output.unlink(missing_ok=True)
-            raise RuntimeError("cancelled" if self._cancelled else "stand-in failed")
+            raise RuntimeError("cancelled" if self._cancelled else "video generation failed")
         if self._spawn(poster_command(output, poster)) != 0:
             raise RuntimeError("poster failed")
         plan["output"] = str(output)
         plan["poster"] = str(poster)
-        plan["mock"] = True
+        plan["mock"] = False
         return plan
 
     def trim(self, source: Path, dest: Path, start: float, end: float) -> dict:
@@ -136,6 +238,13 @@ class Worker:
 
 def main() -> None:
     worker = Worker()
+
+    def stop(_signum: int, _frame: object) -> None:
+        worker.cancel()
+        os._exit(0)
+
+    signal.signal(signal.SIGTERM, stop)
+    signal.signal(signal.SIGINT, stop)
     inbox: queue.Queue = queue.Queue()
 
     def read() -> None:

@@ -237,6 +237,19 @@ def post_chat(port: int, secret: str, messages: list) -> dict:
 
 
 def listeners(port: int) -> list[str]:
+    if not Path("/proc/net/tcp").exists():
+        result = subprocess.run(
+            ["lsof", "-nP", f"-iTCP:{port}", "-sTCP:LISTEN"],
+            capture_output=True,
+            text=True,
+        )
+        found = []
+        for line in result.stdout.splitlines()[1:]:
+            if "127.0.0.1:" in line or "[::1]:" in line:
+                found.append("127.0.0.1")
+            else:
+                found.append("other")
+        return found
     found = []
     needle = f":{port:04X}"
     for path in (Path("/proc/net/tcp"), Path("/proc/net/tcp6")):
@@ -257,6 +270,41 @@ def listeners(port: int) -> list[str]:
     return found
 
 
+def test_ready_waits_for_health() -> None:
+    class Slow:
+        def __init__(self) -> None:
+            self._code = None
+
+        def poll(self):
+            return self._code
+
+    supervisor = llama_supervisor.Supervisor(
+        executable="llama-server",
+        model="m.gguf",
+        api_key="k",
+        parent_pid=os.getpid(),
+        support=Path("/tmp/prometh-llama-ready"),
+        port=9,
+        popen=lambda *_a, **_k: Slow(),
+    )
+    supervisor.process = Slow()
+    try:
+        supervisor.wait_until_ready(timeout=0.2)
+    except RuntimeError as error:
+        assert "did not become ready" in str(error)
+    else:
+        raise AssertionError("a closed port was treated as ready")
+    dead = Slow()
+    dead._code = 1
+    supervisor.process = dead
+    try:
+        supervisor.wait_until_ready(timeout=1)
+    except RuntimeError as error:
+        assert "exited" in str(error)
+    else:
+        raise AssertionError("a dead server was treated as ready")
+
+
 def main() -> None:
     tmp = Path("/tmp/prometh-llama-test")
     if tmp.exists():
@@ -266,7 +314,8 @@ def main() -> None:
     test_arguments_are_the_prd_command()
     test_idle_uses_the_injected_clock()
     test_tool_round_trip_and_parent_death(tmp)
-    print(json.dumps({"passed": True, "tests": 4, "llamaCpp": llama_supervisor.LLAMA_CPP_REF}))
+    test_ready_waits_for_health()
+    print(json.dumps({"passed": True, "tests": 5, "llamaCpp": llama_supervisor.LLAMA_CPP_REF}))
 
 
 if __name__ == "__main__":

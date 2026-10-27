@@ -57,6 +57,20 @@ enum PromethMediaWorker {
         child.arguments = [script.path]
         var environment = ProcessInfo.processInfo.environment
         environment["PYTHONNOUSERSITE"] = "1"
+        environment["PYTHONUNBUFFERED"] = "1"
+        if let checkout = PromethRuntimeLocator.url(
+            relative: "media/fastvideo/examples/inference/basic/mlx_wan_prompt_to_video.py"
+        ) {
+            environment["PROMETH_FASTVIDEO_SRC"] = checkout
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .path
+        }
+        if let python = PromethRuntimeLocator.url(relative: "media/.venv/bin/python3") {
+            environment["PROMETH_MEDIA_PYTHON"] = python.path
+        }
         child.environment = environment
         let input = Pipe()
         let output = Pipe()
@@ -65,12 +79,46 @@ enum PromethMediaWorker {
         child.standardError = FileHandle.nullDevice
         try child.run()
         let body = try JSONSerialization.data(withJSONObject: request)
-        input.fileHandleForWriting.write(body)
-        input.fileHandleForWriting.write(Data("\n".utf8))
-        try input.fileHandleForWriting.close()
-        let data = await Task.detached { output.fileHandleForReading.readDataToEndOfFile() }.value
-        child.waitUntilExit()
+        let writer = input.fileHandleForWriting
+        writer.write(body)
+        writer.write(Data("\n".utf8))
+        let job = MediaJob(process: child, writer: writer)
+        let data = await withTaskCancellationHandler {
+            await Task.detached { output.fileHandleForReading.readDataToEndOfFile() }.value
+        } onCancel: {
+            job.cancel()
+        }
+        if child.isRunning { child.waitUntilExit() }
+        if Task.isCancelled {
+            return #"{"ok":false,"cancelled":true}"#
+        }
         let text = String(decoding: data, as: UTF8.self)
         return text.split(separator: "\n").last.map(String.init) ?? #"{"ok":false,"error":"Video is not ready yet."}"#
+    }
+}
+
+private final class MediaJob: @unchecked Sendable {
+    private let process: Process
+    private let writer: FileHandle
+    private let lock = NSLock()
+    private var didCancel = false
+
+    init(process: Process, writer: FileHandle) {
+        self.process = process
+        self.writer = writer
+    }
+
+    func cancel() {
+        lock.lock()
+        let already = didCancel
+        didCancel = true
+        lock.unlock()
+        guard !already else { return }
+        if let line = "{\"op\":\"cancel\"}\n".data(using: .utf8) {
+            try? writer.write(contentsOf: line)
+        }
+        if process.isRunning {
+            process.terminate()
+        }
     }
 }

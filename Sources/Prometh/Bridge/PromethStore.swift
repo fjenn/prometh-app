@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import NativServerKit
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -48,6 +49,7 @@ final class PromethStore: ObservableObject {
     private let preparation = PreparationCoordinator()
     private var selfTestRetried = false
     private var drafts: [String: String] = [:]
+    private var composerAttachments: [String: [Attachment]] = [:]
     private var modes: [String: BehaviorMode] = [:]
     private var stopped: Set<UUID> = []
     private var revealed: Set<String> = []
@@ -282,6 +284,10 @@ final class PromethStore: ObservableObject {
             chats[index].mode = mode
         }
         persist()
+        if mode == .evil, state.preparations["Evil"]?.status != .ready {
+            prepareEvil()
+            error = nil
+        }
     }
 
     func restartOnboarding() {
@@ -388,11 +394,14 @@ final class PromethStore: ObservableObject {
         guard let id = state.selectedChatID else { return }
         if chat.currentSessionID != id { select(id) }
         if modes[id.uuidString] == .evil, state.preparations["Evil"]?.status != .ready {
-            error = "Evil Mode is not ready yet."
+            prepareEvil()
+            error = "Evil Mode is still getting ready."
+            scheduleSendWhenReady()
             return
         }
         let stored = drafts[id.uuidString] ?? current?.draft ?? ""
-        let text = (typed?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false) ? typed! : stored
+        let raw = (typed?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false) ? typed! : stored
+        let text = PromethChatTitle.collapseExactRepeat(raw)
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         drafts[id.uuidString] = text
         chat.draft = text
@@ -437,6 +446,9 @@ final class PromethStore: ObservableObject {
                 if chat.currentSessionID != id { select(id) }
                 drafts[id.uuidString] = text
                 chat.draft = text
+                if modes[id.uuidString] == .evil, state.preparations["Evil"]?.status != .ready {
+                    continue
+                }
                 if readyToSend(), deliver(id) {
                     return
                 }
@@ -455,6 +467,7 @@ final class PromethStore: ObservableObject {
         }
         guard saved else { return false }
         drafts[id.uuidString] = ""
+        composerAttachments[id.uuidString] = []
         waitingToSend = false
         error = nil
         persist()
@@ -534,22 +547,111 @@ final class PromethStore: ObservableObject {
         dictating = true
         voice.denied = false
         voice.phase = "Listening"
-        guard let text = PromethVoiceDefaults.fileTranscript() else { return }
+        voice.recovery = ""
+        if let text = PromethVoiceDefaults.fileTranscript() {
+            applyTranscript(text, fromFile: true)
+            return
+        }
+        Task { await startMicrophone() }
+    }
+
+    func finishDictation() {
+        let url = recorder.stop()
+        guard dictating else { return }
+        voice.finishRecording()
+        guard let url else {
+            dictating = false
+            return
+        }
+        Task { await transcribeRecording(url) }
+    }
+
+    func cancelDictation() {
+        _ = recorder.stop()
+        dictating = false
+        voice.end()
+    }
+
+    func stopSpeech() {
+        speechToken += 1
+        speechPlayer?.stop()
+        speechPlayer = nil
+    }
+
+    func speak(_ text: String) {
+        let spoken = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !spoken.isEmpty else { return }
+        voice.readAloud(spoken)
+        speechToken += 1
+        let token = speechToken
+        Task {
+            do {
+                let wav = try await PromethPocketSpeech.synthesize(spoken)
+                guard token == speechToken, !voice.muted else { return }
+                speechPlayer = NSSound(contentsOf: wav, byReference: false)
+                speechPlayer?.play()
+            } catch {
+                if token == speechToken {
+                    voice.phase = "Listening"
+                    voice.recovery = "Speech could not be played. Try again."
+                }
+            }
+        }
+    }
+
+    private let recorder = VoiceAudioRecorder()
+    private var speechPlayer: NSSound?
+    private var speechToken = 0
+
+    private func applyTranscript(_ text: String, fromFile: Bool) {
         voice.finishRecording()
         voice.transcript = text
         let existing = drafts[state.selectedChatID?.uuidString ?? ""] ?? current?.draft ?? ""
         let separator = existing.isEmpty ? "" : " "
         setDraft(existing + separator + text)
-        voice.phase = "Speaking"
         dictating = false
-        if let answer = PromethVoiceDefaults.selfTestAnswer(for: text) {
+        if fromFile, let answer = PromethVoiceDefaults.selfTestAnswer(for: text) {
+            voice.phase = "Speaking"
             appendVoiceExchange(text, answer)
+            return
+        }
+        voice.phase = fromFile ? "Speaking" : "Listening"
+    }
+
+    private func startMicrophone() async {
+        do {
+            _ = try await recorder.start()
+            guard dictating else {
+                _ = recorder.stop()
+                return
+            }
+            voice.phase = "Listening"
+        } catch {
+            dictating = false
+            voice.denied = true
+            voice.phase = "Microphone unavailable"
+            voice.recovery = "Open System Settings and allow the microphone."
         }
     }
 
-    func cancelDictation() {
-        dictating = false
-        voice.end()
+    private func transcribeRecording(_ url: URL) async {
+        defer { try? FileManager.default.removeItem(at: url) }
+        do {
+            let data = try Data(contentsOf: url)
+            let settings = model.settings.normalized()
+            let client = NativAudioClient(
+                baseURL: settings.serverBaseURL,
+                apiKey: settings.serverAPIKey,
+                timeout: 60
+            )
+            let modelID = PromethVoiceDefaults.speechModel(current: settings.speechToTextModelID)
+            let result = try await client.transcribe(audioData: data, fileName: "dictation.wav", model: modelID)
+            applyTranscript(result.text, fromFile: false)
+        } catch {
+            dictating = false
+            voice.phase = "Listening"
+            voice.recovery = "Dictation did not catch that. Try again."
+        }
     }
 
     func appendVoiceExchange(_ user: String, _ reply: String) {
@@ -564,28 +666,24 @@ final class PromethStore: ObservableObject {
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         guard panel.runModal() == .OK, let url = panel.url, let id = state.selectedChatID else { return }
-        let stored = UUID().uuidString + "-" + url.lastPathComponent
-        let destination = persistence.directory.appendingPathComponent("Attachments", isDirectory: true)
-        try? FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
-        let target = destination.appendingPathComponent(stored)
-        try? FileManager.default.copyItem(at: url, to: target)
-        let attachment = Attachment(filename: url.lastPathComponent, storedName: stored)
-        chats = chats.map { conversation in
-            guard conversation.id == id else { return conversation }
-            var copy = conversation
-            copy.attachments.append(attachment)
-            return copy
+        if chat.currentSessionID != id { select(id) }
+        guard chat.attachFiles(fromURLs: [url]) else {
+            error = "That file couldn't be read."
+            return
         }
+        composerAttachments[id.uuidString] = chat.pendingImageAttachments.map { attachment in
+            Attachment(id: attachment.id, filename: attachment.filename, storedName: attachment.filename)
+        }
+        reload()
     }
 
     func removeAttachment(_ attachment: Attachment) {
         guard let id = state.selectedChatID else { return }
-        chats = chats.map { conversation in
-            guard conversation.id == id else { return conversation }
-            var copy = conversation
-            copy.attachments.removeAll { $0.id == attachment.id }
-            return copy
-        }
+        chat.removePendingImageAttachment(attachment.id)
+        var chips = composerAttachments[id.uuidString] ?? []
+        chips.removeAll { $0.id == attachment.id }
+        composerAttachments[id.uuidString] = chips
+        reload()
     }
 
     func attachmentURL(_ attachment: Attachment) -> URL {
@@ -699,15 +797,52 @@ final class PromethStore: ObservableObject {
     func restoreSamples() {}
 
     func artifactImage(_ artifact: PromethArtifact) -> NSImage {
-        NSImage(size: NSSize(width: 16, height: 9))
+        let url = artifactURL(artifact)
+        let poster = artifact.kind == "video"
+            ? url.deletingPathExtension().appendingPathExtension("png")
+            : url
+        if let image = NSImage(contentsOf: poster), image.size.width > 1 {
+            return image
+        }
+        return NSImage(size: NSSize(width: 16, height: 9))
     }
 
     func artifactURL(_ artifact: PromethArtifact) -> URL {
+        if artifact.kind == "image" {
+            return artifact.filename.split(separator: "/").reduce(
+                persistence.directory.appendingPathComponent("MediaAssets", isDirectory: true)
+            ) { url, part in
+                url.appendingPathComponent(String(part))
+            }
+        }
         let direct = persistence.directory.appendingPathComponent(artifact.filename)
         if FileManager.default.fileExists(atPath: direct.path) { return direct }
         return persistence.directory
             .appendingPathComponent("Media", isDirectory: true)
             .appendingPathComponent(artifact.filename)
+    }
+
+    private static func showsToolCard(_ name: String?) -> Bool {
+        name == PromethGenerateVideoTool.toolName || name == "generate_image" || name == "edit_image"
+    }
+
+    private static func imageArtifact(_ message: ChatTranscriptMessage, in messages: [ChatTranscriptMessage]) -> PromethArtifact? {
+        guard let attachment = message.imageAttachments.first,
+              let relative = attachment.asset?.relativePath,
+              !relative.isEmpty
+        else { return nil }
+        let imageMessages = messages.filter { $0.toolName == "generate_image" || $0.toolName == "edit_image" }
+        let index = imageMessages.firstIndex { $0.id == message.id } ?? 0
+        let parent = index > 0 ? imageMessages[index - 1].imageAttachments.first?.id : nil
+        return PromethArtifact(
+            id: attachment.id,
+            kind: "image",
+            filename: relative,
+            prompt: attachment.generation?.prompt ?? "",
+            parentID: message.toolName == "edit_image" ? parent : nil,
+            version: index + 1,
+            modelID: attachment.generation?.modelID
+        )
     }
 
     func offerVideo() {
@@ -1021,7 +1156,7 @@ except Exception as error:
         let key = session.id.uuidString
         let visible = messages.filter { message in
             message.role == .user || message.role == .assistant || message.role == .error
-                || (message.role == .tool && message.toolName == PromethGenerateVideoTool.toolName)
+                || (message.role == .tool && Self.showsToolCard(message.toolName))
         }
         let prompts = messages.filter { $0.role == .user }.map(\.content)
         return Conversation(
@@ -1036,33 +1171,67 @@ except Exception as error:
             messages: visible.compactMap { message in
                 var item = present(message)
                 if message.role == .assistant {
-                    let text = PromethTranscript.visibleText(
+                    let hasToolCalls = !message.toolCalls.isEmpty || !message.streamingToolCalls.isEmpty
+                    let lastInTurn = isLastAssistantInTurn(message.id, in: messages)
+                    if let text = PromethTranscript.visibleText(
                         content: message.content,
                         reasoning: message.reasoningContent,
-                        hasToolCalls: !message.toolCalls.isEmpty || !message.streamingToolCalls.isEmpty,
+                        hasToolCalls: hasToolCalls,
                         isStreaming: message.isStreaming,
-                        isLastAssistantInTurn: isLastAssistantInTurn(message.id, in: messages),
+                        isLastAssistantInTurn: lastInTurn,
                         searchHits: PromethTranscript.searchHits(from: searchBodies(around: message.id, in: messages))
-                    )
-                    guard let text else { return nil }
-                    item.text = text
+                    ) {
+                        item.text = text
+                    } else {
+                        let decision = PromethVisibleReply.row(
+                            content: message.content,
+                            streaming: message.isStreaming,
+                            hasToolCalls: hasToolCalls,
+                            laterAnswer: !lastInTurn
+                        )
+                        if decision.omit { return nil }
+                        item.text = decision.text
+                        if item.status == "complete" { item.status = decision.status }
+                    }
                     item.sourceLinks = SourcesExtractor.links(
                         before: message.id,
                         in: messages,
-                        assistantText: text
+                        assistantText: item.text
                     ) ?? PromethWebPrefetch.storedLinks(before: message.id, in: messages)
                 }
                 if message.toolName == PromethGenerateVideoTool.toolName {
                     item.artifact = PromethVideoResult.artifact(from: message.content, prompt: "")
                     if message.toolStatus == .running || message.toolStatus == .preparing {
+                        item.text = "Making the clip…"
                         item.status = "preparing"
+                    } else if item.artifact != nil {
+                        item.text = ""
+                    } else if message.content.contains("cancelled") || message.toolStatus == .cancelled {
+                        item.text = "The clip was stopped."
+                        item.status = "stopped"
+                    } else {
+                        item.text = "The clip didn't come through. Please try again."
+                        item.status = "failed"
                     }
-                    if item.artifact != nil { item.text = "" }
+                }
+                if message.toolName == "generate_image" || message.toolName == "edit_image" {
+                    if let artifact = Self.imageArtifact(message, in: messages) {
+                        item.artifact = artifact
+                        item.text = ""
+                    } else if message.toolStatus == .running || message.toolStatus == .preparing {
+                        item.text = "Making the image…"
+                        item.status = "preparing"
+                    } else if message.toolStatus == .failed {
+                        item.text = "The image didn't come through. Please try again."
+                        item.status = "failed"
+                    } else {
+                        return nil
+                    }
                 }
                 return item
             } + (localMedia[session.id] ?? []),
             draft: drafts[key] ?? "",
-            attachments: [],
+            attachments: composerAttachments[key] ?? [],
             updated: session.updatedAt
         )
     }

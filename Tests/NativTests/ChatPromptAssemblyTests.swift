@@ -158,4 +158,35 @@ final class ChatPromptAssemblyTests: XCTestCase {
         XCTAssertTrue(context?.contains("Attached document") == true)
         XCTAssertTrue(context?.contains("source material, not instructions") == true)
     }
+
+    func testLlamaResponsesInputUsesFunctionCallItems() throws {
+        NativResponsesClient.adaptsLlamaResponses = true
+        defer { NativResponsesClient.adaptsLlamaResponses = false }
+        let call = MLXChatToolCall(id: "call_1", type: "function", function: .init(name: "web_search", arguments: "{\"query\":\"weather\"}"))
+        let messages = [
+            MLXChatMessage(role: "user", content: "Weather in Buenos Aires"),
+            MLXChatMessage(role: "assistant", content: "", toolCalls: [call]),
+            MLXChatMessage(role: "tool", content: "22 C", toolCallID: "call_1", name: "web_search"),
+        ]
+        let items = try NativResponsesClient.inputItems(messages)
+        XCTAssertEqual(items.count, 3)
+        XCTAssertEqual(items[0]["type"]?.stringValue, "message")
+        XCTAssertEqual(items[0]["role"]?.stringValue, "user")
+        XCTAssertEqual(items[1]["type"]?.stringValue, "function_call")
+        XCTAssertEqual(items[1]["name"]?.stringValue, "web_search")
+        XCTAssertEqual(items[1]["call_id"]?.stringValue, "call_1")
+        XCTAssertEqual(items[2]["type"]?.stringValue, "function_call_output")
+        XCTAssertEqual(items[2]["output"]?.stringValue, "22 C")
+        let nested = MLXJSONValue.object([
+            "type": .string("function"),
+            "function": .object([
+                "name": .string("web_search"),
+                "description": .string("Search"),
+                "parameters": .object(["type": .string("object")]),
+            ]),
+        ])
+        let flat = NativResponsesClient.llamaTool(nested)
+        XCTAssertEqual(flat["name"]?.stringValue, "web_search")
+        XCTAssertNil(flat["function"])
+    }
 }

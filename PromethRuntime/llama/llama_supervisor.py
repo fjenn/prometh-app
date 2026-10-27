@@ -14,6 +14,7 @@ import socket
 import subprocess
 import threading
 import time
+import urllib.request
 from pathlib import Path
 
 LLAMA_CPP_REF = "b11669"
@@ -151,6 +152,27 @@ class Supervisor:
             time.sleep(0.2)
         raise RuntimeError(last_error)
 
+    def wait_until_ready(self, timeout: float = 150) -> None:
+        """Block until /health returns 200.
+
+        start() only checks that the process survived 0.3s. llama-server prints
+        nothing useful on our pipe and keeps loading the GGUF after that, so a
+        chat posted immediately is connection-refused.
+        """
+        deadline = time.monotonic() + timeout
+        url = f"http://{HOST}:{self.port}/health"
+        while time.monotonic() < deadline:
+            process = self.process
+            if process is None or process.poll() is not None:
+                raise RuntimeError("llama-server exited before it was ready")
+            try:
+                with urllib.request.urlopen(url, timeout=1) as response:
+                    if response.status == 200:
+                        return
+            except Exception:
+                time.sleep(0.25)
+        raise RuntimeError("llama-server did not become ready")
+
     def stop(self) -> None:
         self._stop.set()
         process = self.process
@@ -211,6 +233,7 @@ def main() -> None:
         idle_seconds=idle,
     )
     supervisor.start()
+    supervisor.wait_until_ready()
     print(f"LISTENING {supervisor.port}", flush=True)
     while supervisor.process is not None and supervisor.process.poll() is None and not supervisor._stop.is_set():
         time.sleep(0.2)

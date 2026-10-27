@@ -587,6 +587,7 @@
 		D963B49FA9E1E766B9081104 /* NativBulkSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7069F17AAC82BF3F1FD1C95E /* NativBulkSelection.swift */; };
 		D98918D5585ACF5F132ADEDF /* ServerPrefillProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA514DE3EB0DC5E1C622E78A /* ServerPrefillProgressView.swift */; };
 		D9CA77A603AF02C2C70BC9FF /* MCPServerCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1DC9B27547E82B74589D6B5 /* MCPServerCatalogTests.swift */; };
+		DA11FE6AD79795D7ABA167EE /* PromethPocketSpeech.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D9DD1A998576B1AECF3C75C /* PromethPocketSpeech.swift */; };
 		DA542EC3E26F50BF1BA6A357 /* State.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3B4879B15892C880F7F2FF6 /* State.swift */; };
 		DBB34516E23260F81529B725 /* PromethIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D38798170B690673597F871 /* PromethIdentity.swift */; };
 		DC1ED6C1A11081FB70F1F019 /* NativImageClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FDFD79A8E1B8AA56AB21FE3 /* NativImageClient.swift */; };
@@ -920,6 +921,7 @@
 		4C93856381B1D89C4DE61DCC /* VoiceCaptureOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCaptureOverlay.swift; sourceTree = "<group>"; };
 		4CF9EC841393DC14F5D858B3 /* ChatResponseSpeech.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatResponseSpeech.swift; sourceTree = "<group>"; };
 		4D06AAA418903BC38896B5AC /* capability-images.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "capability-images.png"; sourceTree = "<group>"; };
+		4D9DD1A998576B1AECF3C75C /* PromethPocketSpeech.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromethPocketSpeech.swift; sourceTree = "<group>"; };
 		4DCD9D4118F0B3580590998F /* ScheduledTaskChatLinker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduledTaskChatLinker.swift; sourceTree = "<group>"; };
 		4DEDC3ED3F36B830E8BF4499 /* SpreadsheetDocumentTextExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpreadsheetDocumentTextExtractor.swift; sourceTree = "<group>"; };
 		4DEE7582DCB286B9D878E28E /* ChatAttachmentKind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatAttachmentKind.swift; sourceTree = "<group>"; };
@@ -1730,6 +1732,7 @@
 			children = (
 				4467F67A1ED2EF343C654088 /* LlamaSupervisor.swift */,
 				AD0093CA42BD8022339B3084 /* ModeRouter.swift */,
+				4D9DD1A998576B1AECF3C75C /* PromethPocketSpeech.swift */,
 				B04BAED71FDC9DEAD682613C /* PromethStore.swift */,
 				1964B3EA2B6118B0492B19F8 /* PromethVoice.swift */,
 			);
@@ -2534,7 +2537,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -euo pipefail\nruntime_src=\"${SRCROOT}/PromethRuntime\"\nruntime_dst=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/PromethRuntime\"\nmkdir -p \"${runtime_dst}\"\nif [[ -d \"${runtime_src}\" ]]; then\n  cp -R \"${runtime_src}/.\" \"${runtime_dst}/\"\nfi\n";
+			shellScript = "set -euo pipefail\nruntime_src=\"${SRCROOT}/PromethRuntime\"\nruntime_dst=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/PromethRuntime\"\nmkdir -p \"${runtime_dst}\"\nif [[ -d \"${runtime_src}\" ]]; then\n  rsync -a \\\n    --exclude 'media/.venv/' \\\n    --exclude 'media/fastvideo/' \\\n    --exclude 'voice/.venv/' \\\n    \"${runtime_src}/\" \"${runtime_dst}/\"\nfi\n";
 		};
 		7C3F7A4B0E9CC2F906BE7FB1 /* Install GitHub OAuth MCP server */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -2829,6 +2832,7 @@
 				6C8A5199962502E711603419 /* PromethCredits.swift in Sources */,
 				6B93C7829DD2C6D1053D671C /* PromethFlags.swift in Sources */,
 				E4C6E7954D586869706DFAAC /* PromethIdentity.swift in Sources */,
+				DA11FE6AD79795D7ABA167EE /* PromethPocketSpeech.swift in Sources */,
 				FFF5E8501ACE2874770DDCF8 /* PromethPrompts.swift in Sources */,
 				D731836671A2CEACD2B779A5 /* PromethRootView.swift in Sources */,
 				248B94ABA6D4A96E139B9D37 /* PromethSearchBootstrap.swift in Sources */,

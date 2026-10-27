@@ -14,6 +14,21 @@ import media_worker
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def test_fastvideo_command_uses_the_pinned_decoder() -> None:
+    command = media_worker.fastvideo_command(
+        "python3",
+        Path("mlx_wan_prompt_to_video.py"),
+        Path("/models/FastMetal"),
+        "waves at sunset",
+        Path("/tmp/waves.mp4"),
+    )
+    assert command[command.index("--decode-backend") + 1] == "wan-vae"
+    assert command[command.index("--width") + 1] == "832"
+    assert command[command.index("--height") + 1] == "480"
+    assert command[command.index("--num-frames") + 1] == "81"
+    assert "--mlx-checkpoint" in command
+
+
 def test_plan_and_trim_math() -> None:
     plan = media_worker.job_plan("waves at sunset")
     assert plan["fastvideo"] == "8db2d71ef217e84bec7dbb6e4ab65c92b144df4f"
@@ -77,7 +92,10 @@ def test_cancel_kills_the_child(tmp: Path) -> None:
         "poster": str(tmp / "slow.png"),
     }) + "\n")
     proc.stdin.flush()
-    time.sleep(0.4)
+    deadline = time.time() + 5
+    while not pidfile.exists() and time.time() < deadline:
+        time.sleep(0.05)
+    time.sleep(0.2)
     proc.stdin.write(json.dumps({"op": "cancel"}) + "\n")
     proc.stdin.flush()
     stdout, _ = proc.communicate(timeout=5)
@@ -125,10 +143,11 @@ def main() -> None:
     tmp = Path("/tmp/prometh-media-test")
     subprocess.run(["rm", "-rf", str(tmp)], check=True)
     tmp.mkdir()
+    test_fastvideo_command_uses_the_pinned_decoder()
     test_plan_and_trim_math()
     test_standin_trim_and_poster(tmp / "standin")
     test_cancel_kills_the_child(tmp / "cancel")
-    print(json.dumps({"passed": True, "tests": 3, "fastvideo": media_worker.FASTVIDEO_COMMIT}))
+    print(json.dumps({"passed": True, "tests": 4, "fastvideo": media_worker.FASTVIDEO_COMMIT}))
 
 
 if __name__ == "__main__":

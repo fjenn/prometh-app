@@ -30,11 +30,15 @@ class SubmitTextView:NSTextView {
         if selector == #selector(insertNewline(_:)) { submit(); return }
         super.doCommand(by: selector)
     }
+    private var submitting = false
     private func submit() {
+        guard !submitting else { return }
         let value = string
         guard !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        submitting = true
         string = ""
         send?(value)
+        submitting = false
     }
     override func insertText(_ insertString: Any, replacementRange: NSRange) {
         if let text = insertString as? String, text == "\n" || text == "\r" {

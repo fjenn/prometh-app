@@ -53,8 +53,9 @@ final class PromethWorkspaceUITests: XCTestCase {
     func testWorkspaceChatAndHiddenChrome() throws {
         let app = XCUIApplication()
         let export = FileManager.default.temporaryDirectory.appendingPathComponent("prometh-export-\(UUID().uuidString).md")
+        let copyLog = FileManager.default.temporaryDirectory.appendingPathComponent("prometh-copy-\(UUID().uuidString).txt")
         app.launchArguments = ["--prometh-flags=promethShell"]
-        app.launchEnvironment = ["PROMETH_EXPORT_PATH": export.path]
+        app.launchEnvironment = ["PROMETH_EXPORT_PATH": export.path, "PROMETH_COPY_LOG": copyLog.path]
         app.launch()
 
         let draft = app.textViews["prometh.draft"]
@@ -98,11 +99,22 @@ final class PromethWorkspaceUITests: XCTestCase {
         XCTAssertTrue(waitForReply(in: app, timeout: 180))
 
         app.buttons["Regenerate response"].firstMatch.click()
+        let writing = app.staticTexts["· Writing"]
+        if writing.waitForExistence(timeout: 8) {
+            let finished = Date().addingTimeInterval(120)
+            while Date() < finished, writing.exists {
+                Thread.sleep(forTimeInterval: 0.3)
+            }
+        }
         XCTAssertTrue(waitForReply(in: app, timeout: 180))
+        Thread.sleep(forTimeInterval: 0.4)
 
-        app.buttons["Copy response"].firstMatch.click()
+        let copy = app.buttons["Copy response"].firstMatch
+        XCTAssertTrue(copy.waitForExistence(timeout: 5))
+        copy.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
         let copied = copiedText()
-        XCTAssertFalse(copied.isEmpty, "clipboard was empty after Copy response")
+        let logged = (try? String(contentsOf: copyLog, encoding: .utf8)) ?? ""
+        XCTAssertFalse(copied.isEmpty, "clipboard empty logged \(logged.debugDescription) frame \(copy.frame)")
 
         let conversationName = "Ocean notes \(String(UUID().uuidString.prefix(4)))"
         identified(app, "prometh.conversation.menu").click()
