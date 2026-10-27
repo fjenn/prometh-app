@@ -264,9 +264,12 @@ final class PromethSearchTests: XCTestCase {
         let cited = CitationMarkup.citedIndices(in: rewritten)
         XCTAssertEqual(cited, [1, 2], "Distinct Sources need distinct chips: \(rewritten)")
         XCTAssertFalse(rewritten.contains("[99]"))
-        let lines = rewritten.split(separator: "\n").map(String.init)
-        let bullets = lines.filter { $0.contains("•") || $0.contains("*") || $0.contains("Civilian") || $0.contains("El Fasher") || $0.contains("Zelenskyy") }
-        XCTAssertGreaterThanOrEqual(bullets.count, 2)
+        // Least-used assignment should not leave four bullets on one source.
+        let ones = rewritten.components(separatedBy: "[1]").count - 1
+        let twos = rewritten.components(separatedBy: "[2]").count - 1
+        XCTAssertGreaterThanOrEqual(ones, 1, rewritten)
+        XCTAssertGreaterThanOrEqual(twos, 1, rewritten)
+        XCTAssertLessThanOrEqual(abs(ones - twos), 2, "Chips should be roughly balanced: \(rewritten)")
     }
 
     func testInjectedContextContainsOnlyReadSources() {

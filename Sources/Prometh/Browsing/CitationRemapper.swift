@@ -101,29 +101,28 @@ enum CitationRemapper {
             assignment[edge.line] = edge.source
             usedSources.insert(edge.source)
         }
-        // Pass 2: remaining lines take their absolute best (reuse allowed).
+        // Pass 2: remaining lines prefer the least-used source (content score as
+        // tie-break) so chips stay roughly balanced across the Sources row.
+        var usage = Array(repeating: 0, count: sourceCount)
+        for value in assignment {
+            if let value { usage[value] += 1 }
+        }
         for (line, row) in scores.enumerated() where assignment[line] == nil {
-            var bestSource: Int?
-            var bestScore = 0.0
-            for (source, score) in row.enumerated() where score > bestScore {
-                bestScore = score
-                bestSource = source
+            let minUse = usage.min() ?? 0
+            var bestSource = 0
+            var bestScore = -1.0
+            for (source, score) in row.enumerated() {
+                if usage[source] != minUse { continue }
+                if score > bestScore {
+                    bestScore = score
+                    bestSource = source
+                }
             }
-            if bestScore >= 1.0 {
-                assignment[line] = bestSource
-            }
+            assignment[line] = bestSource
+            usage[bestSource] += 1
         }
-        // Pass 3: any still-unassigned cited line gets a round-robin source so
-        // out-of-range / all-[n] model output cannot collapse the Sources row.
-        if sourceCount > 0 {
-            var cursor = 0
-            for line in scores.indices where assignment[line] == nil {
-                assignment[line] = cursor % sourceCount
-                cursor += 1
-            }
-        }
-        // Pass 4: if every assigned chip is the same source while multiple
-        // sources exist, force round-robin so chips are distinct.
+        // Pass 3: if a single source still owns every chip while multiple sources
+        // exist, force round-robin so chips are visibly distinct.
         let assignedValues = assignment.compactMap { $0 }
         if sourceCount > 1,
            assignedValues.count > 1,
