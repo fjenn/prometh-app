@@ -110,9 +110,9 @@ final class PromethWorkspaceUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 0.4)
 
         // Scroll the latest reply into view; Copy sits under the bubble.
-        let replies = app.descendants(matching: .any).matching(identifier: "prometh.reply")
-        if replies.count > 0 {
-            replies.element(boundBy: replies.count - 1).hover()
+        let bubbles = app.descendants(matching: .any).matching(identifier: "prometh.reply")
+        if bubbles.count > 0 {
+            bubbles.element(boundBy: bubbles.count - 1).hover()
         }
         let copies = app.buttons.matching(NSPredicate(format: "label == %@", "Copy response"))
         XCTAssertTrue(copies.firstMatch.waitForExistence(timeout: 5))
