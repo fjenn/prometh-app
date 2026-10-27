@@ -1,0 +1,162 @@
+{
+  "formula": "ceil(peak GiB * 1.10 * 2) / 2",
+  "models": [
+    {
+      "id": "images",
+      "fullRunPeakGiB": 5.187167927622795,
+      "workingMemoryGB": 6.0,
+      "minEligibleRAM": 16,
+      "runs": [
+        {
+          "label": "images-timed1-fix",
+          "maxRSSGiB": 2.6897735595703125,
+          "peakFootprintGiB": 5.16022090613842,
+          "sampledExactPeakGiB": 5.152728818356991,
+          "mlxPeakGiB": 0,
+          "fullRunPeakGiB": 5.16022090613842,
+          "artifact": "images-timed1-fix.png"
+        },
+        {
+          "label": "images-timed2-fix",
+          "maxRSSGiB": 2.6920166015625,
+          "peakFootprintGiB": 5.187167927622795,
+          "sampledExactPeakGiB": 5.180057309567928,
+          "mlxPeakGiB": 0,
+          "fullRunPeakGiB": 5.187167927622795,
+          "artifact": "images-timed2-fix.png"
+        }
+      ],
+      "minAutoRAM": 16
+    },
+    {
+      "id": "images-9b",
+      "fullRunPeakGiB": 11.955574989318848,
+      "workingMemoryGB": 13.5,
+      "minEligibleRAM": 24,
+      "runs": [
+        {
+          "label": "images-9b-timed1-fix",
+          "maxRSSGiB": 9.637649536132812,
+          "peakFootprintGiB": 11.929650083184242,
+          "sampledExactPeakGiB": 11.239586293697357,
+          "mlxPeakGiB": 0,
+          "fullRunPeakGiB": 11.929650083184242,
+          "artifact": "images-9b-timed1-fix.png"
+        },
+        {
+          "label": "images-9b-timed2-fix",
+          "maxRSSGiB": 9.639389038085938,
+          "peakFootprintGiB": 11.955574989318848,
+          "sampledExactPeakGiB": 11.950447991490364,
+          "mlxPeakGiB": 0,
+          "fullRunPeakGiB": 11.955574989318848,
+          "artifact": "images-9b-timed2-fix.png"
+        }
+      ],
+      "minAutoRAM": 24
+    },
+    {
+      "id": "video",
+      "fullRunPeakGiB": 13.605455502867699,
+      "workingMemoryGB": 15.0,
+      "minEligibleRAM": 24,
+      "runs": [
+        {
+          "label": "video-timed1-fix",
+          "maxRSSGiB": 3.1041412353515625,
+          "peakFootprintGiB": 13.605455502867699,
+          "sampledExactPeakGiB": null,
+          "mlxPeakGiB": 3.87,
+          "fullRunPeakGiB": 13.605455502867699,
+          "artifact": "video-timed1-fix.mp4"
+        },
+        {
+          "label": "video-timed2-fix",
+          "maxRSSGiB": 3.025177001953125,
+          "peakFootprintGiB": 13.604906767606735,
+          "sampledExactPeakGiB": 13.604906767606735,
+          "mlxPeakGiB": 3.87,
+          "fullRunPeakGiB": 13.604906767606735,
+          "artifact": "video-timed2-fix.mp4"
+        }
+      ],
+      "minAutoRAM": 24
+    },
+    {
+      "id": "video-5b",
+      "fullRunPeakGiB": 15.606737688183784,
+      "workingMemoryGB": 17.5,
+      "minEligibleRAM": 32,
+      "runs": [
+        {
+          "label": "video-5b-timed3-fix",
+          "maxRSSGiB": 5.92950439453125,
+          "peakFootprintGiB": 15.604510486125946,
+          "sampledExactPeakGiB": 15.604510486125946,
+          "mlxPeakGiB": 6.848,
+          "fullRunPeakGiB": 15.604510486125946,
+          "artifact": "video-5b-timed3-fix.mp4"
+        },
+        {
+          "label": "video-5b-timed4-fix",
+          "maxRSSGiB": 5.927734375,
+          "peakFootprintGiB": 15.606737688183784,
+          "sampledExactPeakGiB": 15.606737688183784,
+          "mlxPeakGiB": 6.848,
+          "fullRunPeakGiB": 15.606737688183784,
+          "artifact": "video-5b-timed4-fix.mp4"
+        }
+      ],
+      "minAutoRAM": 32
+    },
+    {
+      "id": "video-14b",
+      "fullRunPeakGiB": 22.669872887432575,
+      "workingMemoryGB": 25.0,
+      "minEligibleRAM": 48,
+      "runs": [
+        {
+          "label": "video-14b-timed1-fix",
+          "maxRSSGiB": 15.187835693359375,
+          "peakFootprintGiB": 22.63396904617548,
+          "sampledExactPeakGiB": 22.63396904617548,
+          "mlxPeakGiB": 21.68,
+          "fullRunPeakGiB": 22.63396904617548,
+          "artifact": "video-14b-timed1-fix.mp4"
+        },
+        {
+          "label": "video-14b-timed2-fix",
+          "maxRSSGiB": 15.188583374023438,
+          "peakFootprintGiB": 22.669872887432575,
+          "sampledExactPeakGiB": 22.669872887432575,
+          "mlxPeakGiB": 21.68,
+          "fullRunPeakGiB": 22.669872887432575,
+          "artifact": "video-14b-timed2-fix.mp4"
+        }
+      ],
+      "minAutoRAM": 48
+    }
+  ],
+  "picks": {
+    "images": {
+      "8": null,
+      "16": "images",
+      "24": "images-9b",
+      "32": "images-9b",
+      "36": "images-9b",
+      "48": "images-9b",
+      "64": "images-9b",
+      "128": "images-9b"
+    },
+    "video": {
+      "8": null,
+      "16": null,
+      "24": "video",
+      "32": "video-5b",
+      "36": "video-5b",
+      "48": "video-14b",
+      "64": "video-14b",
+      "128": "video-14b"
+    }
+  }
+}

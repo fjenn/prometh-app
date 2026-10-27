@@ -1,0 +1,90 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+_______________ test_tiny_streaming_matches_parallel_decoder[16] _______________
+
+channels = 16
+
+    @pytest.mark.parametrize("channels", [16, 48])
+    def test_tiny_streaming_matches_parallel_decoder(channels):
+        import mlx.core as mx
+        from fastvideo.mlx_runtime.wan_vae import MLXTAEHVDecoder, ensure_taehv_checkpoint
+    
+        # Crosses a spatial core boundary and exercises all causal transitions.
+        latents = np.random.default_rng(7).normal(size=(1, channels, 3, 18, 57)).astype(np.float32)
+        model = MLXTAEHVDecoder(ensure_taehv_checkpoint(z_dim=channels), z_dim=channels)
+        full = model.decode_ntchw(mx.array(latents.transpose(0, 2, 1, 3, 4)))
+        mx.eval(full)
+        expected = np.array(full).transpose(0, 1, 3, 4, 2)
+        del model, full
+        bounded_video.clear_stage()
+        actual = bounded_video.decode_tiny(latents, z_dim=channels, dtype_name="fp32")
+        assert actual.shape == expected.shape
+>       np.testing.assert_allclose(actual, expected, atol=0.0001, rtol=0.0001)
+E       AssertionError: 
+E       Not equal to tolerance rtol=0.0001, atol=0.0001
+E       
+E       Mismatched elements: 1507845 / 1772928 (85%)
+E       First 5 mismatches are at indices:
+E        [0, 0, 0, 0, 0]: 0.09014646708965302 (ACTUAL), 0.08764664828777313 (DESIRED)
+E        [0, 0, 0, 0, 1]: 0.1058887392282486 (ACTUAL), 0.10321582108736038 (DESIRED)
+E        [0, 0, 0, 0, 2]: 0.07974088191986084 (ACTUAL), 0.07747433334589005 (DESIRED)
+E        [0, 0, 0, 1, 0]: 0.06451943516731262 (ACTUAL), 0.060834288597106934 (DESIRED)
+E        [0, 0, 0, 1, 1]: 0.09677134454250336 (ACTUAL), 0.09260336309671402 (DESIRED)
+E       Max absolute difference among violations: 0.12406316
+E       Max relative difference among violations: 131.17906
+E        ACTUAL: array([[[[[0.090146, 0.105889, 0.079741],
+E                 [0.064519, 0.096771, 0.064494],
+E                 [0.107118, 0.14169 , 0.102853],...
+E        DESIRED: array([[[[[0.087647, 0.103216, 0.077474],
+E                 [0.060834, 0.092603, 0.06132 ],
+E                 [0.105317, 0.140043, 0.10164 ],...
+
+PromethRuntime/media/test_bounded_video.py:27: AssertionError
+----------------------------- Captured stdout call -----------------------------
+[Prometh] TAEHV fp32: 16px latent cores / 20px halo / 1 latent frame
+_______________ test_tiny_streaming_matches_parallel_decoder[48] _______________
+
+channels = 48
+
+    @pytest.mark.parametrize("channels", [16, 48])
+    def test_tiny_streaming_matches_parallel_decoder(channels):
+        import mlx.core as mx
+        from fastvideo.mlx_runtime.wan_vae import MLXTAEHVDecoder, ensure_taehv_checkpoint
+    
+        # Crosses a spatial core boundary and exercises all causal transitions.
+        latents = np.random.default_rng(7).normal(size=(1, channels, 3, 18, 57)).astype(np.float32)
+        model = MLXTAEHVDecoder(ensure_taehv_checkpoint(z_dim=channels), z_dim=channels)
+        full = model.decode_ntchw(mx.array(latents.transpose(0, 2, 1, 3, 4)))
+        mx.eval(full)
+        expected = np.array(full).transpose(0, 1, 3, 4, 2)
+        del model, full
+        bounded_video.clear_stage()
+        actual = bounded_video.decode_tiny(latents, z_dim=channels, dtype_name="fp32")
+        assert actual.shape == expected.shape
+>       np.testing.assert_allclose(actual, expected, atol=0.0001, rtol=0.0001)
+E       AssertionError: 
+E       Not equal to tolerance rtol=0.0001, atol=0.0001
+E       
+E       Mismatched elements: 5877976 / 7091712 (82.9%)
+E       First 5 mismatches are at indices:
+E        [0, 0, 0, 0, 0]: 0.49777552485466003 (ACTUAL), 0.4934063255786896 (DESIRED)
+E        [0, 0, 0, 0, 1]: 0.4314460754394531 (ACTUAL), 0.4273556172847748 (DESIRED)
+E        [0, 0, 0, 0, 2]: 0.5009620189666748 (ACTUAL), 0.49612221121788025 (DESIRED)
+E        [0, 0, 0, 1, 0]: 0.508280336856842 (ACTUAL), 0.5022050142288208 (DESIRED)
+E        [0, 0, 0, 1, 1]: 0.43114525079727173 (ACTUAL), 0.4256870746612549 (DESIRED)
+E       Max absolute difference among violations: 0.02827287
+E       Max relative difference among violations: 8.560282
+E        ACTUAL: array([[[[[0.497776, 0.431446, 0.500962],
+E                 [0.50828 , 0.431145, 0.51052 ],
+E                 [0.566578, 0.504761, 0.638166],...
+E        DESIRED: array([[[[[0.493406, 0.427356, 0.496122],
+E                 [0.502205, 0.425687, 0.504226],
+E                 [0.560347, 0.499243, 0.631089],...
+
+PromethRuntime/media/test_bounded_video.py:27: AssertionError
+----------------------------- Captured stdout call -----------------------------
+[Prometh] TAEHV fp32: 16px latent cores / 20px halo / 1 latent frame
+=========================== short test summary info ============================
+FAILED PromethRuntime/media/test_bounded_video.py::test_tiny_streaming_matches_parallel_decoder[16]
+FAILED PromethRuntime/media/test_bounded_video.py::test_tiny_streaming_matches_parallel_decoder[48]
+2 failed in 1.71s

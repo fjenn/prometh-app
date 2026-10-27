@@ -86,3 +86,41 @@ Measured on M5 Max 128 GB with chat unloaded (no llama-server / mlx-vlm-server).
 **Commands:** see `run_images_4b.sh`, `run_video_1.3b.sh` / `timed_run.sh`, `run_video_5b.sh`.
 
 **Commits:** `f9de3a11` feat(video) 5B mid tier; `92793ef7` measured peaks + picker matrix. Gates: `build.sh` OK, `make verify` OK, PromethTests **76** passed (`CODE_SIGNING_ALLOWED=NO`). PromethUITests skipped (Automation Mode). zimage not installed — not measured. Unverified: in-app UI click path for 5B (worker path verified).
+
+## Media tiers fix (2026-10-27 night)
+
+This section supersedes the evening media estimates above. Every decision uses a complete cold-process generation, including encoder loading, denoise, VAE decode, export and RIFE; the 1.3B denoise-plateau exception is removed.
+
+**Code commit:** `466986bea79e53ec37670b262f3e8357f66926da` (`fix(media): bound VAE decode and measure cold memory tiers`).
+
+- Tracked `bounded_video.py` adapts the unchanged pinned FastVideo checkout. Full Wan VAE (1.3B/14B): fp16, 256px spatial tiles / 192px stride, one latent frame with causal caches, RGB chunks moved to CPU. MLX TAEHV (5B): fp16, one latent frame, persistent MemBlock state, 16px latent cores / 20px halo.
+- Direct-device bf16/fp16 encoder loading avoids a complete upcast/duplicate model. 5B now encodes on MPS, releasing the encoder before packed quantized DiT loading. Both pipelines free the transformer before decode, cap MLX cache at 256 MiB, and synchronize/clear MLX and MPS caches between stages. Accelerate 1.15.0 compatibility override is recorded in `requirements-prometh.txt`.
+- Two complete timed runs for every shipped media tier. Final 5B runs are `video-5b-timed3-fix` / `timed4-fix`; earlier CPU-encoder experiments remain separately recorded. No failed or partial run contributes to the catalog.
+
+`workingMemoryGB = ceil(full-run peak GiB × 1.10 × 2) / 2`; picker keeps its existing 8% margin and `RAM × 0.75 − 1` budget after chat unload.
+
+| Model id | Real full-run peak GiB | workingMemoryGB | Minimum Mac RAM that gets it |
+|---|---:|---:|---|
+| `images` | 5.187 | 6.0 | 16 GB |
+| `images-9b` | 11.956 | 13.5 | 24 GB |
+| `video` | 13.605 | 15.0 | 24 GB |
+| `video-5b` | 15.607 | 17.5 | 32 GB |
+| `video-14b` | 22.670 | 25.0 | 48 GB |
+
+**5B now auto-picks on 32 and 36 GB Macs**, between 1.3B at 24 GB and 14B at 48 GB. This is budget eligibility from real peaks measured on the M5 Max 128 GB host; smaller physical Macs were not hardware-certified. The old 1.3B 16 GB eligibility was based on incomplete accounting and is removed. 8 GB gets neither media family; 16 GB gets FLUX 4B photo only.
+
+**Output verification:** All eight new clips (six final-configuration video runs plus two CPU-encoder experiments) have extracted frame PNGs, were fully decoded with ffmpeg without errors, and were manually checked for coherent beach/ocean imagery. No black/garbage frames. `artifact-validation-fix.json` records hashes, 832×480 / 81 frames / 16 fps for 1.3B/14B, 832×448 / 121 frames / 24 fps for 5B, silent output, and non-black PNG statistics. Both runs of each FLUX tier also produced correct-looking 512×512 images.
+
+**Tests and gates:**
+
+- `scripts/prometh/build.sh` — passed (`media-tiers/build-final-fix.log`).
+- `make verify` — passed (`media-tiers/verify-final-fix.log`). An initial overlapping build/verify attempt failed during resource copying and is retained separately; final verification ran after the build.
+- `xcodebuild test -scheme Prometh -only-testing:PromethTests -destination "platform=macOS,arch=arm64" -derivedDataPath build/NativDevelopmentDerivedData CODE_SIGNING_ALLOWED=NO` — **77 tests, zero failures** (`media-tiers/xcode-tests-fix.log`).
+- Picker assertions cover **8/16/24/32/36/48/64/128 GB** for both photo and video; catalog assertions require full-run peak +10%, rounded upward by at most 0.5 GiB.
+- Combined Python suite — **10 passed** (`media-tiers/python-tests-final-fix.log`), including numerical causal/tiling decoder checks and worker command/cancel/trim tests.
+
+**Evidence:** [MEASUREMENTS.md](media-tiers/MEASUREMENTS.md), [exact run summary](media-tiers/full-run-summary-fix.json), [artifact validation](media-tiers/artifact-validation-fix.json), and raw `*-fix.log` / `.time.txt` / `.footprint.txt` / MP4 / PNG files. Timed runners use production worker commands with prompt caches disabled. Cold means a new process, not a purged OS file cache.
+
+Original Nativ.app was quit before live tests. OpenWhispr, temporarily quit after it started during the first 1.3B run, was restored after measurements. The pre-existing `launch.log` modification is left unstaged.
+
+**Release app:** Release build succeeded; ad-hoc signing and standard `codesign --verify --deep` passed (`media-tiers/release-build-fix.log`, `release-verify-fix.log`). An additional `--strict` check flags the pre-existing external Homebrew interpreter symlinks in the reader/search/connector venvs; that runtime layout was retained. Bundled catalog and bounded-media runtime byte-match the committed source. Release `Prometh.app` is running (PID 74061), with its own descendant serving HTTP 200 on `/health` at port 8080; see `media-tiers/release-running-fix.json`.

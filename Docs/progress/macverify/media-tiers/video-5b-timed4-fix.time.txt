@@ -1,0 +1,23 @@
+W1027 19:38:11.732000 71229 .venv/lib/python3.12/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:35] NOTE: Redirects are currently not supported in MacOs.
+Loading weights:   0%|          | 0/242 [00:00<?, ?it/s]Loading weights:  16%|█▌        | 38/242 [00:00<00:00, 370.86it/s]Loading weights:  31%|███▏      | 76/242 [00:00<00:00, 343.58it/s]Loading weights:  46%|████▋     | 112/242 [00:00<00:00, 338.69it/s]Loading weights:  63%|██████▎   | 152/242 [00:00<00:00, 350.53it/s]Loading weights:  78%|███████▊  | 188/242 [00:00<00:00, 345.44it/s]Loading weights:  93%|█████████▎| 225/242 [00:00<00:00, 351.41it/s]Loading weights: 100%|██████████| 242/242 [00:00<00:00, 304.47it/s]
+objc[71229]: Class AVFFrameReceiver is implemented in both /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/lib/python3.12/site-packages/av/.dylibs/libavdevice.63.1.102.dylib (0x1229043a8) and /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/lib/python3.12/site-packages/cv2/.dylibs/libavdevice.61.3.100.dylib (0x12eacc3a8). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+objc[71229]: Class AVFAudioReceiver is implemented in both /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/lib/python3.12/site-packages/av/.dylibs/libavdevice.63.1.102.dylib (0x1229043f8) and /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/lib/python3.12/site-packages/cv2/.dylibs/libavdevice.61.3.100.dylib (0x12eacc3f8). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+       17.21 real         8.70 user         9.58 sys
+          6364856320  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             1458536  page reclaims
+                 370  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   4  messages sent
+                   4  messages received
+                   0  signals received
+                8796  voluntary context switches
+               64158  involuntary context switches
+        170190278335  instructions retired
+         63374437792  cycles elapsed
+         16757606992  peak memory footprint
+EXIT:0

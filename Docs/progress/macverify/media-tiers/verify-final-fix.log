@@ -1,0 +1,10 @@
+python3 PythonDistribution/Scripts/build_mlx_vlm_server.py --verify-only
+==> /Users/armando/Projects/Coding/prometh-app/build/NativDevelopmentDerivedData/Build/Products/Debug/Prometh.app/Contents/Frameworks/NativServerKit.framework/Versions/A/Resources/mlx-vlm-server/python/bin/python3 -B -c import sys; print(sys.version)
+3.12.13 (main, May  8 2026, 18:24:29) [Clang 22.1.3 ]
+==> /Users/armando/Projects/Coding/prometh-app/build/NativDevelopmentDerivedData/Build/Products/Debug/Prometh.app/Contents/Frameworks/NativServerKit.framework/Versions/A/Resources/mlx-vlm-server/python/bin/python3 -B -c import importlib.util; raise SystemExit(0 if importlib.util.find_spec('mlx_vlm.server') else 1)
+==> /Users/armando/Projects/Coding/prometh-app/build/NativDevelopmentDerivedData/Build/Products/Debug/Prometh.app/Contents/Frameworks/NativServerKit.framework/Versions/A/Resources/mlx-vlm-server/python/bin/python3 -B -c import importlib.util; raise SystemExit(0 if importlib.util.find_spec('nativ_server') else 1)
+==> /Users/armando/Projects/Coding/prometh-app/build/NativDevelopmentDerivedData/Build/Products/Debug/Prometh.app/Contents/Frameworks/NativServerKit.framework/Versions/A/Resources/mlx-vlm-server/python/bin/python3 -B -c import onnxruntime, misaki.en, en_core_web_sm; import mlx_audio.tts.models.kokoro
+/Users/armando/Projects/Coding/prometh-app/build/NativDevelopmentDerivedData/Build/Products/Debug/Prometh.app/Contents/Frameworks/NativServerKit.framework/Versions/A/Resources/mlx-vlm-server/python/lib/python3.12/site-packages/num2words/lang_PT_BR.py:142: SyntaxWarning: invalid escape sequence '\w'
+  if re.match('.*{} e \w*ento'.format(ext), result):
+/Users/armando/Projects/Coding/prometh-app/build/NativDevelopmentDerivedData/Build/Products/Debug/Prometh.app/Contents/Frameworks/NativServerKit.framework/Versions/A/Resources/mlx-vlm-server/python/lib/python3.12/site-packages/num2words/lang_PT_BR.py:170: SyntaxWarning: invalid escape sequence '\s'
+  result = re.sub('\s+', ' ', result)

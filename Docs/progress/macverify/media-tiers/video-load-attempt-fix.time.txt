@@ -1,0 +1,40 @@
+W1027 19:14:34.017000 64644 .venv/lib/python3.12/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:35] NOTE: Redirects are currently not supported in MacOs.
+Traceback (most recent call last):
+  File "/Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/bounded_video.py", line 283, in <module>
+    main()
+  File "/Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/bounded_video.py", line 277, in main
+    module.main()
+  File "/Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/fastvideo/examples/inference/basic/mlx_wan_prompt_to_video.py", line 857, in main
+    prompt_embeds = get_prompt_embeds(
+                    ^^^^^^^^^^^^^^^^^^
+  File "/Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/fastvideo/examples/inference/basic/mlx_wan_prompt_to_video.py", line 303, in get_prompt_embeds
+    prompt_embeds = encode_prompt(
+                    ^^^^^^^^^^^^^^
+  File "/Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/bounded_video.py", line 45, in encode_prompt
+    model = UMT5EncoderModel.from_pretrained(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/lib/python3.12/site-packages/transformers/modeling_utils.py", line 4181, in from_pretrained
+    device_map = check_and_set_device_map(device_map)  # warn, error and fix the device map
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/lib/python3.12/site-packages/transformers/integrations/accelerate.py", line 135, in check_and_set_device_map
+    raise ValueError(
+ValueError: Using a `device_map`, `tp_plan`, `torch.device` context manager or setting `torch.set_default_device(device)` requires `accelerate`. You can install it with `pip install accelerate`
+        5.38 real         3.55 user         0.77 sys
+           967311360  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              130813  page reclaims
+                2307  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   4  messages sent
+                   4  messages received
+                   0  signals received
+                6725  voluntary context switches
+                3015  involuntary context switches
+         57673431702  instructions retired
+         18889090671  cycles elapsed
+           786138696  peak memory footprint
+EXIT:1

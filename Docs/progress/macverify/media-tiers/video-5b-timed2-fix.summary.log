@@ -1,0 +1,12 @@
+START 2026-10-27T22:24:29Z label=video-5b-timed2-fix
+CMD: /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/bin/python3 /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/bounded_video.py /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/fastvideo/examples/inference/basic/mlx_wan22_generate.py --text-encoder-root /Users/armando/Library/Application Support/Prometh/Models/FastVideo--FastMetal-5B-QAD--5e4819ec9c8d --mlx-checkpoint /Users/armando/Library/Application Support/Prometh/Models/FastVideo--FastMetal-5B-QAD--5e4819ec9c8d --vae-root /Users/armando/Library/Application Support/Prometh/Models/FastVideo--FastMetal-5B-QAD--5e4819ec9c8d/vae --prompt a calm ocean wave rolling onto a sandy beach at sunset --output-path /Users/armando/Projects/Coding/prometh-app/Docs/progress/macverify/media-tiers/video-5b-timed2-fix.mp4 --height 448 --width 832 --num-frames 121 --fps 24 --decode-backend taehv --seed 1024 --fast --no-prompt-cache
+chat:
+NONE
+time_pid=67775 child_pid=67777
+EXIT:0
+END 2026-10-27T22:25:07Z
+SUMMARY video-5b-timed2-fix
+  exit=0
+  time_l_max_rss_gib=23.947
+  time_l_peak_footprint_gib=13.201
+  sampled_phys_footprint_max_gib=13.201

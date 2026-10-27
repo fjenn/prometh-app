@@ -1,0 +1,23 @@
+W1027 19:37:50.617000 71103 .venv/lib/python3.12/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:35] NOTE: Redirects are currently not supported in MacOs.
+Loading weights:   0%|          | 0/242 [00:00<?, ?it/s]Loading weights:   2%|▏         | 5/242 [00:00<00:04, 48.05it/s]Loading weights:  14%|█▍        | 35/242 [00:00<00:01, 189.22it/s]Loading weights:  26%|██▌       | 63/242 [00:00<00:00, 229.26it/s]Loading weights:  38%|███▊      | 93/242 [00:00<00:00, 253.89it/s]Loading weights:  51%|█████     | 124/242 [00:00<00:00, 272.12it/s]Loading weights:  63%|██████▎   | 152/242 [00:00<00:00, 268.69it/s]Loading weights:  75%|███████▌  | 182/242 [00:00<00:00, 276.41it/s]Loading weights:  90%|████████▉ | 217/242 [00:00<00:00, 293.99it/s]Loading weights: 100%|██████████| 242/242 [00:01<00:00, 226.70it/s]
+objc[71103]: Class AVFFrameReceiver is implemented in both /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/lib/python3.12/site-packages/av/.dylibs/libavdevice.63.1.102.dylib (0x125c683a8) and /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/lib/python3.12/site-packages/cv2/.dylibs/libavdevice.61.3.100.dylib (0x1318a03a8). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+objc[71103]: Class AVFAudioReceiver is implemented in both /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/lib/python3.12/site-packages/av/.dylibs/libavdevice.63.1.102.dylib (0x125c683f8) and /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/lib/python3.12/site-packages/cv2/.dylibs/libavdevice.61.3.100.dylib (0x1318a03f8). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+       19.90 real         8.75 user         9.92 sys
+          6366756864  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             1457977  page reclaims
+                 514  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   4  messages sent
+                   4  messages received
+                   0  signals received
+                8877  voluntary context switches
+               67776  involuntary context switches
+        173344292152  instructions retired
+         63115058318  cycles elapsed
+         16755215552  peak memory footprint
+EXIT:0

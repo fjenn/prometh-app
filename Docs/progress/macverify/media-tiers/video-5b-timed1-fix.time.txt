@@ -1,0 +1,23 @@
+W1027 19:23:50.756000 67576 .venv/lib/python3.12/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:35] NOTE: Redirects are currently not supported in MacOs.
+Loading weights:   0%|          | 0/242 [00:00<?, ?it/s]Loading weights:   7%|▋         | 17/242 [00:00<00:01, 145.81it/s]Loading weights:  14%|█▍        | 35/242 [00:00<00:01, 163.91it/s]Loading weights:  21%|██▏       | 52/242 [00:00<00:01, 157.36it/s]Loading weights:  28%|██▊       | 68/242 [00:00<00:01, 147.65it/s]Loading weights:  36%|███▌      | 87/242 [00:00<00:01, 150.89it/s]Loading weights:  44%|████▍     | 107/242 [00:00<00:00, 155.99it/s]Loading weights:  52%|█████▏    | 127/242 [00:00<00:00, 155.68it/s]Loading weights:  61%|██████    | 147/242 [00:00<00:00, 156.32it/s]Loading weights:  69%|██████▉   | 167/242 [00:01<00:00, 156.89it/s]Loading weights:  77%|███████▋  | 187/242 [00:01<00:00, 154.93it/s]Loading weights:  85%|████████▍ | 205/242 [00:01<00:00, 161.29it/s]Loading weights:  92%|█████████▏| 222/242 [00:01<00:00, 150.39it/s]Loading weights:  98%|█████████▊| 238/242 [00:01<00:00, 142.63it/s]Loading weights: 100%|██████████| 242/242 [00:02<00:00, 108.66it/s]
+objc[67576]: Class AVFFrameReceiver is implemented in both /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/lib/python3.12/site-packages/av/.dylibs/libavdevice.63.1.102.dylib (0x1265383a8) and /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/lib/python3.12/site-packages/cv2/.dylibs/libavdevice.61.3.100.dylib (0x1442a43a8). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+objc[67576]: Class AVFAudioReceiver is implemented in both /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/lib/python3.12/site-packages/av/.dylibs/libavdevice.63.1.102.dylib (0x1265383f8) and /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/lib/python3.12/site-packages/cv2/.dylibs/libavdevice.61.3.100.dylib (0x1442a43f8). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+       40.24 real       123.85 user        19.78 sys
+         25712902144  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             1571056  page reclaims
+              695096  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   4  messages sent
+                   4  messages received
+                   0  signals received
+                9841  voluntary context switches
+              533439  involuntary context switches
+       1344598564427  instructions retired
+        540306996596  cycles elapsed
+         14176021832  peak memory footprint
+EXIT:0

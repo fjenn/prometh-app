@@ -1,0 +1,19 @@
+        5.17 real         2.04 user         2.48 sys
+         10348347392  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             1030701  page reclaims
+                   4  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                1408  voluntary context switches
+               25642  involuntary context switches
+         51608000032  instructions retired
+         19049135884  cycles elapsed
+         12809364240  peak memory footprint
+EXIT:0

@@ -1,0 +1,16 @@
+{
+  "checkedAtUTC": "2026-10-27T22:49:18.499891+00:00",
+  "sourceCommit": "466986bea79e53ec37670b262f3e8357f66926da",
+  "releaseApp": "build/NativDevelopmentDerivedData/Build/Products/Release/Prometh.app",
+  "pid": 74061,
+  "healthHTTPStatus": 200,
+  "healthServerPID": 74084,
+  "serverParentChain": [
+    74084,
+    74083,
+    74061
+  ],
+  "standardDeepSignatureVerification": "passed (exit 0)",
+  "strictSignatureVerification": "failed: existing external Homebrew interpreter symlinks in reader/searxng/composio_mcp venvs; retained runtime layout",
+  "bundledCatalogAndMediaRuntimeMatchSource": true
+}

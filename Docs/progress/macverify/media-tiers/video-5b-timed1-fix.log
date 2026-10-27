@@ -1,0 +1,65 @@
+START 2026-10-27T22:23:48Z label=video-5b-timed1-fix
+CMD: /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/bin/python3 /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/bounded_video.py /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/fastvideo/examples/inference/basic/mlx_wan22_generate.py --text-encoder-root /Users/armando/Library/Application Support/Prometh/Models/FastVideo--FastMetal-5B-QAD--5e4819ec9c8d --mlx-checkpoint /Users/armando/Library/Application Support/Prometh/Models/FastVideo--FastMetal-5B-QAD--5e4819ec9c8d --vae-root /Users/armando/Library/Application Support/Prometh/Models/FastVideo--FastMetal-5B-QAD--5e4819ec9c8d/vae --prompt a calm ocean wave rolling onto a sandy beach at sunset --output-path /Users/armando/Projects/Coding/prometh-app/Docs/progress/macverify/media-tiers/video-5b-timed1-fix.mp4 --height 448 --width 832 --num-frames 121 --fps 24 --decode-backend taehv --seed 1024 --fast --no-prompt-cache
+chat:
+NONE
+time_pid=67574 child_pid=67576
+INFO 10-27 19:23:51.235 [__init__.py:60] MPS (Metal Performance Shaders) is available
+[wan22 fast] generating 61 frames, RIFE 2x -> 121
+[5B] latent 48x16x28x52
+[Prometh] UMT5 direct load torch.float16 on cpu
+[5B] prompt encoded (1, 512, 4096) in 23.2s
+[5B] DiT loaded in 0.1s
+[5B] denoise 3 steps in 8.1s, peak 6.85 GiB
+[Prometh] TAEHV fp16: 16px latent cores / 20px halo / 1 latent frame
+[post] RIFE 2x -> 121 frames, unsharp 0.60 written to /Users/armando/Projects/Coding/prometh-app/Docs/progress/macverify/media-tiers/video-5b-timed1-fix.mp4
+[5B] decoded via taehv in 2.0s → /Users/armando/Projects/Coding/prometh-app/Docs/progress/macverify/media-tiers/video-5b-timed1-fix.mp4
+{
+  "output_path": "/Users/armando/Projects/Coding/prometh-app/Docs/progress/macverify/media-tiers/video-5b-timed1-fix.mp4",
+  "prompt": "a calm ocean wave rolling onto a sandy beach at sunset",
+  "prompt_used": "a calm ocean wave rolling onto a sandy beach at sunset",
+  "enhance_prompt": false,
+  "enhance_backend": null,
+  "enhance_elapsed_s": 0.0,
+  "height": 448,
+  "width": 832,
+  "fps": 24,
+  "target_frames": 121,
+  "generated_frames": 61,
+  "seed": 1024,
+  "renoise_seed": 0,
+  "dmd_denoising_steps": [
+    1000,
+    757,
+    522
+  ],
+  "flow_shift": 5.0,
+  "warp": true,
+  "spatial_mode": "off",
+  "fast": true,
+  "fast_factor": 2,
+  "fast_spatial_scale": null,
+  "refine_scale": null,
+  "decode_backend": "taehv",
+  "prompt_encode_s": 23.156,
+  "dit_load_s": 0.127,
+  "denoise_s": 8.095,
+  "decode_s": 2.044,
+  "rife_s": 2.325,
+  "wall_total_s": 36.494,
+  "peak_gib": 6.848,
+  "latent_shape": [
+    48,
+    16,
+    28,
+    52
+  ],
+  "stage2_latent_shape": [
+    48,
+    16,
+    28,
+    52
+  ],
+  "mlx_checkpoint": "/Users/armando/Library/Application Support/Prometh/Models/FastVideo--FastMetal-5B-QAD--5e4819ec9c8d"
+}
+[Prometh] full pipeline finished in 36.6s
+END 2026-10-27T22:24:29Z

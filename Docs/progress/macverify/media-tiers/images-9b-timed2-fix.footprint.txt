@@ -1,0 +1,6 @@
+    phys_footprint: 4702277736 B
+    phys_footprint_peak: 4702277736 B
+    phys_footprint: 12104835688 B
+    phys_footprint_peak: 12105409128 B
+    phys_footprint: 12830745552 B
+    phys_footprint_peak: 12831695824 B

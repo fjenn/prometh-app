@@ -1,0 +1,23 @@
+W1027 19:24:31.222000 67777 .venv/lib/python3.12/site-packages/torch/distributed/elastic/multiprocessing/redirects.py:35] NOTE: Redirects are currently not supported in MacOs.
+Loading weights:   0%|          | 0/242 [00:00<?, ?it/s]Loading weights:  36%|███▌      | 87/242 [00:00<00:00, 826.08it/s]Loading weights:  70%|███████   | 170/242 [00:00<00:00, 770.13it/s]Loading weights: 100%|██████████| 242/242 [00:00<00:00, 626.91it/s]
+objc[67777]: Class AVFFrameReceiver is implemented in both /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/lib/python3.12/site-packages/av/.dylibs/libavdevice.63.1.102.dylib (0x1246083a8) and /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/lib/python3.12/site-packages/cv2/.dylibs/libavdevice.61.3.100.dylib (0x1424683a8). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+objc[67777]: Class AVFAudioReceiver is implemented in both /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/lib/python3.12/site-packages/av/.dylibs/libavdevice.63.1.102.dylib (0x1246083f8) and /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/lib/python3.12/site-packages/cv2/.dylibs/libavdevice.61.3.100.dylib (0x1424683f8). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+       37.61 real       123.69 user        12.72 sys
+         25712410624  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             2265424  page reclaims
+                 370  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   4  messages sent
+                   4  messages received
+                   0  signals received
+                8547  voluntary context switches
+               92247  involuntary context switches
+       1319240424972  instructions retired
+        512924974778  cycles elapsed
+         14174973256  peak memory footprint
+EXIT:0

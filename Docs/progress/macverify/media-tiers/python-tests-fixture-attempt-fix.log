@@ -1,0 +1,22 @@
+....EE....                                                               [100%]
+==================================== ERRORS ====================================
+________________ ERROR at setup of test_standin_trim_and_poster ________________
+file /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/test_media.py, line 84
+  def test_standin_trim_and_poster(tmp: Path) -> None:
+E       fixture 'tmp' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, platformdirs_isolated, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, subtests, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/test_media.py:84
+________________ ERROR at setup of test_cancel_kills_the_child _________________
+file /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/test_media.py, line 105
+  def test_cancel_kills_the_child(tmp: Path) -> None:
+E       fixture 'tmp' not found
+>       available fixtures: anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, capteesys, doctest_namespace, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, platformdirs_isolated, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, subtests, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/test_media.py:105
+=========================== short test summary info ============================
+ERROR PromethRuntime/media/test_media.py::test_standin_trim_and_poster
+ERROR PromethRuntime/media/test_media.py::test_cancel_kills_the_child
+8 passed, 2 errors in 2.58s

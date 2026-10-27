@@ -1,0 +1,14 @@
+START 2026-10-27T22:25:07Z label=video-14b-timed1-fix
+CMD: /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/bin/python3 /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/bounded_video.py /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/fastvideo/examples/inference/basic/mlx_wan_prompt_to_video.py --model-root /Users/armando/Library/Application Support/Prometh/Models/FastVideo--FastMetal-14B-QAD--fbc50323c677 --mlx-checkpoint /Users/armando/Library/Application Support/Prometh/Models/FastVideo--FastMetal-14B-QAD--fbc50323c677 --prompt a calm ocean wave rolling onto a sandy beach at sunset --output-path /Users/armando/Projects/Coding/prometh-app/Docs/progress/macverify/media-tiers/video-14b-timed1-fix.mp4 --height 480 --width 832 --num-frames 81 --fps 16 --decode-backend wan-vae --seed 1024 --no-prompt-cache
+chat:
+NONE
+time_pid=67970 child_pid=67972
+EXIT:0
+END 2026-10-27T22:31:04Z
+SUMMARY video-14b-timed1-fix
+  exit=0
+  time_l_max_rss_gib=15.188
+  time_l_peak_footprint_gib=22.634
+  sampled_phys_footprint_max_gib=22.634
+  mlx_line: MLX load peak memory: 0.00 GiB
+  mlx_line: MLX denoise peak memory: 21.68 GiB

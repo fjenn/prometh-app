@@ -1,0 +1,7 @@
+START 2026-10-27T22:14:31Z label=video-timed1-fix
+CMD: /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/bin/python3 /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/bounded_video.py /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/fastvideo/examples/inference/basic/mlx_wan_prompt_to_video.py --model-root /Users/armando/Library/Application Support/Prometh/Models/FastVideo--FastMetal-1.3B-QAD--2dac0154b217 --mlx-checkpoint /Users/armando/Library/Application Support/Prometh/Models/FastVideo--FastMetal-1.3B-QAD--2dac0154b217 --prompt a calm ocean wave rolling onto a sandy beach at sunset --output-path /Users/armando/Projects/Coding/prometh-app/Docs/progress/macverify/media-tiers/video-timed1-fix.mp4 --height 480 --width 832 --num-frames 81 --fps 16 --decode-backend wan-vae --seed 1024 --no-prompt-cache
+chat:
+NONE
+time_pid=64642 child_pid=64644
+INFO 10-27 19:14:34.664 [__init__.py:60] MPS (Metal Performance Shaders) is available
+END 2026-10-27T22:14:37Z
