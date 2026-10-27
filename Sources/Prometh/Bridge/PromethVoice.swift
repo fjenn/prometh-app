@@ -87,8 +87,10 @@ final class PromethVoice: ObservableObject {
         guard let text = PromethVoiceDefaults.fileTranscript() else { return }
         finishRecording()
         transcript = text
-        phase = "Speaking"
         let answer = PromethVoiceDefaults.selfTestAnswer(for: text) ?? ""
+        if answer.isEmpty {
+            phase = "Listening"
+        }
         onExchange?(text, answer)
     }
 

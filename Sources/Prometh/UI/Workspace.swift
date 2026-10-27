@@ -84,7 +84,7 @@ struct WorkspaceView: View {
                 if let a=m.artifact{ArtifactCard(store:store,artifact:a)}
                 if let links=m.sourceLinks,!links.isEmpty {PromethSourcesRow(links:links,messageID:m.id,focused:focusedMessage==m.id ? focusedCitation:nil).id("sources-\(m.id.uuidString)")}
                 if let names=m.appliedSkillNames,!names.isEmpty{Text("Skills: "+names.joined(separator:", ")).font(.system(size:10)).foregroundStyle(.secondary)}
-                if m.status != "streaming" && m.status != "preparing" && !m.text.isEmpty{HStack(spacing:13){IconButton(symbol:"doc.on.doc",title:"Copy response"){let board=NSPasteboard.general;board.clearContents();board.setString(m.text,forType:.string);if let path=ProcessInfo.processInfo.environment["PROMETH_COPY_LOG"]{try? m.text.write(to:URL(fileURLWithPath:path),atomically:true,encoding:.utf8)}};IconButton(symbol:"arrow.clockwise",title:m.status=="failed" ? "Retry response":"Regenerate response"){store.regenerate(m)};IconButton(symbol:"speaker.wave.2",title:"Read response aloud"){store.speak(m.text)};if m.status=="stopped"{Text("Stopped").font(.caption).foregroundStyle(.secondary)};if m.status=="failed"{Button("Try again"){store.regenerate(m)}.font(.caption)}}.foregroundStyle(.secondary)}
+                if m.status != "streaming" && m.status != "preparing" && !m.text.isEmpty{HStack(spacing:13){Button{let board=NSPasteboard.general;board.clearContents();board.setString(m.text,forType:.string);if let path=ProcessInfo.processInfo.environment["PROMETH_COPY_LOG"]{try? m.text.write(to:URL(fileURLWithPath:path),atomically:true,encoding:.utf8)}}label:{Label("Copy response",systemImage:"doc.on.doc").labelStyle(.iconOnly).font(.system(size:15)).frame(width:30,height:30).contentShape(Rectangle())}.buttonStyle(.plain).help("Copy response").accessibilityLabel("Copy response").accessibilityIdentifier("prometh.copy");IconButton(symbol:"arrow.clockwise",title:m.status=="failed" ? "Retry response":"Regenerate response"){store.regenerate(m)};IconButton(symbol:"speaker.wave.2",title:"Read response aloud"){store.speak(m.text)};if m.status=="stopped"{Text("Stopped").font(.caption).foregroundStyle(.secondary)};if m.status=="failed"{Button("Try again"){store.regenerate(m)}.font(.caption)}}.foregroundStyle(.secondary)}
             }}.frame(maxWidth:.infinity,alignment:.leading).accessibilityIdentifier(m.role == "user" ? "prometh.user":"prometh.reply")
     }
     @ViewBuilder func formattedText(_ message: Message) -> some View {
@@ -152,7 +152,11 @@ struct WorkspaceView: View {
         guard store.state.preparations[Capability.voice.rawValue]?.status == .ready else {prepareVoice();return}
         if store.current==nil {store.newChat()}
         let owner=store.state.selectedChatID
-        store.voice.onExchange={user,reply in guard store.state.selectedChatID==owner else{return};store.appendVoiceExchange(user,reply)}
+        store.voice.onExchange={user,reply in
+            guard store.state.selectedChatID==owner else{return}
+            store.appendVoiceExchange(user,reply)
+            if !reply.isEmpty {store.speak(reply)}
+        }
         store.voice.open()
         if !store.voice.denied {store.voice.sampleTurn()}
     }

@@ -576,6 +576,9 @@ final class PromethStore: ObservableObject {
         speechToken += 1
         speechPlayer?.stop()
         speechPlayer = nil
+        if voice.phase == "Speaking" {
+            voice.phase = voice.denied ? "Microphone unavailable" : "Listening"
+        }
     }
 
     func speak(_ text: String) {
@@ -584,12 +587,23 @@ final class PromethStore: ObservableObject {
         voice.readAloud(spoken)
         speechToken += 1
         let token = speechToken
-        Task {
+        Task { @MainActor in
             do {
                 let wav = try await PromethPocketSpeech.synthesize(spoken)
-                guard token == speechToken, !voice.muted else { return }
+                guard token == speechToken, !voice.muted else {
+                    if token != speechToken, voice.phase == "Speaking" {
+                        voice.phase = voice.denied ? "Microphone unavailable" : "Listening"
+                    }
+                    return
+                }
                 speechPlayer = NSSound(contentsOf: wav, byReference: false)
                 speechPlayer?.play()
+                while token == speechToken, speechPlayer?.isPlaying == true {
+                    try? await Task.sleep(nanoseconds: 100_000_000)
+                }
+                if token == speechToken, voice.phase == "Speaking" {
+                    voice.phase = voice.denied ? "Microphone unavailable" : "Listening"
+                }
             } catch {
                 if token == speechToken {
                     voice.phase = "Listening"
@@ -611,8 +625,8 @@ final class PromethStore: ObservableObject {
         setDraft(existing + separator + text)
         dictating = false
         if fromFile, let answer = PromethVoiceDefaults.selfTestAnswer(for: text) {
-            voice.phase = "Speaking"
             appendVoiceExchange(text, answer)
+            speak(answer)
             return
         }
         voice.phase = fromFile ? "Speaking" : "Listening"

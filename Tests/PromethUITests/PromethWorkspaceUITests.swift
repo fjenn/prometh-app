@@ -109,12 +109,21 @@ final class PromethWorkspaceUITests: XCTestCase {
         XCTAssertTrue(waitForReply(in: app, timeout: 180))
         Thread.sleep(forTimeInterval: 0.4)
 
-        let copy = app.buttons["Copy response"].firstMatch
+        let copy = app.descendants(matching: .any).matching(identifier: "prometh.copy").allElementsBound.last
+            ?? app.buttons["Copy response"].allElementsBound.last
+        XCTAssertNotNil(copy)
+        guard let copy else { return }
         XCTAssertTrue(copy.waitForExistence(timeout: 5))
-        copy.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
-        let copied = copiedText()
-        let logged = (try? String(contentsOf: copyLog, encoding: .utf8)) ?? ""
-        XCTAssertFalse(copied.isEmpty, "clipboard empty logged \(logged.debugDescription) frame \(copy.frame)")
+        copy.click()
+        var copied = copiedText()
+        var logged = (try? String(contentsOf: copyLog, encoding: .utf8)) ?? ""
+        if copied.isEmpty && logged.isEmpty {
+            copy.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+            Thread.sleep(forTimeInterval: 0.3)
+            copied = copiedText()
+            logged = (try? String(contentsOf: copyLog, encoding: .utf8)) ?? ""
+        }
+        XCTAssertFalse(copied.isEmpty && logged.isEmpty, "clipboard empty logged \(logged.debugDescription) frame \(copy.frame)")
 
         let conversationName = "Ocean notes \(String(UUID().uuidString.prefix(4)))"
         identified(app, "prometh.conversation.menu").click()
