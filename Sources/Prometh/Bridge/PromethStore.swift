@@ -686,11 +686,16 @@ final class PromethStore: ObservableObject {
 
     func chooseAttachment() {
         let panel = NSOpenPanel()
-        panel.allowsMultipleSelection = false
+        panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
-        guard panel.runModal() == .OK, let url = panel.url, let id = state.selectedChatID else { return }
+        panel.canChooseFiles = true
+        panel.allowedContentTypes =
+            [.image, .text, .pdf]
+            + ChatDocumentFormat.formatsByFileExtension.keys
+                .compactMap { UTType(filenameExtension: $0) }
+        guard panel.runModal() == .OK, !panel.urls.isEmpty, let id = state.selectedChatID else { return }
         if chat.currentSessionID != id { select(id) }
-        guard chat.attachFiles(fromURLs: [url]) else {
+        guard chat.attachFiles(fromURLs: panel.urls) else {
             error = "That file couldn't be read."
             return
         }
