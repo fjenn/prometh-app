@@ -226,6 +226,40 @@ final class PromethTranscriptTests: XCTestCase {
         )
     }
 
+    func testOuterMarkdownFenceUnwrapsSoNestedCodeAndListsRender() {
+        let wrapped = """
+        ```markdown
+        Here is a **bold** word.
+
+        * apple
+        * banana
+        * cherry
+
+        ```python
+        print("hello")
+        ```
+        ```
+        """
+        let unwrapped = PromethTranscript.unwrapOuterMarkdownFence(wrapped)
+        XCTAssertFalse(unwrapped.hasPrefix("```markdown"), unwrapped)
+        XCTAssertTrue(unwrapped.contains("**bold**"), unwrapped)
+        XCTAssertTrue(unwrapped.contains("\n* apple\n"), unwrapped)
+        XCTAssertTrue(unwrapped.contains("```python\nprint(\"hello\")\n```"), unwrapped)
+        let scrubbed = PromethTranscript.scrubInternals(unwrapped)
+        let parts = scrubbed.components(separatedBy: "```")
+        XCTAssertEqual(parts.count, 3, "\(parts)")
+        // A lone python sample must not be unwrapped.
+        let codeOnly = """
+        ```python
+        print("hello")
+        ```
+        """
+        XCTAssertEqual(
+            PromethTranscript.unwrapOuterMarkdownFence(codeOnly).trimmingCharacters(in: .whitespacesAndNewlines),
+            codeOnly.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+    }
+
     func testScrubPreservesMarkdownListsAndFencedCode() {
         // Exact shape of the judge chat prompt / reply that collapsed in final-chat.png
         // when scrubInternals treated newlines as collapsible whitespace.

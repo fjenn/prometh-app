@@ -18,14 +18,14 @@ enum PromethTranscript {
     ) -> String? {
         let body = content.trimmingCharacters(in: .whitespacesAndNewlines)
         if !body.isEmpty {
-            return scrubInternals(content)
+            return scrubInternals(unwrapOuterMarkdownFence(content))
         }
         if hasToolCalls && !isLastAssistantInTurn {
             return nil
         }
         let thought = reasoning.trimmingCharacters(in: .whitespacesAndNewlines)
         if !thought.isEmpty {
-            return scrubInternals(reasoning)
+            return scrubInternals(unwrapOuterMarkdownFence(reasoning))
         }
         if isLastAssistantInTurn && !isStreaming && !searchHits.isEmpty {
             return groundedSummary(searchHits)
@@ -67,6 +67,32 @@ enum PromethTranscript {
             }
             return "\(hit.title) \(marker)\n\(hit.snippet)"
         }.joined(separator: "\n\n")
+    }
+
+    /// Models often wrap a whole markdown reply in ```markdown … ```, which makes
+    /// Workspace's fence splitter treat lists/bold as a single code card. Unwrap
+    /// document fences so nested ```python``` and list markers render normally.
+    static func unwrapOuterMarkdownFence(_ value: String) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasPrefix("```") else { return value }
+        var lines = trimmed.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        guard let first = lines.first else { return value }
+        let lang = String(first.dropFirst(3)).trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let wrappers: Set<String> = ["", "markdown", "md", "text", "txt"]
+        guard wrappers.contains(lang) else { return value }
+        guard trimmed.hasSuffix("```") else { return value }
+        lines.removeFirst()
+        while lines.last?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == true {
+            lines.removeLast()
+        }
+        guard lines.last?.trimmingCharacters(in: .whitespacesAndNewlines) == "```" else { return value }
+        lines.removeLast()
+        let unwrapped = lines.joined(separator: "\n")
+        let hasStructure = unwrapped.contains("```")
+            || unwrapped.contains("\n*")
+            || unwrapped.contains("\n-")
+            || unwrapped.contains("**")
+        return hasStructure ? unwrapped : value
     }
 
     /// Drops attachment IDs / UUID dumps that models sometimes echo from tool JSON.
