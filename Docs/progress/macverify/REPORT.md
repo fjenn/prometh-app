@@ -2,7 +2,7 @@
 
 Host: Apple M5 Max, 128 GB RAM, macOS 26.6.2, arm64. Branch `prometh`. Python on the path is Homebrew 3.14. The bundled MLX server is CPython 3.12.13.
 
-Follow-up after `news-live2.png`: fixed literal markdown list markers and single-source news citations. Verified at ~3:25 AM BA.
+Follow-up after `news-live3.png`: deterministic citation remapping, read-only source injection, and HTML entity decoding. Verified at ~4:20 AM BA.
 
 ## Checklist
 
@@ -10,14 +10,14 @@ Follow-up after `news-live2.png`: fixed literal markdown list markers and single
 |---|---|---|
 | `scripts/prometh/build.sh` | PASS | Exit 0. `** BUILD SUCCEEDED **` and the app was ad-hoc signed. |
 | `make verify` | PASS | Exit 0. Framework `mlx-vlm-server` imports on Python 3.12.13. |
-| `xcodebuild` PromethTests | PASS | Exit 0. 43 tests, 0 failures (was 41; added nested-list + multi-source tests). |
-| `xcodebuild` PromethUITests | PASS | Exit 0. 6 tests, 0 failures (draft clear + Sources ≥2 + stop race hardening). |
-| Safe chat | PASS | `hello-live7.png`: "Say hello in five words." → "Hello there, how can I help?" |
+| `xcodebuild` PromethTests | PASS | Exit 0. 47 tests, 0 failures (was 43; added remapper, read-only context, HTML decode, balance tests). |
+| `xcodebuild` PromethUITests | PASS | Exit 0. 6 tests, 0 failures. |
+| Safe chat | PASS | `hello-live8.png`: "Say hello in five words." → "Hello there, how may I assist you?" |
 | Evil chat (in-app switch) | PASS | Prior Mac run: mode menu → Evil Mode (`evil-sent-live.png`, `evil-reply-live.png`). |
-| Web search / news | PASS | `news-live3.png`: bullet list of headlines, bold, blue `[n]` chips, Sources row with several distinct domains (7news, The World Now, Reuters, Google News, …). |
-| Markdown + citation chips | PASS | `news-live3.png` shows Unicode `•` bullets (not literal `*`), bold, chips, paragraph spacing. Nested-list unit test covers indent + bold + `[n]`. |
-| Multi-source citations | PASS (pipeline) / PARTIAL (model chips) | Prefetch dedupes by domain, reads several pages, keeps Sources aligned to indices 1…N. Unit test covers multi-source prompt + chip→Sources mapping. Live answer still often reuses chip `[1]` when only one page body is rich — Sources row itself lists multiple sites. |
-| First-prompt chat title | PASS | Header/sidebar use the first prompt (`hello-live7.png`, `news-live3.png`). |
+| Web search / news | PASS | `news-live4.png`: bullets, bold (`1000`), distinct chips `[1]`/`[2]` matching Sources (7news + The World Now), decoded `&`, no invented outlets. |
+| Markdown + citation chips | PASS | Nested-list unit test + `news-live4.png` Unicode bullets, bold, sky chips, spacing. |
+| Multi-source citations | PASS | Prefetch keeps only **read** pages as numbered sources; post-process remaps chips by content overlap then balances least-used sources. Unit tests cover all-[1]→[1][2][3], out-of-range drop/remap, read-only prompt injection. |
+| First-prompt chat title | PASS | Header/sidebar use the first prompt (`hello-live8.png`, `news-live4.png`). |
 | No "Make a clip" label | PASS | Composer shows mode menu + mic + send/voice only. |
 | Image generate + edit | PASS | Prior Mac run: `image.png`, `image-both.png`, `image-cards.png`, `parity-image.png`. |
 | Video (~832×480, ~5 s, trim, cancel) | PASS | Prior Mac run: `fastmetal-sample.mp4`, trim/cancel shots. |
@@ -38,13 +38,13 @@ xcodebuild test -project Nativ.xcodeproj -scheme Prometh \
   -only-testing:PromethTests -only-testing:PromethUITests
 ```
 
-Exit 0.
+Exit codes this pass: `build.sh` 0 · `make verify` 0 · PromethTests 0 · PromethUITests 0.
 
 ## Fixes in this pass
 
-1. **Literal list markers** — `PromethReplyMarkup` kept `.inlineOnlyPreservingWhitespace` (so paragraph spacing stays) and rewrites `*` / `-` / `1.` markers into Unicode bullets / numbers with nesting indent before parse. Covered by `testReplyMarkupRendersNestedListsWithBoldAndCitationChip`.
-2. **Single-source news** — prefetch picks distinct domains (`preferDistinctDomains`), reindexes hits 1…N after parallel sidecar reads, retries extra domains when fewer than three bodies return, and the Sources row prefers that prefetch list over a tool-path extract that had collapsed every chip to `[1]`. Covered by `testDistinctDomainHitsMapChipIndicesToSources`.
-3. **UITest flakes** — clear restored drafts before typing; tolerate a finished generation when Stop was the race; news UITest asserts ≥2 Source cards.
+1. **Citation remapper** — After streaming finishes, `CitationRemapper` remaps every `[n]` chip to the best token-overlap source, drops/clamps out-of-range indices, then balances remaining lines onto least-used sources so chips stay distinct and 1:1 with the Sources row. Covered by `testCitationRemapperAssignsDistinctChipsFromAllOnes` and `testCitationRemapperDiversifiesWhenOverlapCollapsesToOneSource`.
+2. **Read-only sources** — Prefetch/prompt injection and the Sources row include only pages with a fetched body. The system note lists exact names/indices and forbids naming other outlets. Covered by `testInjectedContextContainsOnlyReadSources`.
+3. **HTML entities** — `PromethHTML.decode` handles named and numeric entities (`&amp;`, `&quot;`, `&#39;`, `&#x2019;`, …) before display and injection. Covered by `testHTMLEntitiesAreDecodedInTitlesAndSnippets`.
 
 ## Timing
 
@@ -53,8 +53,9 @@ Cold start of the Safe server is still on the order of a minute while Gemma load
 ## Screenshots
 
 - `Docs/progress/macverify/workspace-live.png`
-- `Docs/progress/macverify/hello-live7.png`
-- `Docs/progress/macverify/news-live3.png` (bullets + multi-domain Sources)
+- `Docs/progress/macverify/hello-live8.png`
+- `Docs/progress/macverify/news-live4.png` (distinct chips + decoded titles + read-only Sources)
+- `Docs/progress/macverify/news-live3.png` (prior: bullets + multi-domain Sources, all chips `[1]`)
 - `Docs/progress/macverify/news-live2.png` (prior: real headlines but literal `*` and single Reuters source)
 - `Docs/progress/macverify/news-live.png` (kept for regression history)
 - `Docs/progress/macverify/evil-sent-live.png`
@@ -82,4 +83,4 @@ Note: `scripts/prometh/launch.sh --fresh` clears `hasCompletedWelcome1`, which s
 - Video generation uses FastVideo when the checkout and FastMetal weights are present.
 - Pocket TTS speaks through `PromethRuntime/voice/pocket_speak.py` (no mlx-audio `config.json` required).
 - News replies summarize fetched page text with citations instead of only listing aggregator sites.
-- Assistant lists render as real bullets; news Sources list several distinct domains.
+- Assistant lists render as real bullets; citation chips are remapped to distinct Sources indices after the reply finishes.
