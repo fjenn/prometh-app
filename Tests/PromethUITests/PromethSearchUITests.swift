@@ -12,8 +12,8 @@ final class PromethSearchUITests: XCTestCase {
         let draft = app.textViews["prometh.draft"]
         XCTAssertTrue(draft.waitForExistence(timeout: 30))
         draft.click()
-        app.typeText("What happened in the news today?")
-        app.typeKey(.return, modifierFlags: [])
+        draft.typeText("What happened in the news today?")
+        draft.typeKey(.return, modifierFlags: [])
 
         let sources = app.staticTexts["Sources"]
         XCTAssertTrue(sources.waitForExistence(timeout: 90))

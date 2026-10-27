@@ -75,19 +75,15 @@ struct PromethSettingsView:View {
     var advanced:some View {
         VStack(alignment:.leading,spacing:18) {
             Text("Search and reading stay on this Mac. API providers are optional and are never the default.").font(.system(size:13)).foregroundStyle(.secondary)
-            DisclosureGroup("Search status") {
-                VStack(alignment:.leading,spacing:8) {
-                    Text(SearXNGSupervisor.shared.statusText).font(.system(size:12, design:.monospaced))
-                    Button("Restart search") {
-                        SearXNGSupervisor.shared.stop()
-                        Task { await SearXNGSupervisor.shared.start() }
-                    }
-                    Button("SearXNG source code") {
-                        if let url = URL(string: PromethSearchCredits.searxngSourceURL) {
-                            NSWorkspace.shared.open(url)
-                        }
-                    }
-                }.padding(.top, 8)
+            Text(SearXNGSupervisor.shared.statusText).font(.system(size:12, design:.monospaced))
+            Button("Restart search") {
+                SearXNGSupervisor.shared.stop()
+                Task { await SearXNGSupervisor.shared.start() }
+            }
+            Button("SearXNG source code") {
+                if let url = URL(string: PromethSearchCredits.searxngSourceURL) {
+                    NSWorkspace.shared.open(url)
+                }
             }
             DisclosureGroup("Page reader") {
                 Text("On-device reader. No API key.").font(.system(size:12)).foregroundStyle(.secondary).padding(.top, 8)
@@ -106,7 +102,7 @@ struct PromethSettingsView:View {
                     set: { store.setBroker($0) }
                 )
             ).textFieldStyle(.roundedBorder)
-            Text("Optional. Leave this empty and connected apps stay hidden. The service key stays out of the app.")
+            Text("Optional. With a key in the local config file, connected apps call Composio directly. A broker address is only used when that file is absent.")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
             if CommandLine.arguments.contains(where: { $0.hasPrefix("--prometh-flags") }) {
@@ -151,7 +147,7 @@ struct PluginsPage:View {
             Text("Apps your AI can use.").foregroundStyle(.secondary)
             ConnectorsList(store:store)
             TextField("Connection broker HTTPS address",text:Binding(get:{store.state.connectorBrokerURL ?? ""},set:{store.setBroker($0)})).textFieldStyle(.roundedBorder)
-            Text("Optional. A Prometh broker keeps the service key off this Mac app and opens real authorization in your browser. Local AI works without a connection.").font(.system(size:11)).foregroundStyle(.secondary)
+            Text("Optional override. Prometh calls Composio with the key in the local config file. Local AI works without a connection.").font(.system(size:11)).foregroundStyle(.secondary)
         }
     }
 }
@@ -202,6 +198,6 @@ struct ConsentView:View {
     @ObservedObject var store:PromethStore
     let provider:Provider
     var body:some View {
-        VStack(alignment:.leading,spacing:22){HStack{PromethProviderLogo(provider:provider,size:35);Spacer();Brand()};Text("Connect \(provider.rawValue)").font(.system(size:27,weight:.medium));Text("Your browser will open a real authorization page. Connected app requests use the optional cloud connection service.").foregroundStyle(.secondary);Text(provider.access).font(.system(size:13));Text("Local AI does not need an account. Connections require a configured Prometh broker; its project secret stays on the broker.").font(.caption).foregroundStyle(.secondary);HStack{Button("Cancel"){store.consent=nil};Spacer();Button("Continue in browser"){store.connect(provider)}.buttonStyle(PrimaryButton())}}.padding(32).frame(width:480)
+        VStack(alignment:.leading,spacing:22){HStack{PromethProviderLogo(provider:provider,size:35);Spacer();Brand()};Text("Connect \(provider.rawValue)").font(.system(size:27,weight:.medium));Text("Your browser will open a real authorization page. Connected app requests go to Composio.").foregroundStyle(.secondary);Text(provider.access).font(.system(size:13));Text("Local AI does not need an account. The project key stays in the local config file and is not shown.").font(.caption).foregroundStyle(.secondary);HStack{Button("Cancel"){store.consent=nil};Spacer();Button("Continue in browser"){store.connect(provider)}.buttonStyle(PrimaryButton())}}.padding(32).frame(width:480)
     }
 }

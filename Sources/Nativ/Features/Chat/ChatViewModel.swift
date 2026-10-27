@@ -2810,6 +2810,12 @@ final class ChatViewModel: ObservableObject {
             .server.effectiveContextLimit
         }
 
+        if !PromethFlags.isRunningUnitTests,
+           let prefetch = Self.PromethPromptAdditions.prefetch,
+           let user = sessionMessages(for: queuedRequest.sessionID)?.first(where: { $0.id == queuedRequest.userMessageID }) {
+            await prefetch(user.id, user.content)
+        }
+
         while true {
             try Task.checkCancellation()
             let advertisesTools = ChatToolRoundGate.advertisesTools(atRound: toolRounds)
@@ -3455,15 +3461,16 @@ final class ChatViewModel: ObservableObject {
 
     // PROMETH-SEAM: S7 — installed by Prometh at launch. Nil keeps Nativ's endpoint.
     enum ChatEndpointResolver {
-        static var resolve: ((NativSettings, UUID) async throws -> NativSettings)?
-        static var presentsLlamaErrors = false
+        nonisolated(unsafe) static var resolve: ((NativSettings, UUID) async throws -> NativSettings)?
+        nonisolated(unsafe) static var presentsLlamaErrors = false
         static let interruptedMessage =
             "Something interrupted that. Your request is saved. Try again when you're ready."
     }
 
     // PROMETH-SEAM: S9 — Prometh registers citation and persona text at launch.
     enum PromethPromptAdditions {
-        static var sections: (@Sendable () -> [String])?
+        nonisolated(unsafe) static var sections: (@Sendable () -> [String])?
+        nonisolated(unsafe) static var prefetch: (@Sendable (UUID, String) async -> Void)?
     }
 
     static let corePrompt = """

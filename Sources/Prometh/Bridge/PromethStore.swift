@@ -6,7 +6,12 @@ import UniformTypeIdentifiers
 /// Prometh screens talk to this store. Conversations are Nativ chat sessions.
 @MainActor
 final class PromethStore: ObservableObject {
-    @Published var state: Snapshot { didSet { persist() } }
+    @Published var state: Snapshot {
+        didSet {
+            PromethWebPrefetch.enabled = state.webSearch
+            persist()
+        }
+    }
     @Published var chats: [Conversation] = []
     @Published var error: String?
     @Published var settingsOpen = false
@@ -75,6 +80,7 @@ final class PromethStore: ObservableObject {
             }
         }
         state = restored
+        PromethWebPrefetch.enabled = restored.webSearch
         drafts = restored.drafts
         modes = restored.modes
         publishModes()
@@ -89,6 +95,7 @@ final class PromethStore: ObservableObject {
         reload()
         persist()
         connectorHost.apply(brokerURL: brokerURL)
+        refreshConnections()
         preparation.attach(self)
         if ProcessInfo.processInfo.environment["PROMETH_SELFTEST_DRIVE"] == "catalog" {
             Task { await driveCatalogSelfTest() }
@@ -110,7 +117,7 @@ final class PromethStore: ObservableObject {
         return value
     }
 
-    var connectorsAvailable: Bool { brokerURL != nil }
+    var connectorsAvailable: Bool { brokerURL != nil || PromethConnectorSecret.hasAPIKeyFile() }
 
     func setBroker(_ raw: String) {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -346,7 +353,7 @@ final class PromethStore: ObservableObject {
         persist()
     }
 
-    func send() {
+    func send(_ typed: String? = nil) {
         PromethPromptAdditionsMode.current = current?.mode.rawValue ?? BehaviorMode.safe.rawValue
         if current == nil { newChat() }
         guard let id = state.selectedChatID else { return }
@@ -355,15 +362,67 @@ final class PromethStore: ObservableObject {
             error = "Evil Mode is not ready yet."
             return
         }
-        let text = drafts[id.uuidString] ?? current?.draft ?? ""
+        let stored = drafts[id.uuidString] ?? current?.draft ?? ""
+        let text = (typed?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false) ? typed! : stored
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        drafts[id.uuidString] = text
         chat.draft = text
-        guard chat.canSend(isRunning: model.isRunning, selectedModelID: model.settings.languageModelID) else {
+        guard readyToSend() else {
             error = "The local model is not ready yet."
+            scheduleSendWhenReady()
             return
         }
+        if !deliver(id) {
+            error = "The local model is not ready yet."
+            scheduleSendWhenReady()
+        }
+    }
+
+    private var waitingToSend = false
+
+    private func readyToSend() -> Bool {
+        !model.isModelLoading && chat.canSend(
+            isRunning: model.isRunning,
+            selectedModelID: model.settings.languageModelID
+        )
+    }
+
+    private func scheduleSendWhenReady() {
+        guard !waitingToSend else { return }
+        waitingToSend = true
+        Task { @MainActor in
+            for _ in 0..<120 {
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                guard waitingToSend, let id = state.selectedChatID else { return }
+                let text = drafts[id.uuidString] ?? ""
+                guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    waitingToSend = false
+                    return
+                }
+                if chat.currentSessionID != id { select(id) }
+                chat.draft = text
+                if readyToSend(), deliver(id) {
+                    return
+                }
+            }
+            waitingToSend = false
+        }
+    }
+
+    @discardableResult
+    private func deliver(_ id: UUID) -> Bool {
+        let text = (drafts[id.uuidString] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        chat.draft = text
         chat.send(using: model, languageModelSupportsTools: true, languageModelSupportsVision: false)
+        let saved = chat.messages.contains {
+            $0.role == .user && $0.content.trimmingCharacters(in: .whitespacesAndNewlines) == text
+        }
+        guard saved else { return false }
         drafts[id.uuidString] = ""
+        waitingToSend = false
+        error = nil
         persist()
+        return true
     }
 
     func stop(_ id: UUID) {
@@ -533,15 +592,59 @@ final class PromethStore: ObservableObject {
     func openCustomize(_ section: String = "Tools") {
         customizeSection = connectorsAvailable || section != "Plugins" ? section : "Tools"
         customizeOpen = true
+        refreshConnections()
     }
 
     func connect(_ provider: Provider) {
         consent = nil
-        error = "A connection broker is not configured."
+        error = nil
+        Task {
+            let result = await PromethConnectorClient.link(provider)
+            if let url = result.redirectURL {
+                NSWorkspace.shared.open(url)
+                await pollConnection(provider)
+            } else {
+                error = result.message ?? "The authorization page did not open."
+            }
+        }
     }
 
     func disconnect(_ provider: Provider) {
         state.connections[provider.rawValue] = .disconnected
+        Task {
+            _ = await PromethConnectorClient.disconnect(provider)
+            state.connections[provider.rawValue] = .disconnected
+        }
+    }
+
+    func refreshConnections() {
+        guard connectorsAvailable else { return }
+        Task {
+            for provider in Provider.allCases {
+                await applyConnectionStatus(provider)
+            }
+        }
+    }
+
+    private func pollConnection(_ provider: Provider) async {
+        for _ in 0..<30 {
+            if await applyConnectionStatus(provider) { return }
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+        }
+    }
+
+    @discardableResult
+    private func applyConnectionStatus(_ provider: Provider) async -> Bool {
+        let result = await PromethConnectorClient.status(provider)
+        if result.status == "connected" {
+            state.connections[provider.rawValue] = .connected
+            return true
+        }
+        if result.status == "expired" {
+            state.connections[provider.rawValue] = .expired
+            return true
+        }
+        return false
     }
 
     func expireConnection() {
@@ -895,7 +998,7 @@ except Exception as error:
                         before: message.id,
                         in: messages,
                         assistantText: message.content
-                    )
+                    ) ?? PromethWebPrefetch.storedLinks(before: message.id, in: messages)
                 }
                 if message.toolName == PromethGenerateVideoTool.toolName {
                     item.artifact = PromethVideoResult.artifact(from: message.content, prompt: "")

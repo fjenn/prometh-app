@@ -101,8 +101,8 @@ final class PromethWorkspaceUITests: XCTestCase {
         XCTAssertTrue(waitForReply(in: app, timeout: 180))
 
         app.buttons["Copy response"].firstMatch.click()
-        let copied = NSPasteboard.general.string(forType: .string) ?? ""
-        XCTAssertFalse(copied.isEmpty)
+        let copied = copiedText()
+        XCTAssertFalse(copied.isEmpty, "clipboard was empty after Copy response")
 
         let conversationName = "Ocean notes \(String(UUID().uuidString.prefix(4)))"
         identified(app, "prometh.conversation.menu").click()
@@ -248,6 +248,29 @@ final class PromethWorkspaceUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 0.5)
         }
         return false
+    }
+
+    /// macOS pasteboard privacy can hide NSPasteboard reads from the test runner.
+    /// pbpaste sees the general clipboard the app just wrote.
+    private func copiedText() -> String {
+        let deadline = Date().addingTimeInterval(2)
+        while Date() < deadline {
+            if let direct = NSPasteboard.general.string(forType: .string), !direct.isEmpty {
+                return direct
+            }
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/pbpaste")
+            let pipe = Pipe()
+            process.standardOutput = pipe
+            process.standardError = FileHandle.nullDevice
+            try? process.run()
+            process.waitUntilExit()
+            let pasted = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if !pasted.isEmpty { return pasted }
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        return ""
     }
 
     private func replyLooksReady(_ app: XCUIApplication) -> Bool {
