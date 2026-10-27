@@ -175,9 +175,10 @@ final class PromethSearchTests: XCTestCase {
         XCTAssertTrue(note.contains("Sudan fighting"))
         XCTAssertTrue(note.contains("only sources you may cite"), note)
         XCTAssertTrue(
-            note.contains("several different indices") || note.contains("different index"),
+            note.contains("State only facts present") || note.contains("present in the Page text"),
             note
         )
+        XCTAssertFalse(note.contains("never reuse [1]"), note)
 
         // Chip indices from a model answer must land on the Sources list.
         let answer = hits.prefix(3).map { "Fact from source [\($0.index)]." }.joined(separator: " ")
@@ -187,7 +188,7 @@ final class PromethSearchTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(cited.count, 3)
     }
 
-    func testCitationRemapperAssignsDistinctChipsFromAllOnes() {
+    func testCitationRemapperMapsLineToSourceContainingThatClaim() {
         let sources = [
             CitationRemapper.Source(
                 index: 1,
@@ -219,25 +220,54 @@ final class PromethSearchTests: XCTestCase {
         * Unrelated filler with a bad chip [99]
         """
         let rewritten = CitationRemapper.rewrite(reply, sources: sources)
-        XCTAssertTrue(rewritten.contains("[1]"), rewritten)
-        XCTAssertTrue(rewritten.contains("[2]"), rewritten)
-        XCTAssertTrue(rewritten.contains("[3]"), rewritten)
         XCTAssertFalse(rewritten.contains("[99]"), rewritten)
-        // Each matching sentence should land on its source, not all [1].
+        // Line X must map to the source whose body contains claim X — not
+        // balance or round-robin onto unused Sources.
         let sudan = rewritten.split(separator: "\n").first { $0.contains("Sudan") }.map(String.init) ?? ""
         let storm = rewritten.split(separator: "\n").first { $0.lowercased().contains("storm") }.map(String.init) ?? ""
         let quake = rewritten.split(separator: "\n").first { $0.lowercased().contains("earthquake") }.map(String.init) ?? ""
-        XCTAssertTrue(sudan.contains("[1]"), sudan)
-        XCTAssertTrue(storm.contains("[2]"), storm)
-        XCTAssertTrue(quake.contains("[3]"), quake)
+        XCTAssertTrue(sudan.contains("[1]"), "Sudan line must cite Reuters body: \(sudan)")
+        XCTAssertTrue(storm.contains("[2]"), "Storm line must cite AP body: \(storm)")
+        XCTAssertTrue(quake.contains("[3]"), "Quake line must cite BBC body: \(quake)")
         XCTAssertFalse(rewritten.uppercased().contains("CNN"), rewritten)
         let cited = CitationMarkup.citedIndices(in: rewritten)
         XCTAssertEqual(cited.subtracting([1, 2, 3]), [])
     }
 
-    func testCitationRemapperDiversifiesWhenOverlapCollapsesToOneSource() {
-        // Bodies share little with the bullets, so raw overlap would keep the
-        // model's all-[2] chips. The remapper must still emit distinct indices.
+    func testCitationRemapperAllowsRepeatedChipsWhenOneSourceSupportsAllLines() {
+        let sources = [
+            CitationRemapper.Source(
+                index: 1,
+                title: "Reuters Sudan",
+                url: "https://www.reuters.com/world/sudan",
+                body: "Sudan fighting continues in Khartoum. El Fasher remains contested. Aid convoys reached Oleshky.",
+                snippet: "Sudan fighting"
+            ),
+            CitationRemapper.Source(
+                index: 2,
+                title: "Weather desk",
+                url: "https://apnews.com/weather",
+                body: "A coastal storm knocked out power for thousands of homes.",
+                snippet: "coastal storm"
+            ),
+        ]
+        let reply = """
+        * Sudan fighting continues in Khartoum [2]
+        * El Fasher remains contested [2]
+        * Aid convoys reached Oleshky [2]
+        """
+        let rewritten = CitationRemapper.rewrite(reply, sources: sources)
+        let lines = rewritten.split(separator: "\n").map(String.init)
+        for line in lines where line.contains("*") {
+            XCTAssertTrue(line.contains("[1]"), "Each Sudan claim is in source 1: \(line)")
+            XCTAssertFalse(line.contains("[2]"), "Must not balance onto weather: \(line)")
+        }
+        XCTAssertEqual(CitationMarkup.citedIndices(in: rewritten), [1])
+    }
+
+    func testCitationRemapperDropsUnsupportedChips() {
+        // Bodies share nothing with the bullets — chips must be dropped, not
+        // round-robined onto unused Sources for cosmetic diversity.
         let sources = [
             CitationRemapper.Source(
                 index: 1,
@@ -262,14 +292,10 @@ final class PromethSearchTests: XCTestCase {
         """
         let rewritten = CitationRemapper.rewrite(reply, sources: sources)
         let cited = CitationMarkup.citedIndices(in: rewritten)
-        XCTAssertEqual(cited, [1, 2], "Distinct Sources need distinct chips: \(rewritten)")
-        XCTAssertFalse(rewritten.contains("[99]"))
-        // Least-used assignment should not leave four bullets on one source.
-        let ones = rewritten.components(separatedBy: "[1]").count - 1
-        let twos = rewritten.components(separatedBy: "[2]").count - 1
-        XCTAssertGreaterThanOrEqual(ones, 1, rewritten)
-        XCTAssertGreaterThanOrEqual(twos, 1, rewritten)
-        XCTAssertLessThanOrEqual(abs(ones - twos), 2, "Chips should be roughly balanced: \(rewritten)")
+        XCTAssertTrue(cited.isEmpty, "Unsupported claims must lose their chips: \(rewritten)")
+        XCTAssertFalse(rewritten.contains("[1]"), rewritten)
+        XCTAssertFalse(rewritten.contains("[2]"), rewritten)
+        XCTAssertTrue(rewritten.contains("Oleshky"), rewritten)
     }
 
     func testInjectedContextContainsOnlyReadSources() {

@@ -125,7 +125,8 @@ enum PromethSearchContext {
             """
             Searched the web for this question on \(today). The pages below were fetched with the local reader. \
             These are the only sources you may cite or name: \(named). Do not mention any other outlet, site, or publisher. \
-            Cite them with [n]. When \(read.count) results are listed, use several different indices (for example [1], [2], [3]) — never reuse [1] for every fact. \
+            Cite them with [n]. State only facts present in the Page text below — never invent claims that are not there. \
+            Cite each fact with the index of the page that contains it; reusing the same [n] is fine when one page supports several facts. \
             Summarize 3–5 concrete headlines from the page text; do not only list site names or tell the user to visit the links.
             """,
             block,

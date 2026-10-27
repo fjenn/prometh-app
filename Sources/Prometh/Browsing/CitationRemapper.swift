@@ -1,9 +1,13 @@
 import Foundation
 
 /// Deterministic post-processing for model replies: remap `[n]` chips to the
-/// source whose fetched text best matches each cited sentence/bullet, clamp
-/// out-of-range indices, and scrub outlet names that were never read.
+/// source whose fetched text best matches each cited sentence/bullet, drop chips
+/// with no supporting overlap, clamp out-of-range indices, and scrub outlet
+/// names that were never read.
 enum CitationRemapper {
+    /// Minimum token-overlap score required to keep a citation chip.
+    static let minimumSupportScore: Double = 1.0
+
     struct Source: Equatable, Sendable {
         var index: Int
         var title: String
@@ -32,8 +36,9 @@ enum CitationRemapper {
     }
 
     /// Assign each cited sentence/bullet to the best-matching source index.
-    /// Uses a global unique-first pass so several bullets over several sources
-    /// become `[1]`, `[2]`, `[3]`… instead of every chip collapsing to one index.
+    /// A chip is kept only when overlap clears `minimumSupportScore`; otherwise
+    /// it is dropped. Repeated chips for one source are intentional when that
+    /// source supports multiple lines.
     static func remapCitations(_ reply: String, sources: [Source]) -> String {
         guard !sources.isEmpty else { return stripCitations(reply) }
         guard let expression = try? NSRegularExpression(pattern: #"\[(\d+(?:\s*,\s*\d+)*)\]"#) else {
@@ -54,7 +59,7 @@ enum CitationRemapper {
                 tokens.isEmpty ? 0 : Self.score(tokens: tokens, source: source)
             })
         }
-        let assigned = uniqueAssignments(scores: scores, sourceCount: sources.count)
+        let assigned = bestOverlapAssignments(scores: scores)
         var resultLines = lines
         for (slot, lineIndex) in citedLineIndexes.enumerated() {
             let chosen: Int?
@@ -73,65 +78,26 @@ enum CitationRemapper {
         return resultLines.joined(separator: "\n")
     }
 
-    /// Greedy unique assignment: highest scores first; prefer unused sources so
-    /// chips diversify across the Sources row. After every source is used once,
-    /// reuse is allowed for remaining lines.
+    /// Per-line best overlap. No balancing, unique-forcing, or round-robin —
+    /// only content support decides the chip (or its removal).
+    static func bestOverlapAssignments(scores: [[Double]]) -> [Int?] {
+        guard !scores.isEmpty else { return [] }
+        return scores.map { row in
+            var bestSource: Int?
+            var bestScore = 0.0
+            for (source, score) in row.enumerated() where score > bestScore {
+                bestScore = score
+                bestSource = source
+            }
+            guard bestScore >= minimumSupportScore else { return nil }
+            return bestSource
+        }
+    }
+
+    /// Legacy name kept for call sites/tests that still import the old API.
     static func uniqueAssignments(scores: [[Double]], sourceCount: Int) -> [Int?] {
-        guard sourceCount > 0, !scores.isEmpty else {
-            return Array(repeating: nil, count: scores.count)
-        }
-        var assignment: [Int?] = Array(repeating: nil, count: scores.count)
-        var usedSources: Set<Int> = []
-        // Edges sorted by score descending, then by line order for stability.
-        var edges: [(line: Int, source: Int, score: Double)] = []
-        for (line, row) in scores.enumerated() {
-            for (source, score) in row.enumerated() where score >= 1.0 {
-                edges.append((line, source, score))
-            }
-        }
-        edges.sort {
-            if $0.score != $1.score { return $0.score > $1.score }
-            if $0.line != $1.line { return $0.line < $1.line }
-            return $0.source < $1.source
-        }
-        // Pass 1: unique sources only.
-        for edge in edges {
-            if assignment[edge.line] != nil { continue }
-            if usedSources.contains(edge.source) { continue }
-            assignment[edge.line] = edge.source
-            usedSources.insert(edge.source)
-        }
-        // Pass 2: remaining lines prefer the least-used source (content score as
-        // tie-break) so chips stay roughly balanced across the Sources row.
-        var usage = Array(repeating: 0, count: sourceCount)
-        for value in assignment {
-            if let value { usage[value] += 1 }
-        }
-        for (line, row) in scores.enumerated() where assignment[line] == nil {
-            let minUse = usage.min() ?? 0
-            var bestSource = 0
-            var bestScore = -1.0
-            for (source, score) in row.enumerated() {
-                if usage[source] != minUse { continue }
-                if score > bestScore {
-                    bestScore = score
-                    bestSource = source
-                }
-            }
-            assignment[line] = bestSource
-            usage[bestSource] += 1
-        }
-        // Pass 3: if a single source still owns every chip while multiple sources
-        // exist, force round-robin so chips are visibly distinct.
-        let assignedValues = assignment.compactMap { $0 }
-        if sourceCount > 1,
-           assignedValues.count > 1,
-           Set(assignedValues).count == 1 {
-            for (line, _) in scores.enumerated() {
-                assignment[line] = line % sourceCount
-            }
-        }
-        return assignment
+        _ = sourceCount
+        return bestOverlapAssignments(scores: scores)
     }
 
     private static func applyIndex(
@@ -143,12 +109,8 @@ enum CitationRemapper {
         let range = NSRange(line.startIndex..., in: line)
         let matches = expression.matches(in: line, range: range)
         guard !matches.isEmpty else { return line }
-        // Multiple markers on one line (e.g. "on [2] and [2]") get distinct
-        // unused indices when a single chosen index would otherwise repeat.
-        let markers = matches.count
         var result = ""
         var cursor = line.startIndex
-        var slot = 0
         for match in matches {
             guard let whole = Range(match.range, in: line),
                   let group = Range(match.range(at: 1), in: line) else { continue }
@@ -161,23 +123,13 @@ enum CitationRemapper {
                 continue
             }
             if let chosen {
-                if markers > 1, valid.count > 1 {
-                    // Spread multi-marker lines across 1…N in order.
-                    let ordered = valid.sorted()
-                    let index = ordered[slot % ordered.count]
-                    result += "[\(index)]"
-                } else {
-                    result += "[\(chosen)]"
-                }
+                // Honest remapping: every marker on the line points at the
+                // best-overlap source for that line (repeats allowed).
+                result += "[\(chosen)]"
             } else {
-                let kept = parts.filter { valid.contains($0) }
-                if kept.count == 1 {
-                    result += "[\(kept[0])]"
-                } else if kept.count > 1 {
-                    result += kept.map { "[\($0)]" }.joined()
-                }
+                // No supporting source — drop the chip entirely.
+                _ = valid
             }
-            slot += 1
             cursor = whole.upperBound
         }
         result += line[cursor...]
@@ -196,7 +148,7 @@ enum CitationRemapper {
                 best = source
             }
         }
-        return bestScore >= 1.0 ? best : nil
+        return bestScore >= minimumSupportScore ? best : nil
     }
 
     static func score(tokens segmentTokens: Set<String>, source: Source) -> Double {
