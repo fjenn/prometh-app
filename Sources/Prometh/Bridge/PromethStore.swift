@@ -1264,7 +1264,7 @@ except Exception as error:
 
     /// Size match against the pinned catalog. A full hash of the GGUF would stall launch.
     private static func evilWeightsInstalled(support: URL) -> Bool {
-        guard let evil = try? ModelCatalogLoader.bundled()?.model(id: "evil"), !evil.files.isEmpty else {
+        guard let evil = try? ModelCatalogLoader.bundled().model(id: "evil"), !evil.files.isEmpty else {
             return false
         }
         let folder = CatalogPaths.folder(root: CatalogPaths.modelsRoot(support: support), model: evil)
