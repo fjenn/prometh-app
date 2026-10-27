@@ -179,6 +179,7 @@
 		3AA3A795AAD2F1EE33BECFCB /* NimbleBrowsingProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32ECE279A81609EFF928C0D5 /* NimbleBrowsingProvider.swift */; };
 		3AFF125435F3C39C23AD06BC /* ChatWorkTerminal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33D174F906418CC994011980 /* ChatWorkTerminal.swift */; };
 		3B5AD8CC3165AEF3839C50EA /* PromethTranscript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1114236F781C2DC01A713FC4 /* PromethTranscript.swift */; };
+		3B72A00498574595EB2539F2 /* ComposerDraftSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D84364D58D7E0839FC79CB /* ComposerDraftSync.swift */; };
 		3C612817DDB7C3800F41F61C /* PersistedDataChangeHubTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C870DD5A3B825D12BC04EB9D /* PersistedDataChangeHubTests.swift */; };
 		3CFCC551774CD33CA71FE609 /* ArtifactRefreshTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD136B8C2C1F6B2B554064C5 /* ArtifactRefreshTests.swift */; };
 		3D7F718E2E136C35CD3509B4 /* ChatSystemStatsTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = A83D9F5E20A8F5FFC8618E82 /* ChatSystemStatsTool.swift */; };
@@ -200,6 +201,7 @@
 		42E4499A9E626E2A06B6D544 /* ChatImageModelSelectionRequestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 332C54820A1273F103E68BC2 /* ChatImageModelSelectionRequestTests.swift */; };
 		43450E39C6229D137A927F99 /* ArtifactProvenanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F5045481C806F7F3478679 /* ArtifactProvenanceTests.swift */; };
 		444833C6AEF5C794590B8A45 /* ChatToolRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31D10F9AFCCD57FA0625CA24 /* ChatToolRegistry.swift */; };
+		44AD8B368277A8C14E1DDB5D /* ComposerDraftSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D84364D58D7E0839FC79CB /* ComposerDraftSync.swift */; };
 		44E56C2D50FED9F7F03EAD48 /* HuggingFaceDownloadPreflight.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4D6131B6961BE835918A998 /* HuggingFaceDownloadPreflight.swift */; };
 		44F8A17BDE2610C6E90CE53F /* CustomTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6D53CFF2D565C0BFE3DE65E /* CustomTool.swift */; };
 		4506A2C6826C855DF6BDDB16 /* PromethConnectorClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65A427D91334D824023FF2C0 /* PromethConnectorClient.swift */; };
@@ -1180,6 +1182,7 @@
 		C84253E53D2F0467883FC928 /* CitationMarkup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CitationMarkup.swift; sourceTree = "<group>"; };
 		C870DD5A3B825D12BC04EB9D /* PersistedDataChangeHubTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistedDataChangeHubTests.swift; sourceTree = "<group>"; };
 		C8B94192425D46A59F516118 /* PersistedDataChangeHub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistedDataChangeHub.swift; sourceTree = "<group>"; };
+		C8D84364D58D7E0839FC79CB /* ComposerDraftSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposerDraftSync.swift; sourceTree = "<group>"; };
 		C9A57792805B0438492CB6AB /* ChatToolRegistryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatToolRegistryTests.swift; sourceTree = "<group>"; };
 		CAC74F87F9DBA8245B268970 /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
 		CBDDB16C4594B521C15073A4 /* ChatFolderMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatFolderMigrationTests.swift; sourceTree = "<group>"; };
@@ -1751,6 +1754,7 @@
 		8102CB4F71E64B8CC25D29E0 /* Bridge */ = {
 			isa = PBXGroup;
 			children = (
+				C8D84364D58D7E0839FC79CB /* ComposerDraftSync.swift */,
 				4467F67A1ED2EF343C654088 /* LlamaSupervisor.swift */,
 				AD0093CA42BD8022339B3084 /* ModeRouter.swift */,
 				77823478292749ECABF32269 /* PromethConversationTitle.swift */,
@@ -2725,6 +2729,7 @@
 				8DDC40DBC93106697899C121 /* CitationMarkup.swift in Sources */,
 				F8BAA9EB3620F48334B3EAD6 /* CitationRemapper.swift in Sources */,
 				FD18166B4B3FAEB77E0D8C69 /* CodexCLIProfile.swift in Sources */,
+				3B72A00498574595EB2539F2 /* ComposerDraftSync.swift in Sources */,
 				F9BDEE50A3A79D2E69B5E3B3 /* ComposerEditor.swift in Sources */,
 				5196EA3B5CC4CE166899FE19 /* ControlPanelActions.swift in Sources */,
 				276CD3A0BBC5127714E407CA /* ControlPanelDependencies.swift in Sources */,
@@ -3252,6 +3257,7 @@
 				3E41F5E1F84E4E560E93C1E2 /* CatalogTests.swift in Sources */,
 				BE57C7BC541285737C5DB298 /* CitationMarkup.swift in Sources */,
 				F0E840AA290316A20548B825 /* CitationRemapper.swift in Sources */,
+				44AD8B368277A8C14E1DDB5D /* ComposerDraftSync.swift in Sources */,
 				4EDA8A4D6D62434678E39020 /* Design.swift in Sources */,
 				1519D786E2789B9FC5B05175 /* Domain.swift in Sources */,
 				4BAFA425689003F20152A940 /* MediaPlan.swift in Sources */,
