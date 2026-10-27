@@ -7,7 +7,7 @@ struct WorkspaceView: View {
     @Environment(\.accessibilityReduceMotion) var reduceMotion
     @State var sidebar=true;@State var renaming:UUID?;@State var renameText="";@State var deleting:UUID?
     @State var editing:Message?;@State var editText="";@State var sourcePreview=false
-    var isEvil:Bool {store.current?.mode == .evil}
+    var isEvil:Bool {store.displayedMode == .evil}
     var body:some View {
         HStack(spacing:0){if sidebar{sidebarView.frame(width:240);Divider()};main}
             .background(scheme == .dark ? Color(hex:0x20232B):Color(hex:0xFAF9F6))
@@ -89,13 +89,6 @@ struct WorkspaceView: View {
     @ViewBuilder func formattedText(_ message:Message)->some View {let blocks=message.text.components(separatedBy:"```");VStack(alignment:.leading,spacing:14){ForEach(Array(blocks.enumerated()),id:\.offset){i,block in if i%2==1 {Text(block).font(.system(size:13,design:.monospaced)).textSelection(.enabled).padding(16).frame(maxWidth:.infinity,alignment:.leading).background(.primary.opacity(0.05),in:RoundedRectangle(cornerRadius:14))}else{PromethCitationText(text:block, links:message.sourceLinks)}}}.accessibilityElement(children:.combine).accessibilityIdentifier("prometh.reply")}
     var composer:some View {
         VStack(alignment:.leading,spacing:6) {
-            if store.state.preparations[Capability.video.rawValue]?.status != .ready {
-                Button("Make a clip"){store.offerVideo()}
-                    .buttonStyle(.plain)
-                    .font(.system(size:12))
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("prometh.video.suggest")
-            }
             if store.dictating {HStack{Text("Listening…").font(.system(size:12)).foregroundStyle(.secondary);Spacer();Button("Finish"){store.voice.finishRecording()};Button("Cancel"){store.cancelDictation()}.font(.system(size:12))}}
             if let c=store.current,!c.attachments.isEmpty {ScrollView(.horizontal){HStack{ForEach(c.attachments){a in HStack{Button{store.previewAttachment=a}label:{Label(a.filename,systemImage:"paperclip").lineLimit(1)}.buttonStyle(.plain);IconButton(symbol:"xmark",title:"Remove attachment"){store.removeAttachment(a)}}.font(.caption).padding(.horizontal,8).padding(.vertical,4).background(Color.primary.opacity(0.05),in:Capsule())}}}}
             ZStack(alignment:.topLeading){if (store.current?.draft ?? "").isEmpty{Text("Message "+Product.name).font(.system(size:16)).foregroundStyle(.tertiary).padding(.top,8).padding(.leading,4).allowsHitTesting(false)};ComposerEditor(text:Binding(get:{store.current?.draft ?? ""},set:{if store.current==nil{store.newChat()};store.setDraft($0)}),onSend:{store.send($0)}).frame(height:min(130,max(36,CGFloat((store.current?.draft.components(separatedBy:"\n").count ?? 1))*21+16)))}
