@@ -135,6 +135,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @MainActor UNUserNotif
             )
         )
         if WelcomePreferences.hasCompleted {
+            if PromethFlags.promethShell, !PromethFlags.isRunningUnitTests {
+                pinInstalledSafeModel()
+            }
             model.startServer()
         }
         // PROMETH-SEAM: S10
@@ -183,6 +186,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @MainActor UNUserNotif
         runtime.stop()
         model.applicationWillTerminate()
         PromethSearchBootstrap.stop()
+    }
+
+    /// Point Safe chat at the catalog model when its files are already on disk.
+    private func pinInstalledSafeModel() {
+        guard let catalog = try? ModelCatalogLoader.bundled(),
+              let safe = catalog.model(id: "safe"),
+              (try? CatalogDownloader.linkInstalled(
+                model: safe,
+                support: PromethIdentity.applicationSupportDirectory
+              )) == true
+        else { return }
+        var settings = model.settings
+        let hub = CatalogPaths.hub(support: PromethIdentity.applicationSupportDirectory).path
+        guard settings.languageModelID != safe.repo || settings.modelSearchPath != hub else { return }
+        settings.languageModelID = safe.repo
+        settings.modelSearchPath = hub
+        model.settings = settings
     }
 
     func makeWindowState() -> NativWindowState {

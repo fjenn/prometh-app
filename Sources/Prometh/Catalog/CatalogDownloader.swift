@@ -224,6 +224,19 @@ enum CatalogDownloader {
         try linkItem(from: source, to: destination)
     }
 
+    /// Hard-links an already verified catalog folder into the hub cache and writes `refs/main`.
+    /// Returns false when any file is missing or its hash does not match. Does not download.
+    static func linkInstalled(model: CatalogModel, support: URL) throws -> Bool {
+        let folder = CatalogPaths.folder(root: CatalogPaths.modelsRoot(support: support), model: model)
+        for file in model.files {
+            let source = try safeFile(file.path, under: folder)
+            guard try CatalogHash.matches(file, at: source) else { return false }
+            try linkVerified(file: file, model: model, source: source, support: support)
+        }
+        try writeMainRef(model: model, support: support)
+        return true
+    }
+
     private static func writeMainRef(model: CatalogModel, support: URL) throws {
         let ref = CatalogPaths.mainRef(hub: CatalogPaths.hub(support: support), model: model)
         try FileManager.default.createDirectory(at: ref.deletingLastPathComponent(), withIntermediateDirectories: true)
