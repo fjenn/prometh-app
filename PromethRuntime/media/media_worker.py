@@ -279,7 +279,8 @@ def main() -> None:
                     Path(message["poster"]),
                 )
                 emit({"ok": True, "event": "done", "plan": plan})
-            elif op == "trim":
+                return
+            if op == "trim":
                 result = worker.trim(
                     Path(message["source"]),
                     Path(message["output"]),
@@ -287,10 +288,12 @@ def main() -> None:
                     float(message["end"]),
                 )
                 emit({"ok": True, "trim": result})
-            else:
-                emit({"ok": False, "error": "unknown op"})
+                return
+            emit({"ok": False, "error": "unknown op"})
+            return
         except Exception as error:
             emit({"ok": False, "error": str(error)})
+            return
 
 
 def emit(payload: dict) -> None:

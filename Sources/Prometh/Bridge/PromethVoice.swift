@@ -120,6 +120,8 @@ final class PromethVoice: ObservableObject {
 
     func readAloud(_ text: String) {
         guard !text.isEmpty else { return }
+        // Show the voice layer so Interrupt / Mute are available during read-aloud.
+        isOpen = true
         phase = "Speaking"
         transcript = text
     }
