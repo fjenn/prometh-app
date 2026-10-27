@@ -52,23 +52,44 @@ final class ModelPickerTests: XCTestCase {
         XCTAssertTrue(PromethModelPicker.options(.safe, catalog: catalog).contains { $0.id == "safe" })
     }
 
-    func testMediaBestFitPicksTopTierOnBigMac() throws {
+    func testMediaBestFitAcrossRAMTiers() throws {
+        // Budgets: RAM*0.75-1 with residentGB=0 (chat unloads before media).
+        // Measured workingMemoryGB: images=6.0, video=6.0, video-5b=27.0, images-9b=14, video-14b=28.
+        // 8 GB budget 5.0 → neither photo nor video (6*1.08=6.48 > 5.0).
         let catalog = try ModelCatalogLoader.bundled()
-        XCTAssertEqual(
-            PromethModelPicker.choose(.images, catalog: catalog, memoryGB: 128, freeBytes: .max).model?.id,
-            "images-9b"
-        )
-        XCTAssertEqual(
-            PromethModelPicker.choose(.video, catalog: catalog, memoryGB: 128, freeBytes: .max).model?.id,
-            "video-14b"
-        )
-        XCTAssertEqual(
-            PromethModelPicker.choose(.images, catalog: catalog, memoryGB: 16, freeBytes: .max).model?.id,
-            "images"
-        )
-        XCTAssertEqual(
-            PromethModelPicker.choose(.video, catalog: catalog, memoryGB: 16, freeBytes: .max).model?.id,
-            "video"
-        )
+        let expectedImages: [(Int, String?)] = [
+            (8, nil),
+            (16, "images"),
+            (24, "images-9b"),
+            (36, "images-9b"),
+            (48, "images-9b"),
+            (64, "images-9b"),
+            (128, "images-9b"),
+        ]
+        let expectedVideo: [(Int, String?)] = [
+            (8, nil),
+            (16, "video"),
+            (24, "video"),
+            (36, "video"),
+            (48, "video-14b"),
+            (64, "video-14b"),
+            (128, "video-14b"),
+        ]
+        for (ram, expected) in expectedImages {
+            let choice = PromethModelPicker.choose(.images, catalog: catalog, memoryGB: ram, freeBytes: .max)
+            XCTAssertEqual(choice.model?.id, expected, "images @ \(ram) GB")
+        }
+        for (ram, expected) in expectedVideo {
+            let choice = PromethModelPicker.choose(.video, catalog: catalog, memoryGB: ram, freeBytes: .max)
+            XCTAssertEqual(choice.model?.id, expected, "video @ \(ram) GB")
+        }
+        // Mid 5B fits the 48 GB budget but loses to 14B in best-first; confirm it is enabled and options-listed.
+        XCTAssertTrue(PromethModelPicker.options(.video, catalog: catalog).contains { $0.id == "video-5b" })
+        let mid = try XCTUnwrap(catalog.model(id: "video-5b"))
+        XCTAssertTrue(mid.enabled)
+        XCTAssertEqual(mid.workingMemoryGB, 27.0, accuracy: 0.01)
+        // 8 GB eligibility gate: measured peaks * 1.08 must be ≤ 5.0 — neither media family qualifies.
+        XCTAssertNil(PromethModelPicker.choose(.images, catalog: catalog, memoryGB: 8, freeBytes: .max).model)
+        XCTAssertNil(PromethModelPicker.choose(.video, catalog: catalog, memoryGB: 8, freeBytes: .max).model)
     }
 }

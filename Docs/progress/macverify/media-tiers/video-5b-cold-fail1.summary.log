@@ -1,0 +1,8 @@
+# First video-5b attempt 2026-10-27T21:49:51Z — denoise succeeded, failed on RIFE hub offline.
+# Captured before timed1.log was overwritten by successful retry.
+exit=1
+time_l_max_rss_gib=23.946
+time_l_peak_footprint_gib=24.533
+sampled_phys_footprint_max_gib=25.0
+mlx_denoise_peak_gib=6.85
+note=HF_HUB_OFFLINE=1 blocked mlx-community/RIFE-4.25; TAEHV pth also attempted download. Cold text-encoder load explains higher peak vs warm success runs.

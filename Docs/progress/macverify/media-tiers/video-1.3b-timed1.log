@@ -1,0 +1,20 @@
+START 2026-10-27T21:08:25Z label=video-1.3b-timed1
+CMD: /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/bin/python3 /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/fastvideo/examples/inference/basic/mlx_wan_prompt_to_video.py --model-root /Users/armando/Library/Application Support/Prometh/Models/FastVideo--FastMetal-1.3B-QAD--2dac0154b217 --mlx-checkpoint /Users/armando/Library/Application Support/Prometh/Models/FastVideo--FastMetal-1.3B-QAD--2dac0154b217 --prompt a calm ocean wave rolling onto a sandy beach at sunset --output-path /Users/armando/Projects/Coding/prometh-app/Docs/progress/macverify/media-tiers/video-1.3b-timed1.mp4 --height 480 --width 832 --num-frames 81 --fps 16 --decode-backend wan-vae --seed 1024
+chat:
+NONE
+time_pid=52585 child_pid=52587
+INFO 10-27 18:08:28.793 [__init__.py:60] MPS (Metal Performance Shaders) is available
+denoise step 1/3 complete
+denoise step 2/3 complete
+denoise step 3/3 complete
+Prompt encode time: 0.01s
+MLX DiT load time: 0.01s
+MLX denoise time: 75.47s
+Decode/export time: 171.61s
+Total prompt-to-video time: 247.27s
+MLX load peak memory: 0.00 GiB
+MLX denoise peak memory: 3.87 GiB
+MLX active memory after denoise: 1.45 GiB
+Spatial mode: off
+Output written to: /Users/armando/Projects/Coding/prometh-app/Docs/progress/macverify/media-tiers/video-1.3b-timed1.mp4
+END 2026-10-27T21:12:38Z

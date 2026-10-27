@@ -1,0 +1,23 @@
+W1027 18:51:41.592000 58930 torch/distributed/elastic/multiprocessing/redirects.py:35] NOTE: Redirects are currently not supported in MacOs.
+Fetching 4 files:   0%|          | 0/4 [00:00<?, ?it/s]Fetching 4 files: 100%|██████████| 4/4 [00:00<00:00, 2197.98it/s]
+objc[58930]: Class AVFFrameReceiver is implemented in both /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/lib/python3.12/site-packages/av/.dylibs/libavdevice.63.1.102.dylib (0x1192a83a8) and /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/lib/python3.12/site-packages/cv2/.dylibs/libavdevice.61.3.100.dylib (0x16ddbc3a8). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+objc[58930]: Class AVFAudioReceiver is implemented in both /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/lib/python3.12/site-packages/av/.dylibs/libavdevice.63.1.102.dylib (0x1192a83f8) and /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/lib/python3.12/site-packages/cv2/.dylibs/libavdevice.61.3.100.dylib (0x16ddbc3f8). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+       58.04 real        10.90 user         3.42 sys
+          5940346880  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              622425  page reclaims
+                 509  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                  25  messages sent
+                  59  messages received
+                   0  signals received
+                8857  voluntary context switches
+               58685  involuntary context switches
+         79928679615  instructions retired
+         25519731419  cycles elapsed
+         22778038528  peak memory footprint
+EXIT:0

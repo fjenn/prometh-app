@@ -1,0 +1,55 @@
+RESULT {'model': 'FastVideo/FastMetal-5B-QAD', 'revision': '5e4819ec9c8dd062443cf015bd9022c700eca458', 'fastvideo': '8db2d71ef217e84bec7dbb6e4ab65c92b144df4f', 'pipeline': 'wan22', 'width': 832, 'height': 448, 'frames': 121, 'fps': 24, 'seconds': 5.0, 'silent': True, 'decodeBackend': 'taehv', 'prompt': 'a calm ocean wave rolling onto a sandy beach at sunset', 'output': '/Users/armando/Projects/Coding/prometh-app/Docs/progress/macverify/media-tiers/video-5b-via-worker.mp4', 'poster': '/Users/armando/Projects/Coding/prometh-app/Docs/progress/macverify/media-tiers/video-5b-via-worker.png', 'mock': False}
+out True 978003
+poster True 280679
+ojects/Coding/prometh-app/PromethRuntime/media/.venv/lib/python3.12/site-packages/cv2/.dylibs/libavdevice.61.3.100.dylib (0x17ffac3a8). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+objc[59606]: Class AVFAudioReceiver is implemented in both /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/lib/python3.12/site-packages/av/.dylibs/libavdevice.63.1.102.dylib (0x11713c3f8) and /Users/armando/Projects/Coding/prometh-app/PromethRuntime/media/.venv/lib/python3.12/site-packages/cv2/.dylibs/libavdevice.61.3.100.dylib (0x17ffac3f8). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+[post] RIFE 2x -> 121 frames, unsharp 0.60 written to /Users/armando/Projects/Coding/prometh-app/Docs/progress/macverify/media-tiers/video-5b-via-worker.mp4
+[5B] decoded via taehv in 0.7s → /Users/armando/Projects/Coding/prometh-app/Docs/progress/macverify/media-tiers/video-5b-via-worker.mp4
+{
+  "output_path": "/Users/armando/Projects/Coding/prometh-app/Docs/progress/macverify/media-tiers/video-5b-via-worker.mp4",
+  "prompt": "a calm ocean wave rolling onto a sandy beach at sunset",
+  "prompt_used": "a calm ocean wave rolling onto a sandy beach at sunset",
+  "enhance_prompt": false,
+  "enhance_backend": null,
+  "enhance_elapsed_s": 0.0,
+  "height": 448,
+  "width": 832,
+  "fps": 24,
+  "target_frames": 121,
+  "generated_frames": 61,
+  "seed": 1024,
+  "renoise_seed": 0,
+  "dmd_denoising_steps": [
+    1000,
+    757,
+    522
+  ],
+  "flow_shift": 5.0,
+  "warp": true,
+  "spatial_mode": "off",
+  "fast": true,
+  "fast_factor": 2,
+  "fast_spatial_scale": null,
+  "refine_scale": null,
+  "decode_backend": "taehv",
+  "prompt_encode_s": 0.004,
+  "dit_load_s": 0.009,
+  "denoise_s": 16.315,
+  "decode_s": 0.68,
+  "rife_s": 3.021,
+  "wall_total_s": 20.778,
+  "peak_gib": 6.848,
+  "latent_shape": [
+    48,
+    16,
+    28,
+    52
+  ],
+  "stage2_latent_shape": [
+    48,
+    16,
+    28,
+    52
+  ],
+  "mlx_checkpoint": "/Users/armando/Library/Application Support/Prometh/Models/FastVideo--FastMetal-5B-QAD--5e4819ec9c8d"
+}

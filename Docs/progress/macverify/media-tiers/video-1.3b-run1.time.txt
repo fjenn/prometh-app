@@ -1,0 +1,5 @@
+W1027 18:01:48.587000 50623 torch/distributed/elastic/multiprocessing/redirects.py:35] NOTE: Redirects are currently not supported in MacOs.
+EXIT:127
+CURL_RESUMED
+ls: /Users/armando/Projects/Coding/prometh-app/Docs/progress/macverify/media-tiers/video-1.3b-run1.mp4: No such file or directory
+NO_CLIP

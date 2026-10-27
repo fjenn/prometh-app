@@ -1,0 +1,5 @@
+chat servers before run:
+NONE
+time_pid=50178 python_pid=50180
+INFO 10-27 17:57:41.525 [__init__.py:60] MPS (Metal Performance Shaders) is available
+INFO 10-27 17:57:42.766 [prompt_cache.py:80] Prompt cache read skipped for /Users/armando/.cache/fastvideo/prompt_embeds/3bd9c3e1593f3142a6988932ab19e77b.npy: [Errno 2] No such file or directory: '/Users/armando/.cache/fastvideo/prompt_embeds/3bd9c3e1593f3142a6988932ab19e77b.npy.json'

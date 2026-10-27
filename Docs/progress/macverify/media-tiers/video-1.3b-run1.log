@@ -1,0 +1,15 @@
+W1027 18:02:29.700000 50778 torch/distributed/elastic/multiprocessing/redirects.py:35] NOTE: Redirects are currently not supported in MacOs.
+INFO 10-27 18:02:30.472 [__init__.py:60] MPS (Metal Performance Shaders) is available
+denoise step 1/3 complete
+denoise step 2/3 complete
+denoise step 3/3 complete
+Prompt encode time: 0.01s
+MLX DiT load time: 0.01s
+MLX denoise time: 75.74s
+Decode/export time: 174.63s
+Total prompt-to-video time: 250.54s
+MLX load peak memory: 0.00 GiB
+MLX denoise peak memory: 3.87 GiB
+MLX active memory after denoise: 1.45 GiB
+Spatial mode: off
+Output written to: /Users/armando/Projects/Coding/prometh-app/Docs/progress/macverify/media-tiers/video-1.3b-diag.mp4
