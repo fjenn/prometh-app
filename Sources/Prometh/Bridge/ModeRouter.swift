@@ -37,6 +37,25 @@ enum PromethModeTable: @unchecked Sendable {
     static func modeForNewChat(existingChats: Int, defaultMode: String) -> String {
         existingChats == 0 ? defaultMode : "Safe Mode"
     }
+
+    /// A mode picked in the menu before a chat exists is the one that chat opens in.
+    static func openingMode(existingChats: Int, defaultMode: String, requested: String?) -> String {
+        if let requested, !requested.isEmpty {
+            return requested
+        }
+        return modeForNewChat(existingChats: existingChats, defaultMode: defaultMode)
+    }
+
+    /// The menu shows the open chat. With no chat yet, it shows the pending choice.
+    static func displayed(chatMode: String?, requested: String?, defaultMode: String) -> String {
+        if let chatMode, !chatMode.isEmpty {
+            return chatMode
+        }
+        if let requested, !requested.isEmpty {
+            return requested
+        }
+        return defaultMode
+    }
 }
 
 enum PromethMemory {

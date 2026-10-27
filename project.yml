@@ -429,6 +429,8 @@ targets:
       - path: Sources/Prometh/Browsing/PromethMarkdown.swift
       - path: Sources/Prometh/Browsing/PromethPrompts.swift
       - path: Sources/Prometh/Bridge/ModeRouter.swift
+      - path: Sources/Prometh/Bridge/PromethConversationTitle.swift
+      - path: Sources/Prometh/Bridge/PromethTranscript.swift
       - path: Sources/Prometh/Bridge/PromethVoice.swift
       - path: Sources/Prometh/Video/MediaPlan.swift
       - path: Sources/Prometh/Connectors/PromethConnectorApproval.swift

@@ -26,6 +26,7 @@ final class PromethStore: ObservableObject {
     @Published var failPreparation = false
     @Published var failNextResponse = false
     @Published var search = ""
+    @Published var requestedMode: BehaviorMode?
     @Published var dictating = false
     @Published var pendingTool: PendingTool?
     @Published var pendingConnectorApproval: PromethConnectorConsent?
@@ -71,6 +72,10 @@ final class PromethStore: ObservableObject {
         restored.selected.insert(.chat)
         if model.settings.normalized().languageModelID?.isEmpty == false {
             restored.preparations[Capability.chat.rawValue] = Preparation(progress: 1, status: .ready)
+        }
+        if Self.evilWeightsInstalled(support: persistence.directory) {
+            restored.preparations["Evil"] = Preparation(progress: 1, status: .ready)
+            restored.evilEnabled = true
         }
         for key in Array(restored.preparations.keys) {
             guard var preparation = restored.preparations[key] else { continue }
@@ -145,6 +150,15 @@ final class PromethStore: ObservableObject {
     }
 
     var current: Conversation? { chats.first { $0.id == state.selectedChatID } }
+
+    var displayedMode: BehaviorMode {
+        let raw = PromethModeTable.displayed(
+            chatMode: current?.mode.rawValue,
+            requested: requestedMode?.rawValue,
+            defaultMode: state.defaultMode.rawValue
+        )
+        return BehaviorMode(rawValue: raw) ?? .safe
+    }
 
     var total: Double { state.selected.reduce(0) { $0 + $1.gigabytes } }
 
@@ -245,17 +259,29 @@ final class PromethStore: ObservableObject {
     }
 
     func setMode(_ mode: BehaviorMode) {
-        if mode == .evil { state.evilEnabled = true }
-        guard let id = state.selectedChatID else { return }
+        if mode == .evil {
+            state.evilEnabled = true
+            if state.preparations["Evil"]?.status != .ready {
+                if Self.evilWeightsInstalled(support: persistence.directory) {
+                    state.preparations["Evil"] = Preparation(progress: 1, status: .ready)
+                    error = nil
+                } else {
+                    error = "Evil Mode is not ready yet."
+                    prepareEvil()
+                }
+            }
+        }
+        guard let id = state.selectedChatID else {
+            requestedMode = mode
+            return
+        }
+        requestedMode = nil
         modes[id.uuidString] = mode
         PromethModeTable.set(id, mode.rawValue)
         if let index = chats.firstIndex(where: { $0.id == id }) {
             chats[index].mode = mode
         }
         persist()
-        if mode == .evil, state.preparations["Evil"]?.status != .ready {
-            error = "Evil Mode is not ready yet."
-        }
     }
 
     func restartOnboarding() {
@@ -314,9 +340,12 @@ final class PromethStore: ObservableObject {
         guard let id = chat.currentSessionID else { return }
         revealed.insert(id.uuidString)
         persistence.saveRevealed(revealed)
-        let opening = PromethModeTable.modeForNewChat(
+        let requested = requestedMode?.rawValue
+        requestedMode = nil
+        let opening = PromethModeTable.openingMode(
             existingChats: chats.count,
-            defaultMode: state.defaultMode.rawValue
+            defaultMode: state.defaultMode.rawValue,
+            requested: requested
         )
         modes[id.uuidString] = BehaviorMode(rawValue: opening) ?? .safe
         PromethModeTable.set(id, opening)
@@ -354,8 +383,8 @@ final class PromethStore: ObservableObject {
     }
 
     func send(_ typed: String? = nil) {
-        PromethPromptAdditionsMode.current = current?.mode.rawValue ?? BehaviorMode.safe.rawValue
         if current == nil { newChat() }
+        PromethPromptAdditionsMode.current = current?.mode.rawValue ?? BehaviorMode.safe.rawValue
         guard let id = state.selectedChatID else { return }
         if chat.currentSessionID != id { select(id) }
         if modes[id.uuidString] == .evil, state.preparations["Evil"]?.status != .ready {
@@ -390,16 +419,23 @@ final class PromethStore: ObservableObject {
     private func scheduleSendWhenReady() {
         guard !waitingToSend else { return }
         waitingToSend = true
+        guard let id = state.selectedChatID else {
+            waitingToSend = false
+            return
+        }
+        let captured = drafts[id.uuidString] ?? ""
         Task { @MainActor in
             for _ in 0..<120 {
                 try? await Task.sleep(nanoseconds: 500_000_000)
-                guard waitingToSend, let id = state.selectedChatID else { return }
-                let text = drafts[id.uuidString] ?? ""
+                guard waitingToSend, state.selectedChatID == id else { return }
+                let live = drafts[id.uuidString] ?? ""
+                let text = live.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? captured : live
                 guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                     waitingToSend = false
                     return
                 }
                 if chat.currentSessionID != id { select(id) }
+                drafts[id.uuidString] = text
                 chat.draft = text
                 if readyToSend(), deliver(id) {
                     return
@@ -987,17 +1023,33 @@ except Exception as error:
             message.role == .user || message.role == .assistant || message.role == .error
                 || (message.role == .tool && message.toolName == PromethGenerateVideoTool.toolName)
         }
+        let prompts = messages.filter { $0.role == .user }.map(\.content)
         return Conversation(
             id: session.id,
-            title: session.displayTitle,
+            title: PromethConversationTitle.title(
+                custom: session.customTitle,
+                preserveStored: session.scheduledTaskID != nil,
+                stored: session.title,
+                prompts: prompts
+            ),
             mode: modes[key] ?? .safe,
-            messages: visible.map { message in
+            messages: visible.compactMap { message in
                 var item = present(message)
                 if message.role == .assistant {
+                    let text = PromethTranscript.visibleText(
+                        content: message.content,
+                        reasoning: message.reasoningContent,
+                        hasToolCalls: !message.toolCalls.isEmpty || !message.streamingToolCalls.isEmpty,
+                        isStreaming: message.isStreaming,
+                        isLastAssistantInTurn: isLastAssistantInTurn(message.id, in: messages),
+                        searchHits: PromethTranscript.searchHits(from: searchBodies(around: message.id, in: messages))
+                    )
+                    guard let text else { return nil }
+                    item.text = text
                     item.sourceLinks = SourcesExtractor.links(
                         before: message.id,
                         in: messages,
-                        assistantText: message.content
+                        assistantText: text
                     ) ?? PromethWebPrefetch.storedLinks(before: message.id, in: messages)
                 }
                 if message.toolName == PromethGenerateVideoTool.toolName {
@@ -1013,6 +1065,46 @@ except Exception as error:
             attachments: [],
             updated: session.updatedAt
         )
+    }
+
+    private func isLastAssistantInTurn(_ messageID: UUID, in messages: [ChatTranscriptMessage]) -> Bool {
+        guard let index = messages.firstIndex(where: { $0.id == messageID }) else { return true }
+        guard index + 1 < messages.count else { return true }
+        for later in messages[(index + 1)...] {
+            if later.role == .user { break }
+            if later.role == .assistant { return false }
+        }
+        return true
+    }
+
+    private func searchBodies(around messageID: UUID, in messages: [ChatTranscriptMessage]) -> [String] {
+        guard let index = messages.firstIndex(where: { $0.id == messageID }) else { return [] }
+        var start = index
+        while start > 0 && messages[start - 1].role != .user {
+            start -= 1
+        }
+        var end = index
+        while end + 1 < messages.count && messages[end + 1].role != .user {
+            end += 1
+        }
+        return messages[start...end].compactMap { message in
+            guard message.role == .tool, message.toolName == "web_search" else { return nil }
+            return message.content
+        }
+    }
+
+    /// Size match against the pinned catalog. A full hash of the GGUF would stall launch.
+    private static func evilWeightsInstalled(support: URL) -> Bool {
+        guard let evil = try? ModelCatalogLoader.bundled()?.model(id: "evil"), !evil.files.isEmpty else {
+            return false
+        }
+        let folder = CatalogPaths.folder(root: CatalogPaths.modelsRoot(support: support), model: evil)
+        for file in evil.files {
+            guard CatalogHash.byteCount(folder.appendingPathComponent(file.path)) == file.size else {
+                return false
+            }
+        }
+        return true
     }
 
     private func present(_ message: ChatTranscriptMessage) -> Message {

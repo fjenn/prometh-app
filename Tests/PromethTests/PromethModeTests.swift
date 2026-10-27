@@ -16,6 +16,29 @@ final class PromethModeTests: XCTestCase {
         )
     }
 
+    func testMenuChoiceOpensTheNextChatInThatMode() {
+        XCTAssertEqual(
+            PromethModeTable.openingMode(existingChats: 2, defaultMode: "Safe Mode", requested: "Evil Mode"),
+            "Evil Mode"
+        )
+        XCTAssertEqual(
+            PromethModeTable.openingMode(existingChats: 0, defaultMode: "Evil Mode", requested: nil),
+            "Evil Mode"
+        )
+        XCTAssertEqual(
+            PromethModeTable.openingMode(existingChats: 3, defaultMode: "Evil Mode", requested: nil),
+            "Safe Mode"
+        )
+        XCTAssertEqual(
+            PromethModeTable.displayed(chatMode: nil, requested: "Evil Mode", defaultMode: "Safe Mode"),
+            "Evil Mode"
+        )
+        XCTAssertEqual(
+            PromethModeTable.displayed(chatMode: "Safe Mode", requested: "Evil Mode", defaultMode: "Evil Mode"),
+            "Safe Mode"
+        )
+    }
+
     func testOnlyTheOpeningChatInheritsEvil() {
         XCTAssertEqual(
             PromethModeTable.modeForNewChat(existingChats: 0, defaultMode: "Evil Mode"),

@@ -16,8 +16,9 @@ struct ComposerEditor: NSViewRepresentable {
         init(_ parent:ComposerEditor){self.parent=parent}
         func textDidChange(_ notification:Notification){if let v=notification.object as? NSTextView{parent.text=v.string}}
         func commit(_ value: String) {
-            parent.text = value
+            guard !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
             parent.onSend(value)
+            parent.text = ""
         }
     }
 }
@@ -30,7 +31,10 @@ class SubmitTextView:NSTextView {
         super.doCommand(by: selector)
     }
     private func submit() {
-        send?(string)
+        let value = string
+        guard !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        string = ""
+        send?(value)
     }
     override func insertText(_ insertString: Any, replacementRange: NSRange) {
         if let text = insertString as? String, text == "\n" || text == "\r" {
