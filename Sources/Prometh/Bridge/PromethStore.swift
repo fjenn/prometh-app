@@ -73,9 +73,8 @@ final class PromethStore: ObservableObject {
             restored.onboardingComplete = true
         }
         restored.selected.insert(.chat)
-        if model.settings.normalized().languageModelID?.isEmpty == false {
-            restored.preparations[Capability.chat.rawValue] = Preparation(progress: 1, status: .ready)
-        }
+        // Do not treat a leftover Gemma (or other) languageModelID as Chat-ready.
+        // configureModelSelections() below marks readiness from the picked model.
         if Self.evilWeightsInstalled(support: persistence.directory) {
             restored.preparations["Evil"] = Preparation(progress: 1, status: .ready)
             restored.evilEnabled = true
@@ -105,6 +104,7 @@ final class PromethStore: ObservableObject {
         connectorHost.apply(brokerURL: brokerURL)
         refreshConnections()
         preparation.attach(self)
+        configureModelSelections()
         if ProcessInfo.processInfo.environment["PROMETH_SELFTEST_DRIVE"] == "catalog" {
             Task { await driveCatalogSelfTest() }
         } else if ProcessInfo.processInfo.environment["PROMETH_SELFTEST_DRIVE"] == "offline" {
@@ -163,7 +163,7 @@ final class PromethStore: ObservableObject {
         return BehaviorMode(rawValue: raw) ?? .safe
     }
 
-    var total: Double { state.selected.reduce(0) { $0 + $1.gigabytes } }
+    var total: Double { state.selected.reduce(0) { $0 + Double(preparationModels($1).reduce(Int64(0)) { $0 + $1.downloadBytes }) / 1_000_000_000 } }
 
     var chatReady: Bool { state.preparations[Capability.chat.rawValue]?.status == .ready }
 
@@ -180,7 +180,7 @@ final class PromethStore: ObservableObject {
     }
 
     func sizeLabel(_ capability: Capability) -> String {
-        String(format: "%.2f GB", locale: Locale(identifier: "en_US_POSIX"), capability.gigabytes)
+        CatalogSize.decimalGigabytes(preparationModels(capability).reduce(Int64(0)) { $0 + $1.downloadBytes })
     }
 
     func available(_ capability: Capability) -> Bool {
@@ -195,9 +195,11 @@ final class PromethStore: ObservableObject {
             return "Video needs more memory."
         }
         guard let catalog = try? ModelCatalogLoader.bundled() else { return nil }
+        let selected = preparationModels(capability)
+        if selected.isEmpty { return "No \(capability.rawValue.lowercased()) model fits this Mac. Check model selection in Settings." }
         return CatalogFit.reason(
             capability: capability,
-            models: catalog.preparationModels(for: capability),
+            models: preparationModels(capability),
             headroom: catalog.storagePolicy.macOSHeadroomBytes,
             memoryGB: macSpecs.memoryGB,
             freeBytes: CatalogFit.freeBytes(at: persistence.directory)
@@ -227,6 +229,7 @@ final class PromethStore: ObservableObject {
         } else {
             state.selected.insert(capability)
         }
+        configureModelSelections()
     }
 
     func setHardware(_ hardware: Hardware) {
@@ -250,7 +253,7 @@ final class PromethStore: ObservableObject {
         state.evilEnabled = state.evilEnabled || enabled
         state.defaultMode = enabled ? .evil : .safe
         if enabled {
-            preparation.resumeModel(key: "Evil", modelID: "evil")
+            prepareEvil()
         }
         if revealInChat {
             setMode(enabled ? .evil : .safe)
@@ -262,6 +265,10 @@ final class PromethStore: ObservableObject {
     }
 
     func setMode(_ mode: BehaviorMode) {
+        if mode == .evil, selectedModel(.evil) == nil {
+            error = state.modelSelectionReasons?["evil"] ?? "Evil Mode is unavailable on this Mac."
+            return
+        }
         if mode == .evil {
             state.evilEnabled = true
             if state.preparations["Evil"]?.status != .ready {
@@ -318,6 +325,7 @@ final class PromethStore: ObservableObject {
     func retryPreparation(_ capability: Capability) { resumePreparation(capability) }
 
     func resumePreparation(_ capability: Capability) {
+        configureModelSelections()
         preparation.resume(capability)
     }
 
@@ -327,7 +335,11 @@ final class PromethStore: ObservableObject {
     }
 
     func prepareEvil() {
-        preparation.resumeModel(key: "Evil", modelID: "evil")
+        guard let id = state.modelSelections?[PromethModelFamily.evil.rawValue] else {
+            error = state.modelSelectionReasons?[PromethModelFamily.evil.rawValue] ?? "Evil Mode is unavailable on this Mac."
+            return
+        }
+        preparation.resumeModel(key: "Evil", modelID: id)
     }
 
     func enterChat() {
@@ -396,6 +408,11 @@ final class PromethStore: ObservableObject {
         PromethPromptAdditionsMode.current = current?.mode.rawValue ?? BehaviorMode.safe.rawValue
         guard let id = state.selectedChatID else { return }
         if chat.currentSessionID != id { select(id) }
+        if modes[id.uuidString] != .evil, state.preparations[Capability.chat.rawValue]?.status != .ready {
+            resumePreparation(.chat)
+            error = "The selected chat model is getting ready. Your message is saved."
+            // Continue through the normal retry path after the draft is captured.
+        }
         if modes[id.uuidString] == .evil, state.preparations["Evil"]?.status != .ready {
             prepareEvil()
             error = "Evil Mode is still getting ready."
@@ -430,7 +447,7 @@ final class PromethStore: ObservableObject {
     private var pendingSend: [String: String] = [:]
 
     private func readyToSend() -> Bool {
-        !model.isModelLoading && chat.canSend(
+        (current?.mode == .evil || chatReady) && !model.isModelLoading && chat.canSend(
             isRunning: model.isRunning,
             selectedModelID: model.settings.languageModelID
         )
@@ -1150,13 +1167,102 @@ final class PromethStore: ObservableObject {
 
     func resolveTool(_ approved: Bool) { pendingTool = nil }
 
+    func selectedModel(_ family: PromethModelFamily) -> CatalogModel? {
+        guard let id = state.modelSelections?[family.rawValue] else { return nil }
+        return (try? ModelCatalogLoader.bundled())?.model(id:id)
+    }
+
+    func modelOptions(_ family: PromethModelFamily) -> [CatalogModel] {
+        guard let catalog = try? ModelCatalogLoader.bundled() else { return [] }
+        return PromethModelPicker.options(family, catalog:catalog)
+    }
+
+    func chooseModel(_ family: PromethModelFamily, id: String) {
+        var overrides = state.modelOverrides ?? [:]
+        overrides[family.rawValue] = id.isEmpty ? nil : id
+        state.modelOverrides = overrides
+        configureModelSelections()
+        switch family {
+        case .safe: resumePreparation(.chat)
+        case .evil: LlamaSupervisor.shared.stop(); prepareEvil()
+        case .listening,.speaking: resumePreparation(.voice)
+        case .images: resumePreparation(.images)
+        case .video: resumePreparation(.video)
+        }
+    }
+
+    private func installed(_ model: CatalogModel) -> Bool {
+        let folder = CatalogPaths.folder(root:CatalogPaths.modelsRoot(support:persistence.directory),model:model)
+        return model.files.allSatisfy { CatalogHash.byteCount(folder.appendingPathComponent($0.path)) == $0.size }
+    }
+
+    private func configureModelSelections() {
+        guard let catalog = try? ModelCatalogLoader.bundled() else { return }
+        let installedIDs = Set(catalog.models.filter(installed).map(\.id))
+        let free = CatalogFit.freeBytes(at:persistence.directory)
+        let overrides = state.modelOverrides ?? [:]
+        var choices: [String:String] = [:], reasons: [String:String] = [:]
+        let voiceSelected = state.selected.contains(.voice)
+        func pick(_ family:PromethModelFamily, resident:Double = 0) -> CatalogModel? {
+            let choice = PromethModelPicker.choose(family,catalog:catalog,memoryGB:macSpecs.memoryGB,
+                freeBytes:free,residentGB:resident,override:overrides[family.rawValue],installedIDs:installedIDs)
+            choices[family.rawValue] = choice.model?.id
+            reasons[family.rawValue] = choice.reason
+            return choice.model
+        }
+        // Reserve the smallest voice pair while choosing chat. Voice then uses
+        // the remaining budget. Image/video jobs serialize and unload chat.
+        let safe = pick(.safe,resident:voiceSelected ? 1.4 : 0)
+        _ = pick(.evil,resident:voiceSelected ? 1.4 : 0)
+        _ = pick(.speaking)
+        _ = pick(.listening,resident:(safe?.workingMemoryGB ?? 0) + 0.8)
+        _ = pick(.images)
+        _ = pick(.video)
+        let previous = state.modelSelections ?? [:]
+        state.modelSelections = choices
+        state.modelSelectionReasons = reasons
+        PromethSelectedModels.set(choices)
+        for capability in state.selected {
+            let models = preparationModels(capability)
+            let ready = !models.isEmpty && models.allSatisfy(installed)
+            let key = capability.rawValue
+            if ready { state.preparations[key] = Preparation(progress:1,status:.ready) }
+            else if state.preparations[key]?.status == .ready { state.preparations[key] = Preparation(progress:0,status:.paused) }
+        }
+        if let safe, installed(safe) { pinCatalogModel(safe) }
+        if let listening = choices[PromethModelFamily.listening.rawValue].flatMap({catalog.model(id:$0)}) {
+            var settings = model.settings
+            settings.speechToTextModelID = listening.repo
+            if let image = choices[PromethModelFamily.images.rawValue].flatMap({catalog.model(id:$0)}), installed(image) {
+                settings.imageGenerationModelID = image.repo
+            }
+            model.settings = settings
+        }
+        if previous["evil"] != choices["evil"] {
+            state.preparations["Evil"] = selectedModel(.evil).map { Preparation(progress:installed($0) ? 1 : 0,status:installed($0) ? .ready : .paused) }
+        }
+    }
+
     func preparationModels(_ capability: Capability) -> [CatalogModel] {
-        (try? ModelCatalogLoader.bundled())?.preparationModels(for: capability) ?? []
+        guard let catalog = try? ModelCatalogLoader.bundled() else { return [] }
+        let families: [PromethModelFamily]
+        switch capability {
+        case .chat: families = [.safe]
+        case .voice: families = [.listening,.speaking]
+        case .images: families = [.images]
+        case .video: families = [.video]
+        }
+        var models = families.compactMap { family in state.modelSelections?[family.rawValue].flatMap { catalog.model(id:$0) } }
+        if capability == .voice {
+            if let vad = catalog.model(id:"vad") { models.append(vad) }
+            if models.contains(where: { $0.id == "stt" }), let processor = catalog.model(id:"stt-processor") { models.append(processor) }
+        }
+        return models
     }
 
     func catalogReady(_ capability: Capability) -> Bool {
         guard let catalog = try? ModelCatalogLoader.bundled() else { return false }
-        let models = catalog.preparationModels(for: capability)
+        let models = preparationModels(capability)
         guard !models.isEmpty else { return false }
         for model in models {
             let folder = CatalogPaths.folder(root: CatalogPaths.modelsRoot(support: persistence.directory), model: model)
@@ -1180,6 +1286,11 @@ final class PromethStore: ObservableObject {
     func markReady(_ capability: Capability?, key: String? = nil) {
         let name = key ?? capability?.rawValue ?? ""
         applyPreparation(name, Preparation(progress: 1, status: .ready), detail: capability?.phrase ?? "Ready")
+        if capability == .images, let selected = selectedModel(.images) {
+            var settings = model.settings
+            settings.imageGenerationModelID = selected.repo
+            model.settings = settings
+        }
     }
 
     func notePaused(_ capability: Capability?, key: String? = nil) {
@@ -1191,14 +1302,20 @@ final class PromethStore: ObservableObject {
     }
 
     func pinCatalogModel(_ model: CatalogModel) {
+        _ = try? CatalogDownloader.linkInstalled(model: model, support: persistence.directory)
         var settings = self.model.settings
+        let previous = settings.languageModelID
+        let hub = CatalogPaths.hub(support: persistence.directory).path
         settings.languageModelID = model.repo
-        settings.modelSearchPath = CatalogPaths.hub(support: persistence.directory).path
+        settings.modelSearchPath = hub
         self.model.settings = settings
         CatalogLog.append(
             "pinned name=\(model.name) revision=\(model.revision)",
             support: persistence.directory
         )
+        if self.model.isRunning, previous != model.repo {
+            self.model.restartServer()
+        }
     }
 
     func finishPauseSelfTestIfNeeded(key: String, path: String, offset: Int64) async {

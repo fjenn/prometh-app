@@ -89,7 +89,7 @@ final class PreparationCoordinator {
                         }
                     }
                 )
-                if capability == .chat, model.id == "safe" {
+                if capability == .chat {
                     store.pinCatalogModel(model)
                 }
             }

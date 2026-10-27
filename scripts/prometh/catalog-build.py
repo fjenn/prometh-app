@@ -48,6 +48,7 @@ def update(entries):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--voice', action='store_true')
+    parser.add_argument('--chat', action='store_true')
     args = parser.parse_args()
     if args.voice:
         update([
@@ -56,4 +57,14 @@ if __name__ == '__main__':
             entry('stt-base', 'Whisper base', 'mlx-community/whisper-base-asr-fp16', 'mlx-audio', 0.6, 'Voice option'),
             entry('vad', 'Silero VAD v5', 'onnx-community/silero-vad', 'onnxruntime', 0.05, 'Voice',
                   ['onnx/model.onnx', 'LICENSE']),
+        ])
+
+    if args.chat:
+        update([
+            entry('safe-qwen9b', 'Qwen3.5 9B', 'mlx-community/Qwen3.5-9B-4bit', 'mlx-vlm', 9, 'Chat option'),
+            entry('safe-qwen4b', 'Qwen3.5 4B', 'mlx-community/Qwen3.5-4B-4bit', 'mlx-vlm', 5.5, 'Chat option'),
+            entry('safe-qwen2b', 'Qwen3.5 2B', 'mlx-community/Qwen3.5-2B-4bit', 'mlx-vlm', 3, 'Chat option'),
+            entry('safe-llama1b', 'Llama 3.2 1B Instruct', 'mlx-community/Llama-3.2-1B-Instruct-4bit', 'mlx-lm', 1.8, 'Chat option'),
+            entry('evil-4b', 'Qwen3.5 4B Heretic', 'darrellbest/Qwen3.5-4B-Heretic-GGUF', 'llama.cpp', 4.5, 'Evil option',
+                  ['Qwen3.5-4B-Heretic-Q4_K_M.gguf']),
         ])

@@ -108,6 +108,9 @@ struct MacSpecs {
 
 struct Snapshot: Codable {
     var version = 2
+    var modelSelections: [String:String]?
+    var modelOverrides: [String:String]?
+    var modelSelectionReasons: [String:String]?
     var onboardingComplete = false
     var step = 0
     var selected: Set<Capability> = [.chat]

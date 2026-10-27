@@ -191,17 +191,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @MainActor UNUserNotif
         PromethSearchBootstrap.stop()
     }
 
-    /// Point Safe chat at the catalog model when its files are already on disk.
+    /// Point Safe chat at the hardware-picked model (not the legacy Gemma default).
+    /// Existing installs that still have `gemma-4-e4b-it-4bit` in Settings.plist
+    /// migrate here before the server starts, so the first launch after update
+    /// does not keep serving Gemma.
     private func pinInstalledSafeModel() {
-        guard let catalog = try? ModelCatalogLoader.bundled(),
-              let safe = catalog.model(id: "safe"),
-              (try? CatalogDownloader.linkInstalled(
-                model: safe,
-                support: PromethIdentity.applicationSupportDirectory
-              )) == true
+        guard let catalog = try? ModelCatalogLoader.bundled() else { return }
+        let support = PromethIdentity.applicationSupportDirectory
+        let snapshot = Persistence(directory: support).load()
+        let override = snapshot?.modelOverrides?[PromethModelFamily.safe.rawValue]
+        let memoryGB = MacSpecs.read().memoryGB
+        let free = CatalogFit.freeBytes(at: support)
+        let installedIDs = Set(catalog.models.filter { model in
+            let folder = CatalogPaths.folder(root: CatalogPaths.modelsRoot(support: support), model: model)
+            return model.files.allSatisfy {
+                CatalogHash.byteCount(folder.appendingPathComponent($0.path)) == $0.size
+            }
+        }.map(\.id))
+        let choice = PromethModelPicker.choose(
+            .safe,
+            catalog: catalog,
+            memoryGB: memoryGB,
+            freeBytes: free,
+            override: override,
+            installedIDs: installedIDs
+        )
+        guard let safe = choice.model,
+              (try? CatalogDownloader.linkInstalled(model: safe, support: support)) == true
         else { return }
         var settings = model.settings
-        let hub = CatalogPaths.hub(support: PromethIdentity.applicationSupportDirectory).path
+        let hub = CatalogPaths.hub(support: support).path
         guard settings.languageModelID != safe.repo || settings.modelSearchPath != hub else { return }
         settings.languageModelID = safe.repo
         settings.modelSearchPath = hub

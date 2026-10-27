@@ -9,7 +9,9 @@ enum Capability { case chat, voice, images, video
 @main struct Download {
     static func main() async throws {
         let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-        let catalog = try ModelCatalogLoader.load(from: root.appendingPathComponent("Sources/Prometh/Resources/model-catalog.json"))
+        let path = ProcessInfo.processInfo.environment["PROMETH_CATALOG_PATH"].map { URL(fileURLWithPath: $0) }
+            ?? root.appendingPathComponent("Sources/Prometh/Resources/model-catalog.json")
+        let catalog = try ModelCatalogLoader.load(from: path)
         let support = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Prometh")
         for id in CommandLine.arguments.dropFirst() {
             guard let model = catalog.model(id: id) else { throw CocoaError(.fileNoSuchFile) }

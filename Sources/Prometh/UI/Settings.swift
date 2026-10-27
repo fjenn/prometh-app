@@ -56,6 +56,19 @@ struct PromethSettingsView:View {
     }
     var capabilities:some View {
         VStack(alignment:.leading,spacing:18){Text(store.macSpecs.summary).font(.system(size:12)).foregroundStyle(.secondary);Text(String(format: "%.2f GB selected", locale: Locale(identifier: "en_US_POSIX"), store.total)).font(.headline)
+            VStack(alignment:.leading,spacing:14) {
+                Text("Models picked for this Mac").font(.headline)
+                ForEach(PromethModelFamily.allCases,id:\.self){family in
+                    VStack(alignment:.leading,spacing:5) {
+                        Picker(family.label,selection:Binding(get:{store.state.modelOverrides?[family.rawValue] ?? ""},set:{store.chooseModel(family,id:$0)})) {
+                            Text("Automatic · biggest that fits").tag("")
+                            ForEach(store.modelOptions(family)){model in Text(model.name).tag(model.id)}
+                        }
+                        Text(store.state.modelSelectionReasons?[family.rawValue] ?? "Checking this Mac…")
+                            .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
+                    }
+                }
+            }.padding(17).background(.primary.opacity(0.025),in:RoundedRectangle(cornerRadius:14))
             ForEach(Capability.allCases){c in
                 VStack(alignment:.leading,spacing:8){
                     if store.state.selected.contains(c){
@@ -67,7 +80,7 @@ struct PromethSettingsView:View {
                     }
                 }.padding(17).background(.primary.opacity(0.025),in:RoundedRectangle(cornerRadius:14))
             }
-            VStack(alignment:.leading,spacing:10){HStack{Text("Evil chat · optional").font(.headline);Spacer();Button("Download / verify"){store.prepareEvil()}};DisclosureGroup("Details"){Text(store.modelDetails["Evil"] ?? "Qwen3.5 9B Heretic v2 · Evil · 5.63 GB").font(.caption).foregroundStyle(.secondary)}}.padding(17).background(.primary.opacity(0.025),in:RoundedRectangle(cornerRadius:14))
+            VStack(alignment:.leading,spacing:10){HStack{Text("Evil chat · optional").font(.headline);Spacer();Button("Download / verify"){store.prepareEvil()}};DisclosureGroup("Details"){Text(store.modelDetails["Evil"] ?? store.state.modelSelectionReasons?["evil"] ?? "Checking model availability…").font(.caption).foregroundStyle(.secondary)}}.padding(17).background(.primary.opacity(0.025),in:RoundedRectangle(cornerRadius:14))
             Text("Downloads show selected weight sizes, not working memory. Heavy chat, speech, image and video jobs run one at a time; the previous engine unloads before another family runs. Keep 12 GiB free for macOS, plus selected downloads.").font(.caption).foregroundStyle(.secondary)
             if store.state.hardware == .storage {Button("Review capability choices"){store.settingsOpen=false;store.state.step=1;store.state.onboardingComplete=false}}
         }

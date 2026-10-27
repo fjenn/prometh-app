@@ -96,7 +96,7 @@ final class LlamaSupervisor: @unchecked Sendable {
 
     private static func modelPath() -> String? {
         guard let catalog = try? ModelCatalogLoader.bundled(),
-              let model = catalog.model(id: "evil"),
+              let model = catalog.model(id: PromethSelectedModels.id(.evil, fallback:"evil")),
               let file = model.files.first
         else { return nil }
         let support = PromethIdentity.applicationSupportDirectory

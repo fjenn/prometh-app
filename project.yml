@@ -446,6 +446,7 @@ targets:
       - path: Sources/Prometh/UI/PromethCredits.swift
       - path: Sources/Prometh/UI/Domain.swift
       - path: Sources/Prometh/Catalog/ModelCatalog.swift
+      - path: Sources/Prometh/Catalog/ModelPicker.swift
       - path: Sources/Prometh/Catalog/CatalogDownloader.swift
     settings:
       base:
