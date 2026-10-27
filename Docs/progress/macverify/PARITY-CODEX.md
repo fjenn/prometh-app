@@ -66,3 +66,23 @@ Per section: `scripts/prometh/build.sh`, `make verify`, `xcodebuild test -scheme
 - Composio Connected → live “list my emails” after the owner signs in (OAuth up to the browser verified).
 - PromethUITests (Automation Mode password).
 - 16 GB hardware certification still pending as product copy notes.
+
+## Media tiers (2026-10-27 evening)
+
+Measured on M5 Max 128 GB with chat unloaded (no llama-server / mlx-vlm-server). One media job at a time. Formula: `workingMemoryGB = round_up_to_0.5(decision_peak × 1.10)`; 8 GB budget with `residentGB=0` is 5.0 GiB; qualifies iff `peak × 1.08 ≤ 5.0`.
+
+| Family | Model id | Measured peaks (GiB) | Method | workingMemoryGB | Min Mac RAM that auto-picks it |
+|---|---|---|---|---|---|
+| images | `images` FLUX.2 Klein 4B 4-bit | timed1 FP 5.186 / RSS 2.691; timed2 FP 5.185 | `/usr/bin/time -l` + `footprint -p` on `mlx_vlm.generate` 512×512 / 4 steps | **6.0** | 16 GB (8 GB: no) |
+| images | `images-9b` | (prior) | catalog | 14 | 24 GB |
+| video | `video` FastMetal 1.3B | denoise plateau phys ~5.35; MLX denoise 3.87; full-run FP **113** (wan-vae decode balloon, logged not used for WM) | timed1/2 `mlx_wan_prompt_to_video` 832×480 / 81f | **6.0** | 16 GB (8 GB: no) |
+| video | `video-5b` FastMetal 5B QAD | cold FP 24.533 / RSS 23.946; warm timed1/2 FP 21.214; MLX denoise 6.85 | `mlx_wan22_generate --fast` 832×448 / 121f taehv | **27.0** | Enabled; auto-pick only when 14B does not fit / is unavailable (best-first after 14B) |
+| video | `video-14b` | (prior ~21.7 denoise) | catalog | 28 | 48 GB |
+
+**8 GB Macs get neither photo nor video** (images 5.186×1.08=5.60 > 5.0; video plateau 5.35×1.08=5.78 > 5.0). Chat unload before media: `PromethMediaGate` (+ image gate) stops Evil llama and POSTs `/unload`; picks use `residentGB=0`.
+
+**5B status:** enabled. Clip `Docs/progress/macverify/media-tiers/video-5b-timed1.mp4`; frame `video-5b-frame.png`; also `video-5b-via-worker.mp4` via `media_worker.Worker.generate`. Raw logs under `Docs/progress/macverify/media-tiers/*.log` and `MEASUREMENTS.md`.
+
+**Commands:** see `run_images_4b.sh`, `run_video_1.3b.sh` / `timed_run.sh`, `run_video_5b.sh`.
+
+**Commits:** `f9de3a11` feat(video) 5B mid tier; `92793ef7` measured peaks + picker matrix. Gates: `build.sh` OK, `make verify` OK, PromethTests **76** passed (`CODE_SIGNING_ALLOWED=NO`). PromethUITests skipped (Automation Mode). zimage not installed — not measured. Unverified: in-app UI click path for 5B (worker path verified).

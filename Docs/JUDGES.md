@@ -17,8 +17,8 @@ Everything stays on this Mac. No product account. Models download from Hugging F
    | Chat (Evil, optional) | Qwen3.5 9B Heretic GGUF | ~5.6 GB |
    | Voice listening | Whisper large-v3-turbo (base on small Macs) | ~1.5 GB+ |
    | Voice speaking | Kokoro 82M (Pocket kept hidden) | ~0.3 GB |
-   | Images | FLUX.2 Klein 9B 8-bit (4-bit 4B on mid Macs) | ~18 GB / ~4.6 GB |
-   | Video | FastMetal 14B when installed (1.3B fallback) | ~27 GB / ~13 GB |
+   | Images | FLUX.2 Klein 9B 8-bit (4-bit 4B on mid Macs; **not** on 8 GB) | ~18 GB / ~4.6 GB |
+   | Video | FastMetal 14B → **5B mid** → 1.3B (**not** on 8 GB) | ~27 / ~19.5 / ~13 GB |
 
    Settings shows which model was picked and why; you can override. Keep spare free disk (catalog headroom: 8 GB). Download time depends on your network; the in-app ETA is live.
 
@@ -27,7 +27,7 @@ Everything stays on this Mac. No product account. Models download from Hugging F
 - **Chat** — ask anything; markdown renders in replies. Hover a user bubble → **Edit** to change it in place and regenerate (Cancel / Send; Esc / ⌘↩).
 - **Search with citations** — ask for today’s news; open Sources / citation chips.
 - **Image** — generate, then edit the same chat (Version cards). Bigger Macs use FLUX.2 Klein 9B.
-- **Video** — generate a short clip (~832×480, ~5 s); ask in chat to trim (keeps Version 1), or Preview → Edit video. Bigger Macs prefer FastMetal 14B when downloaded.
+- **Video** — generate a short clip (~832×480, ~5 s; 5B mid tier uses 832×448 / 121 frames); ask in chat to trim (keeps Version 1), or Preview → Edit video. Bigger Macs prefer FastMetal 14B when downloaded; mid Macs can use FastMetal 5B.
 - **Voice** — open Voice; speak (or play speech through speakers). Silero VAD ends the turn; Whisper transcribes; Kokoro speaks the reply. Speak again while Kokoro talks to **barge in** (Interrupt). Allow **Microphone** for `studio.prometh.Prometh`.
 - **Connectors** — Settings → Connectors: Connect Gmail / Google Drive / GitHub opens the Composio OAuth page in your browser, shows **Waiting for sign-in…**, then **Connected**. After you sign in, ask chat to list recent mail or Drive files.
 - **Safe / Evil Mode** — switch in the composer mode menu.
