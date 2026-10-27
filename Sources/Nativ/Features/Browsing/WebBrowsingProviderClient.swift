@@ -95,7 +95,7 @@ struct WebBrowsingProviderRegistry: Sendable {
 
 /// Prometh installs the real reader at launch. Tests leave this nil.
 enum PromethLocalReaderHook {
-    static var read: (@Sendable ([String], String?) async throws -> [WebBrowsingProviderDocument])?
+    nonisolated(unsafe) static var read: (@Sendable ([String], String?) async throws -> [WebBrowsingProviderDocument])?
 }
 
 struct LocalReaderBrowsingProvider: WebBrowsingProviderClient {

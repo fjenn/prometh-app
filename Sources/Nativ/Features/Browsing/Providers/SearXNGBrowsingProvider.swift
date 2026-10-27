@@ -62,7 +62,7 @@ struct SearXNGBrowsingProvider: WebBrowsingProviderClient {
 
 /// Prometh's supervisor fills this in. Tests that talk to a stub instance never call it.
 enum PromethSearXNGEndpoint {
-    static var resolve: (@Sendable () async -> URL?)?
+    nonisolated(unsafe) static var resolve: (@Sendable () async -> URL?)?
 }
 
 private struct SearXNGSearchResponse: Decodable {

@@ -29,12 +29,12 @@ final class LlamaSupervisor: @unchecked Sendable {
     }
 
     func ensureRunning() async throws -> LlamaEndpoint {
-        lock.lock()
-        if let endpoint, process?.isRunning == true {
-            lock.unlock()
+        if let existing = lock.withLock({ () -> LlamaEndpoint? in
+            guard let endpoint, process?.isRunning == true else { return nil }
             return endpoint
+        }) {
+            return existing
         }
-        lock.unlock()
         guard let script = PromethRuntimeLocator.url(relative: "llama/llama_supervisor.py") else {
             throw PromethInterruptedError.llamaUnavailable
         }
@@ -87,10 +87,10 @@ final class LlamaSupervisor: @unchecked Sendable {
             throw PromethInterruptedError.llamaUnavailable
         }
         let value = LlamaEndpoint(host: host, port: port, alias: alias, apiKey: apiKey)
-        lock.lock()
-        process = child
-        endpoint = value
-        lock.unlock()
+        lock.withLock {
+            process = child
+            endpoint = value
+        }
         return value
     }
 

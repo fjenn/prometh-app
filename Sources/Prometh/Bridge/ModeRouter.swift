@@ -19,7 +19,7 @@ enum PromethInterruptedError: LocalizedError {
 
 enum PromethModeTable: @unchecked Sendable {
     private static let lock = NSLock()
-    private static var modes: [UUID: String] = [:]
+    nonisolated(unsafe) private static var modes: [UUID: String] = [:]
 
     static func set(_ id: UUID, _ mode: String) {
         lock.lock()

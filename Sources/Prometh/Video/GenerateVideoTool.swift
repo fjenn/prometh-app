@@ -3,7 +3,7 @@ import NativServerKit
 
 enum PromethGenerateVideoTool {
     static let toolName = "generate_video"
-    static var run: ((String) async throws -> String)?
+    nonisolated(unsafe) static var run: ((String) async throws -> String)?
 
     static var definition: MLXChatToolDefinition {
         MLXChatToolDefinition(function: MLXChatFunctionDefinition(

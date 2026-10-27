@@ -24,14 +24,13 @@ private struct WrappingCitationText: View {
     let links: [SourceLink]
 
     var body: some View {
-        let pieces = Self.pieces(text: text, links: links)
-        Text(pieces.attributed)
+        Text(Self.pieces(text: text, links: links))
     }
 
-    private static func pieces(text: String, links: [SourceLink]) -> (attributed: AttributedString) {
+    private static func pieces(text: String, links: [SourceLink]) -> AttributedString {
         let known = Set(links.compactMap(\.index))
         guard let expression = try? NSRegularExpression(pattern: "\\[(\\d+)\\]") else {
-            return (AttributedString(text))
+            return AttributedString(text)
         }
         let ns = text as NSString
         let matches = expression.matches(in: text, range: NSRange(location: 0, length: ns.length))
@@ -58,7 +57,7 @@ private struct WrappingCitationText: View {
         if cursor < ns.length {
             result.append(AttributedString(ns.substring(from: cursor)))
         }
-        return (result)
+        return result
     }
 }
 

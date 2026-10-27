@@ -81,9 +81,7 @@ final class ReaderSupervisor: @unchecked Sendable {
     private var port: Int?
 
     func start() async {
-        lock.lock()
-        let running = process?.isRunning == true && port != nil
-        lock.unlock()
+        let running = lock.withLock { process?.isRunning == true && port != nil }
         if running { return }
         guard let python = PromethPython.reader(),
               let script = PromethRuntimeLocator.url(relative: "reader/reader_server.py") else {
@@ -113,18 +111,16 @@ final class ReaderSupervisor: @unchecked Sendable {
         } catch {
             return
         }
-        lock.lock()
-        self.process = process
-        self.port = port
-        lock.unlock()
+        lock.withLock {
+            self.process = process
+            self.port = port
+        }
         _ = await Self.wait(port: port)
     }
 
     func extract(url: String) async -> ReaderExtraction? {
         await start()
-        lock.lock()
-        let port = self.port
-        lock.unlock()
+        let port = lock.withLock { self.port }
         guard let port, let endpoint = URL(string: "http://127.0.0.1:\(port)/extract") else { return nil }
         var request = URLRequest(url: endpoint, timeoutInterval: 20)
         request.httpMethod = "POST"

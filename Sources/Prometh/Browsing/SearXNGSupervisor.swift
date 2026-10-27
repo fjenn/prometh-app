@@ -24,8 +24,8 @@ enum PromethPython {
         executable(
             override: "PROMETH_SEARXNG_PYTHON",
             relatives: [
-                "searxng/dist/runtime/python/bin/python3",
                 "searxng/.venv/bin/python3",
+                "searxng/dist/runtime/python/bin/python3",
             ]
         )
     }
@@ -125,10 +125,10 @@ final class SearXNGSupervisor: @unchecked Sendable {
             process.standardOutput = pipe
             process.standardError = pipe
             try process.run()
-            lock.lock()
-            self.process = process
-            self.port = port
-            lock.unlock()
+            lock.withLock {
+                self.process = process
+                self.port = port
+            }
             let healthy = await Self.waitForHealth(port: port)
             setState(healthy ? "Listening" : "Started without healthz")
         } catch {
