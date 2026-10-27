@@ -2,7 +2,7 @@
 
 Host: Apple M5 Max, 128 GB RAM, macOS 26.6.2, arm64. Branch `prometh`. Python on the path is Homebrew 3.14. The bundled MLX server is CPython 3.12.13.
 
-Follow-up after `news-live3.png`: deterministic citation remapping, read-only source injection, and HTML entity decoding. Verified at ~4:20 AM BA.
+Follow-up after `news-live4.png`: honest citations (no balance/round-robin), long-paste composer fix, and stress harness. Verified at ~5:00 AM BA. See `STRESS.md`.
 
 ## Checklist
 
@@ -10,13 +10,13 @@ Follow-up after `news-live3.png`: deterministic citation remapping, read-only so
 |---|---|---|
 | `scripts/prometh/build.sh` | PASS | Exit 0. `** BUILD SUCCEEDED **` and the app was ad-hoc signed. |
 | `make verify` | PASS | Exit 0. Framework `mlx-vlm-server` imports on Python 3.12.13. |
-| `xcodebuild` PromethTests | PASS | Exit 0. 47 tests, 0 failures (was 43; added remapper, read-only context, HTML decode, balance tests). |
+| `xcodebuild` PromethTests | PASS | Exit 0. 48 tests, 0 failures (honest remapper + drop-unsupported; no balance tests). |
 | `xcodebuild` PromethUITests | PASS | Exit 0. 6 tests, 0 failures. |
 | Safe chat | PASS | `hello-live8.png`: "Say hello in five words." → "Hello there, how may I assist you?" |
 | Evil chat (in-app switch) | PASS | Prior Mac run: mode menu → Evil Mode (`evil-sent-live.png`, `evil-reply-live.png`). |
-| Web search / news | PASS | `news-live4.png`: bullets, bold (`1000`), distinct chips `[1]`/`[2]` matching Sources (7news + The World Now), decoded `&`, no invented outlets. |
-| Markdown + citation chips | PASS | Nested-list unit test + `news-live4.png` Unicode bullets, bold, sky chips, spacing. |
-| Multi-source citations | PASS | Prefetch keeps only **read** pages as numbered sources; post-process remaps chips by content overlap then balances least-used sources. Unit tests cover all-[1]→[1][2][3], out-of-range drop/remap, read-only prompt injection. |
+| Web search / news | PASS | `news-live5.png`: bullets, bold (`1000`), chips `[1]`/`[1]`/`[1]`/`[2]` mapped by content overlap to The World Now vs 7NEWS (see STRESS.md quotes). |
+| Markdown + citation chips | PASS | Nested-list unit test + `news-live5.png` Unicode bullets, bold, sky chips, spacing. |
+| Multi-source citations | PASS | Prefetch keeps only **read** pages; remapper assigns best-overlap chip or drops unsupported claims. Repeated chips allowed. |
 | First-prompt chat title | PASS | Header/sidebar use the first prompt (`hello-live8.png`, `news-live4.png`). |
 | No "Make a clip" label | PASS | Composer shows mode menu + mic + send/voice only. |
 | Image generate + edit | PASS | Prior Mac run: `image.png`, `image-both.png`, `image-cards.png`, `parity-image.png`. |
@@ -42,9 +42,10 @@ Exit codes this pass: `build.sh` 0 · `make verify` 0 · PromethTests 0 · Prome
 
 ## Fixes in this pass
 
-1. **Citation remapper** — After streaming finishes, `CitationRemapper` remaps every `[n]` chip to the best token-overlap source, drops/clamps out-of-range indices, then balances remaining lines onto least-used sources so chips stay distinct and 1:1 with the Sources row. Covered by `testCitationRemapperAssignsDistinctChipsFromAllOnes` and `testCitationRemapperDiversifiesWhenOverlapCollapsesToOneSource`.
-2. **Read-only sources** — Prefetch/prompt injection and the Sources row include only pages with a fetched body. The system note lists exact names/indices and forbids naming other outlets. Covered by `testInjectedContextContainsOnlyReadSources`.
-3. **HTML entities** — `PromethHTML.decode` handles named and numeric entities (`&amp;`, `&quot;`, `&#39;`, `&#x2019;`, …) before display and injection. Covered by `testHTMLEntitiesAreDecodedInTitlesAndSnippets`.
+1. **Honest citation remapper** — Best content-overlap only; drop chips below threshold; no least-used balance or force round-robin. Covered by `testCitationRemapperMapsLineToSourceContainingThatClaim`, `testCitationRemapperAllowsRepeatedChipsWhenOneSourceSupportsAllLines`, `testCitationRemapperDropsUnsupportedChips`.
+2. **Read-only sources** — Prefetch/prompt injection and the Sources row include only pages with a fetched body; prompts require facts present in Page text. Covered by `testInjectedContextContainsOnlyReadSources`.
+3. **HTML entities** — `PromethHTML.decode` handles named and numeric entities before display and injection. Covered by `testHTMLEntitiesAreDecodedInTitlesAndSnippets`.
+4. **Long paste / AX draft** — Focused composer no longer cleared by an empty SwiftUI binding; accessibility sets sync into the draft (`ComposerEditor.swift`).
 
 ## Timing
 
@@ -54,7 +55,9 @@ Cold start of the Safe server is still on the order of a minute while Gemma load
 
 - `Docs/progress/macverify/workspace-live.png`
 - `Docs/progress/macverify/hello-live8.png`
-- `Docs/progress/macverify/news-live4.png` (distinct chips + decoded titles + read-only Sources)
+- `Docs/progress/macverify/news-live5.png` (honest chips + quoted source snippets in STRESS.md)
+- `Docs/progress/macverify/news-live4.png` (prior balanced chips — superseded)
+- `Docs/progress/macverify/STRESS.md`
 - `Docs/progress/macverify/news-live3.png` (prior: bullets + multi-domain Sources, all chips `[1]`)
 - `Docs/progress/macverify/news-live2.png` (prior: real headlines but literal `*` and single Reuters source)
 - `Docs/progress/macverify/news-live.png` (kept for regression history)
