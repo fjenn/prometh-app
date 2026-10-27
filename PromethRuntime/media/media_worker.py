@@ -211,6 +211,7 @@ def fastvideo_command(python: str, script: Path, model: Path, prompt: str, outpu
     """Wan2.1 FastMetal 1.3B / 14B entrypoint."""
     return [
         python,
+        str(Path(__file__).with_name("bounded_video.py")),
         str(script),
         "--model-root",
         str(model),
@@ -239,9 +240,14 @@ def wan22_command(python: str, script: Path, model: Path, prompt: str, output: P
     """Wan2.2 FastMetal-5B-QAD entrypoint (README quickstart + Prometh geometry)."""
     return [
         python,
+        str(Path(__file__).with_name("bounded_video.py")),
         str(script),
         "--text-encoder-root",
         str(model),
+        # Encode on Metal, then unload before DiT. The upstream CPU default
+        # retains mmap weight pages in RSS alongside converted CPU tensors.
+        "--text-encoder-device",
+        "auto",
         "--mlx-checkpoint",
         str(model),
         "--vae-root",

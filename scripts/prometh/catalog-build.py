@@ -12,6 +12,16 @@ from urllib.parse import quote
 
 CATALOG = Path(__file__).resolve().parents[2] / 'Sources/Prometh/Resources/model-catalog.json'
 
+# Full-process cold peaks (2026-10-27 night), including VAE/RIFE.
+# ceil(peak GiB * 1.10 * 2) / 2; evidence: media-tiers/full-run-summary-fix.json.
+MEDIA_MEMORY_GB = {
+    'images': 6.0,
+    'images-9b': 13.5,
+    'video': 15.0,
+    'video-5b': 17.5,
+    'video-14b': 25.0,
+}
+
 
 def entry(model_id, name, repo, runtime, memory, capability, paths=None, enabled=True):
     with urlopen(f'https://huggingface.co/api/models/{repo}?blobs=true', timeout=45) as response:
@@ -34,7 +44,7 @@ def entry(model_id, name, repo, runtime, memory, capability, paths=None, enabled
     if not files or (paths is not None and set(paths) != {f['path'] for f in files}):
         raise ValueError(f'Missing files for {repo}: {paths}')
     return dict(id=model_id, name=name, capability=capability, repo=repo, runtime=runtime,
-                enabled=enabled, workingMemoryGB=memory, revision=info['sha'], files=files,
+                enabled=enabled, workingMemoryGB=MEDIA_MEMORY_GB.get(model_id, memory), revision=info['sha'], files=files,
                 downloadBytes=sum(f['size'] for f in files))
 
 
@@ -80,9 +90,9 @@ if __name__ == '__main__':
                     and blob['rfilename'].endswith(('.json', '.safetensors', '.txt', '.model', '.pth', '.pt'))
                 ]
         update([
-            entry('images-9b', 'FLUX.2 Klein 9B · 8-bit', 'mlx-community/flux2-klein-9b-8bit', 'mflux', 14, 'Images option'),
-            entry('video-14b', 'FastMetal 14B QAD', 'FastVideo/FastMetal-14B-QAD', 'fastvideo', 28, 'Video option',
+            entry('images-9b', 'FLUX.2 Klein 9B · 8-bit', 'mlx-community/flux2-klein-9b-8bit', 'mflux', MEDIA_MEMORY_GB['images-9b'], 'Images option'),
+            entry('video-14b', 'FastMetal 14B QAD', 'FastVideo/FastMetal-14B-QAD', 'fastvideo', MEDIA_MEMORY_GB['video-14b'], 'Video option',
                   video_paths('FastVideo/FastMetal-14B-QAD')),
-            entry('video-5b', 'FastMetal 5B QAD', 'FastVideo/FastMetal-5B-QAD', 'fastvideo-mlx', 27.0, 'Video option',
+            entry('video-5b', 'FastMetal 5B QAD', 'FastVideo/FastMetal-5B-QAD', 'fastvideo-mlx', MEDIA_MEMORY_GB['video-5b'], 'Video option',
                   video_paths('FastVideo/FastMetal-5B-QAD'), enabled=True),
         ])

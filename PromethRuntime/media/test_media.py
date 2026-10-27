@@ -22,6 +22,8 @@ def test_fastvideo_command_uses_the_pinned_decoder() -> None:
         "waves at sunset",
         Path("/tmp/waves.mp4"),
     )
+    assert Path(command[1]).name == "bounded_video.py"
+    assert command[2] == "mlx_wan_prompt_to_video.py"
     assert command[command.index("--decode-backend") + 1] == "wan-vae"
     assert command[command.index("--width") + 1] == "832"
     assert command[command.index("--height") + 1] == "480"
@@ -37,12 +39,15 @@ def test_wan22_command_uses_fast_taehv() -> None:
         "river at golden hour",
         Path("/tmp/river.mp4"),
     )
+    assert Path(command[1]).name == "bounded_video.py"
+    assert command[2] == "mlx_wan22_generate.py"
     assert command[command.index("--decode-backend") + 1] == "taehv"
     assert command[command.index("--width") + 1] == "832"
     assert command[command.index("--height") + 1] == "448"
     assert command[command.index("--num-frames") + 1] == "121"
     assert "--fast" in command
     assert "--text-encoder-root" in command
+    assert command[command.index("--text-encoder-device") + 1] == "auto"
     assert "--vae-root" in command
 
 
@@ -76,11 +81,11 @@ def test_plan_for_video_5b_uses_wan22() -> None:
         os.environ.pop("PROMETH_VIDEO_MODEL_ID", None)
 
 
-def test_standin_trim_and_poster(tmp: Path) -> None:
+def test_standin_trim_and_poster(tmp_path: Path) -> None:
     os.environ["PROMETH_MEDIA_MOCK"] = "1"
     worker = media_worker.Worker()
-    clip = tmp / "clip.mp4"
-    poster = tmp / "poster.png"
+    clip = tmp_path / "clip.mp4"
+    poster = tmp_path / "poster.png"
     plan = worker.generate("waves at sunset", clip, poster)
     assert plan["mock"] is True
     assert clip.stat().st_size > 1000
@@ -88,7 +93,7 @@ def test_standin_trim_and_poster(tmp: Path) -> None:
     info = probe(clip)
     assert info["width"] == 832 and info["height"] == 480
     assert abs(info["duration"] - 5.0) < 0.2
-    trimmed = tmp / "clip-v2.mp4"
+    trimmed = tmp_path / "clip-v2.mp4"
     result = worker.trim(clip, trimmed, 1.0, 3.0)
     assert abs(result["duration"] - 2.0) < 0.1
     assert clip.exists() and trimmed.exists()
@@ -97,14 +102,14 @@ def test_standin_trim_and_poster(tmp: Path) -> None:
     assert trimmed_info["width"] == 832
 
 
-def test_cancel_kills_the_child(tmp: Path) -> None:
+def test_cancel_kills_the_child(tmp_path: Path) -> None:
     script = ROOT / "PromethRuntime" / "media" / "media_worker.py"
     env = os.environ.copy()
     env["PROMETH_MEDIA_MOCK"] = "1"
     # Replace ffmpeg with a sleeper by putting a stub first on PATH.
-    bindir = tmp / "bin"
+    bindir = tmp_path / "bin"
     bindir.mkdir(parents=True)
-    pidfile = tmp / "child.pid"
+    pidfile = tmp_path / "child.pid"
     stub = bindir / "ffmpeg"
     stub.write_text(
         "#!/bin/sh\necho $$ > \"$PROMETH_SLEEP_PID\"\nexec sleep 30\n",
@@ -125,8 +130,8 @@ def test_cancel_kills_the_child(tmp: Path) -> None:
     proc.stdin.write(json.dumps({
         "op": "generate",
         "prompt": "waves",
-        "output": str(tmp / "slow.mp4"),
-        "poster": str(tmp / "slow.png"),
+        "output": str(tmp_path / "slow.mp4"),
+        "poster": str(tmp_path / "slow.png"),
     }) + "\n")
     proc.stdin.flush()
     deadline = time.time() + 5

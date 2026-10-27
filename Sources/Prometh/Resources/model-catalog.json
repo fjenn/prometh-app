@@ -837,8 +837,8 @@
       "repo": "FastVideo/FastMetal-1.3B-QAD",
       "runtime": "fastvideo-mlx",
       "enabled": true,
-      "workingMemoryGB": 6.0,
-      "notes": "T2V only in released MLX examples, silent ~5s 480p. Packed MLX DiT plus T5 encoder and Wan VAE. Use --decode-backend wan-vae to avoid undeclared TAEHV downloads. ffmpeg must be shipped or output encoded through AVFoundation. Estimated memory is not a 16GB certification.",
+      "workingMemoryGB": 15.0,
+      "notes": "T2V only in released MLX examples, silent ~5s 480p. Packed MLX DiT plus T5 encoder and Wan VAE. Use --decode-backend wan-vae to avoid undeclared TAEHV downloads. ffmpeg must be shipped or output encoded through AVFoundation. Memory budget uses full-process cold measurements with a 10% margin.",
       "revision": "2dac0154b217adabf8895d6cde7d6d93e68b7bec",
       "license": "apache-2.0",
       "gated": false,
@@ -1016,7 +1016,7 @@
           "url": "https://huggingface.co/FastVideo/FastMetal-1.3B-QAD/resolve/2dac0154b217adabf8895d6cde7d6d93e68b7bec/vae/diffusion_pytorch_model.safetensors"
         }
       ],
-      "summary": "T2V only in released MLX examples, silent ~5s 480p. Packed MLX DiT plus T5 encoder and Wan VAE. Use --decode-backend wan-vae to avoid undeclared TAEHV downloads. ffmpeg must be shipped or output encoded through AVFoundation. Estimated memory is not a 16GB certification.",
+      "summary": "T2V only in released MLX examples, silent ~5s 480p. Packed MLX DiT plus T5 encoder and Wan VAE. Use --decode-backend wan-vae to avoid undeclared TAEHV downloads. ffmpeg must be shipped or output encoded through AVFoundation. Memory budget uses full-process cold measurements with a 10% margin.",
       "downloadBytes": 13399965056,
       "weightBytes": 13378453332
     },
@@ -1801,7 +1801,7 @@
       "repo": "mlx-community/flux2-klein-9b-8bit",
       "runtime": "mflux",
       "enabled": true,
-      "workingMemoryGB": 14,
+      "workingMemoryGB": 13.5,
       "revision": "07c85fd971952e5959a9314f4f2da446ff1b59b2",
       "files": [
         {
@@ -1974,7 +1974,7 @@
       "repo": "FastVideo/FastMetal-14B-QAD",
       "runtime": "fastvideo",
       "enabled": true,
-      "workingMemoryGB": 28,
+      "workingMemoryGB": 25.0,
       "revision": "fbc50323c677ee29a62d94204a62c996e505ac89",
       "files": [
         {
@@ -2157,7 +2157,7 @@
       "repo": "FastVideo/FastMetal-5B-QAD",
       "runtime": "fastvideo-mlx",
       "enabled": true,
-      "workingMemoryGB": 27.0,
+      "workingMemoryGB": 17.5,
       "revision": "5e4819ec9c8dd062443cf015bd9022c700eca458",
       "files": [
         {

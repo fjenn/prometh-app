@@ -25,7 +25,7 @@ done
 echo "time_pid=$TP child_pid=$PP" | tee -a "$LOG"
 (
   while kill -0 "${PP:-0}" 2>/dev/null; do
-    footprint -p "$PP" 2>/dev/null | rg 'phys_footprint' >> "$FOOT" || true
+    footprint -p "$PP" -f bytes 2>/dev/null | rg 'phys_footprint' >> "$FOOT" || true
     sleep 1
   done
 ) &
