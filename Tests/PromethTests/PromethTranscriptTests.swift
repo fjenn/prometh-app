@@ -120,4 +120,31 @@ final class PromethTranscriptTests: XCTestCase {
             "Morning brief"
         )
     }
+
+    func testGeneratedTitleStripsMarkdownMarkers() {
+        XCTAssertEqual(
+            PromethConversationTitle.title(
+                custom: nil,
+                preserveStored: false,
+                stored: "",
+                prompts: ["Use **bold** and `code` here"]
+            ),
+            "Use bold and code here"
+        )
+        XCTAssertEqual(
+            PromethConversationTitle.stripMarkdown("# Heading with __emphasis__"),
+            "Heading with emphasis"
+        )
+        let truncated = PromethConversationTitle.title(
+            custom: nil,
+            preserveStored: false,
+            stored: "",
+            prompts: [
+                "Use **bold markers that would otherwise survive truncation mid-token**",
+            ]
+        )
+        XCTAssertFalse(truncated.contains("*"))
+        XCTAssertFalse(truncated.contains("`"))
+        XCTAssertFalse(truncated.contains("#"))
+    }
 }

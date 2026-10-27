@@ -27,7 +27,7 @@ enum PromethConversationTitle {
         if line.isEmpty {
             return storedName.isEmpty ? "New chat" : storedName
         }
-        return truncate(firstPrompt(in: line))
+        return truncate(stripMarkdown(firstPrompt(in: line)))
     }
 
     /// Cuts at the first `?` or `!` that is immediately followed by more text.
@@ -43,6 +43,45 @@ enum PromethConversationTitle {
             }
         }
         return line
+    }
+
+    /// Drops common markdown wrappers so window/sidebar titles stay plain text.
+    /// Applied before truncation so a cut mid-marker cannot leave raw `**` visible.
+    static func stripMarkdown(_ value: String) -> String {
+        var text = value
+        text = text.replacingOccurrences(
+            of: #"^#{1,6}\s+"#,
+            with: "",
+            options: .regularExpression
+        )
+        text = text.replacingOccurrences(
+            of: #"\*\*(.+?)\*\*"#,
+            with: "$1",
+            options: .regularExpression
+        )
+        text = text.replacingOccurrences(
+            of: #"__(.+?)__"#,
+            with: "$1",
+            options: .regularExpression
+        )
+        text = text.replacingOccurrences(
+            of: #"~~(.+?)~~"#,
+            with: "$1",
+            options: .regularExpression
+        )
+        text = text.replacingOccurrences(
+            of: #"`([^`]+)`"#,
+            with: "$1",
+            options: .regularExpression
+        )
+        text = text.replacingOccurrences(of: "**", with: "")
+        text = text.replacingOccurrences(of: "__", with: "")
+        text = text.replacingOccurrences(of: "~~", with: "")
+        text = text.replacingOccurrences(of: "`", with: "")
+        text = text.replacingOccurrences(of: #"^#+\s*"#, with: "", options: .regularExpression)
+        return text
+            .replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     static func truncate(_ value: String, maxLength: Int = 56) -> String {
