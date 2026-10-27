@@ -49,6 +49,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--voice', action='store_true')
     parser.add_argument('--chat', action='store_true')
+    parser.add_argument('--media', action='store_true')
     args = parser.parse_args()
     if args.voice:
         update([
@@ -67,4 +68,18 @@ if __name__ == '__main__':
             entry('safe-llama1b', 'Llama 3.2 1B Instruct', 'mlx-community/Llama-3.2-1B-Instruct-4bit', 'mlx-lm', 1.8, 'Chat option'),
             entry('evil-4b', 'Qwen3.5 4B Heretic', 'darrellbest/Qwen3.5-4B-Heretic-GGUF', 'llama.cpp', 4.5, 'Evil option',
                   ['Qwen3.5-4B-Heretic-Q4_K_M.gguf']),
+        ])
+
+    if args.media:
+        # Skip ema/ DiT duplicate — generation uses the root mlx_dit checkpoint.
+        with urlopen('https://huggingface.co/api/models/FastVideo/FastMetal-14B-QAD?blobs=true', timeout=45) as response:
+            video_paths = [
+                blob['rfilename'] for blob in json.load(response)['siblings']
+                if not blob['rfilename'].startswith('ema/')
+                and blob['rfilename'].endswith(('.json', '.safetensors', '.txt', '.model'))
+            ]
+        update([
+            entry('images-9b', 'FLUX.2 Klein 9B · 8-bit', 'mlx-community/flux2-klein-9b-8bit', 'mflux', 14, 'Images option'),
+            entry('video-14b', 'FastMetal 14B QAD', 'FastVideo/FastMetal-14B-QAD', 'fastvideo', 28, 'Video option',
+                  video_paths),
         ])

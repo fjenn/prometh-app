@@ -51,4 +51,24 @@ final class ModelPickerTests: XCTestCase {
         // Gemma remains a manual option only.
         XCTAssertTrue(PromethModelPicker.options(.safe, catalog: catalog).contains { $0.id == "safe" })
     }
+
+    func testMediaBestFitPicksTopTierOnBigMac() throws {
+        let catalog = try ModelCatalogLoader.bundled()
+        XCTAssertEqual(
+            PromethModelPicker.choose(.images, catalog: catalog, memoryGB: 128, freeBytes: .max).model?.id,
+            "images-9b"
+        )
+        XCTAssertEqual(
+            PromethModelPicker.choose(.video, catalog: catalog, memoryGB: 128, freeBytes: .max).model?.id,
+            "video-14b"
+        )
+        XCTAssertEqual(
+            PromethModelPicker.choose(.images, catalog: catalog, memoryGB: 16, freeBytes: .max).model?.id,
+            "images"
+        )
+        XCTAssertEqual(
+            PromethModelPicker.choose(.video, catalog: catalog, memoryGB: 16, freeBytes: .max).model?.id,
+            "video"
+        )
+    }
 }

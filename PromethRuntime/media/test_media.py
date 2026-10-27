@@ -30,13 +30,18 @@ def test_fastvideo_command_uses_the_pinned_decoder() -> None:
 
 
 def test_plan_and_trim_math() -> None:
-    plan = media_worker.job_plan("waves at sunset")
-    assert plan["fastvideo"] == "8db2d71ef217e84bec7dbb6e4ab65c92b144df4f"
-    assert plan["model"] == "FastVideo/FastMetal-1.3B-QAD"
-    assert plan["revision"] == "2dac0154b217adabf8895d6cde7d6d93e68b7bec"
-    assert plan["width"] == 832 and plan["height"] == 480
-    assert plan["seconds"] == 5.0 and plan["silent"] is True
-    assert abs(media_worker.trim_duration(1.0, 3.0) - 2.0) < 0.1
+    # Pin the fallback so machines with video-14b installed still exercise 1.3B plan math.
+    os.environ["PROMETH_VIDEO_MODEL_ID"] = "video"
+    try:
+        plan = media_worker.job_plan("waves at sunset")
+        assert plan["fastvideo"] == "8db2d71ef217e84bec7dbb6e4ab65c92b144df4f"
+        assert plan["model"] == "FastVideo/FastMetal-1.3B-QAD"
+        assert plan["revision"] == "2dac0154b217adabf8895d6cde7d6d93e68b7bec"
+        assert plan["width"] == 832 and plan["height"] == 480
+        assert plan["seconds"] == 5.0 and plan["silent"] is True
+        assert abs(media_worker.trim_duration(1.0, 3.0) - 2.0) < 0.1
+    finally:
+        os.environ.pop("PROMETH_VIDEO_MODEL_ID", None)
 
 
 def test_standin_trim_and_poster(tmp: Path) -> None:

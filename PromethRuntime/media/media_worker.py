@@ -12,17 +12,47 @@ import threading
 from pathlib import Path
 
 FASTVIDEO_COMMIT = "8db2d71ef217e84bec7dbb6e4ab65c92b144df4f"
-MODEL = "FastVideo/FastMetal-1.3B-QAD"
-REVISION = "2dac0154b217adabf8895d6cde7d6d93e68b7bec"
+# Best-first video weights. Prefer 14B when the catalog folder is complete.
+# Tuple: (HF repo, revision, on-disk folder stem, catalog id).
+VIDEO_CANDIDATES = [
+    ("FastVideo/FastMetal-14B-QAD", "fbc50323c677ee29a62d94204a62c996e505ac89",
+     "FastVideo--FastMetal-14B-QAD--fbc50323c677", "video-14b"),
+    ("FastVideo/FastMetal-1.3B-QAD", "2dac0154b217adabf8895d6cde7d6d93e68b7bec",
+     "FastVideo--FastMetal-1.3B-QAD--2dac0154b217", "video"),
+]
+MODEL = VIDEO_CANDIDATES[-1][0]
+REVISION = VIDEO_CANDIDATES[-1][1]
 WIDTH = 832
 HEIGHT = 480
 SECONDS = 5.0
 
 
+def _video_ready(root: Path) -> bool:
+    return (
+        (root / "mlx_dit.safetensors").is_file()
+        and (root / "vae").is_dir()
+        and (root / "text_encoder").is_dir()
+    )
+
+
+def _selected_video() -> tuple[str, str, str]:
+    override = os.environ.get("PROMETH_VIDEO_MODEL_ID", "").strip()
+    models = Path.home() / "Library/Application Support/Prometh/Models"
+    for repo, revision, folder, catalog_id in VIDEO_CANDIDATES:
+        aliases = {repo, folder, revision, catalog_id}
+        if override and override not in aliases:
+            continue
+        root = models / folder
+        if _video_ready(root):
+            return repo, revision, folder
+    return VIDEO_CANDIDATES[-1][0], VIDEO_CANDIDATES[-1][1], VIDEO_CANDIDATES[-1][2]
+
+
 def job_plan(prompt: str, seconds: float = SECONDS) -> dict:
+    repo, revision, _ = _selected_video()
     return {
-        "model": MODEL,
-        "revision": REVISION,
+        "model": repo,
+        "revision": revision,
         "fastvideo": FASTVIDEO_COMMIT,
         "width": WIDTH,
         "height": HEIGHT,
@@ -92,14 +122,14 @@ def fastvideo_checkout() -> Path | None:
 
 def fastmetal_root() -> Path | None:
     override = os.environ.get("PROMETH_FASTMETAL_ROOT")
-    candidates = [Path(override)] if override else []
-    candidates.append(
-        Path.home()
-        / "Library/Application Support/Prometh/Models/FastVideo--FastMetal-1.3B-QAD--2dac0154b217"
-    )
-    for root in candidates:
-        if (root / "mlx_dit.safetensors").is_file() and (root / "vae").is_dir():
+    if override:
+        root = Path(override)
+        if _video_ready(root):
             return root
+    _, _, folder = _selected_video()
+    root = Path.home() / "Library/Application Support/Prometh/Models" / folder
+    if _video_ready(root):
+        return root
     return None
 
 
