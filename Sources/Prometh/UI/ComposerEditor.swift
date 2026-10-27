@@ -4,55 +4,146 @@ import AppKit
 // Independently implemented AppKit editor; Nativ's marked-text and Shift-Return pattern informed this boundary.
 struct ComposerEditor: NSViewRepresentable {
     @Binding var text: String
-    var onSend:(String)->Void
-    func makeCoordinator()->Coordinator {Coordinator(self)}
-    func makeNSView(context:Context)->NSScrollView {
-        let scroll=NSScrollView();scroll.hasVerticalScroller=true;scroll.drawsBackground=false
-        let view=SubmitTextView();view.delegate=context.coordinator;view.isRichText=false;view.isAutomaticQuoteSubstitutionEnabled=false;view.allowsUndo=true;view.drawsBackground=false;view.font=NSFont.systemFont(ofSize:15);view.textColor = .labelColor;view.insertionPointColor = .labelColor;view.textContainerInset=NSSize(width:3,height:7);view.isVerticallyResizable=true;view.autoresizingMask=[.width];view.textContainer?.widthTracksTextView=true;view.string=text;view.send={ context.coordinator.commit($0) };view.setAccessibilityLabel("Message draft");view.setAccessibilityIdentifier("prometh.draft");scroll.setAccessibilityIdentifier("prometh.composer");scroll.documentView=view;return scroll
+    /// True when the NSTextView has non-whitespace content. Used so the SwiftUI
+    /// placeholder cannot draw on top of text that has not yet synced into `text`.
+    @Binding var hasContent: Bool
+    /// Bumps when the selected chat changes so a focused empty draft can replace
+    /// leftover NSTextView characters from the previous conversation.
+    var conversationID: UUID?
+    var onSend: (String) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scroll = NSScrollView()
+        scroll.hasVerticalScroller = true
+        scroll.drawsBackground = false
+        let view = SubmitTextView()
+        view.delegate = context.coordinator
+        view.isRichText = false
+        view.isAutomaticQuoteSubstitutionEnabled = false
+        view.allowsUndo = true
+        view.drawsBackground = false
+        view.font = NSFont.systemFont(ofSize: 15)
+        view.textColor = .labelColor
+        view.insertionPointColor = .labelColor
+        view.textContainerInset = NSSize(width: 3, height: 7)
+        view.isVerticallyResizable = true
+        view.autoresizingMask = [.width]
+        view.textContainer?.widthTracksTextView = true
+        view.applyingExternalUpdate = true
+        view.string = text
+        view.applyingExternalUpdate = false
+        view.send = { context.coordinator.commit($0) }
+        view.setAccessibilityLabel("Message draft")
+        view.setAccessibilityIdentifier("prometh.draft")
+        scroll.setAccessibilityIdentifier("prometh.composer")
+        scroll.documentView = view
+        DispatchQueue.main.async {
+            context.coordinator.noteContent(view.string)
+        }
+        return scroll
     }
-    func updateNSView(_ scroll:NSScrollView,context:Context){
-        context.coordinator.parent=self
-        guard let view=scroll.documentView as? SubmitTextView else{return}
-        // While the field is focused, never clobber its string from the binding.
-        // Accessibility paste / AXValue set the NSTextView first; overwriting with a
-        // still-empty binding drops 30k pastes before textDidChange can sync.
-        // submit()/commit already clear the view after send.
+
+    func updateNSView(_ scroll: NSScrollView, context: Context) {
+        context.coordinator.parent = self
+        guard let view = scroll.documentView as? SubmitTextView else { return }
+        let conversationChanged = context.coordinator.conversationID != conversationID
+        if conversationChanged {
+            context.coordinator.conversationID = conversationID
+        }
+        // While the field is focused, never clobber its string from an empty binding
+        // (AX paste race). Chat switches and non-empty bindings still apply.
         if view.string != text {
             let editing = view.window?.firstResponder === view
-            if !editing { view.string = text }
+            if conversationChanged || !editing || !text.isEmpty || view.string.isEmpty {
+                view.applyingExternalUpdate = true
+                view.string = text
+                view.applyingExternalUpdate = false
+            }
+        }
+        let present = !view.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if hasContent != present {
+            DispatchQueue.main.async {
+                context.coordinator.noteContent(view.string)
+            }
         }
         view.textColor = .labelColor
         view.insertionPointColor = .labelColor
     }
-    class Coordinator:NSObject,NSTextViewDelegate {
-        var parent:ComposerEditor
-        init(_ parent:ComposerEditor){self.parent=parent}
-        func textDidChange(_ notification:Notification){if let v=notification.object as? NSTextView{parent.text=v.string}}
+
+    class Coordinator: NSObject, NSTextViewDelegate {
+        var parent: ComposerEditor
+        var conversationID: UUID?
+        init(_ parent: ComposerEditor) { self.parent = parent }
+
+        func textDidChange(_ notification: Notification) {
+            guard let view = notification.object as? NSTextView else { return }
+            parent.text = view.string
+            noteContent(view.string)
+        }
+
+        func noteContent(_ value: String) {
+            let present = !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            if parent.hasContent != present {
+                parent.hasContent = present
+            }
+        }
+
         func commit(_ value: String) {
             guard !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
             parent.onSend(value)
             parent.text = ""
+            parent.hasContent = false
         }
     }
 }
-class SubmitTextView:NSTextView {
-    var send:((String)->Void)?
-    override func keyDown(with event:NSEvent){if (event.keyCode==36 || event.keyCode==76) && !hasMarkedText(){if event.modifierFlags.contains(.shift){insertNewlineIgnoringFieldEditor(nil)}else{submit()};return};super.keyDown(with:event)}
-    override func insertNewline(_ sender: Any?) { if hasMarkedText() { super.insertNewline(sender) } else { submit() } }
+
+class SubmitTextView: NSTextView {
+    var send: ((String) -> Void)?
+    var applyingExternalUpdate = false
+
+    override func keyDown(with event: NSEvent) {
+        if (event.keyCode == 36 || event.keyCode == 76) && !hasMarkedText() {
+            if event.modifierFlags.contains(.shift) {
+                insertNewlineIgnoringFieldEditor(nil)
+            } else {
+                submit()
+            }
+            return
+        }
+        super.keyDown(with: event)
+    }
+
+    override func insertNewline(_ sender: Any?) {
+        if hasMarkedText() {
+            super.insertNewline(sender)
+        } else {
+            submit()
+        }
+    }
+
     override func doCommand(by selector: Selector) {
-        if selector == #selector(insertNewline(_:)) { submit(); return }
+        if selector == #selector(insertNewline(_:)) {
+            submit()
+            return
+        }
         super.doCommand(by: selector)
     }
+
     private var submitting = false
     private func submit() {
         guard !submitting else { return }
         let value = string
         guard !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         submitting = true
+        applyingExternalUpdate = true
         string = ""
+        applyingExternalUpdate = false
         send?(value)
         submitting = false
     }
+
     override func insertText(_ insertString: Any, replacementRange: NSRange) {
         if let text = insertString as? String, text == "\n" || text == "\r" {
             submit()
@@ -60,6 +151,12 @@ class SubmitTextView:NSTextView {
         }
         super.insertText(insertString, replacementRange: replacementRange)
     }
+
+    override func didChangeText() {
+        super.didChangeText()
+        notifyDraftChanged()
+    }
+
     /// AX / VoiceOver set the string without going through typing; push that into
     /// the SwiftUI draft binding so Send uses the pasted text.
     override func accessibilitySetValue(_ value: Any?, forAttribute attribute: NSAccessibility.Attribute) {
@@ -68,16 +165,19 @@ class SubmitTextView:NSTextView {
             notifyDraftChanged()
         }
     }
+
     override var string: String {
         get { super.string }
         set {
             super.string = newValue
-            // Direct assignment (paste helpers / AX) must still sync the binding.
-            if window?.firstResponder === self {
+            // Direct assignment (paste helpers / AX) must still sync the binding,
+            // but updates pushed from SwiftUI must not re-enter the binding.
+            if !applyingExternalUpdate {
                 notifyDraftChanged()
             }
         }
     }
+
     private func notifyDraftChanged() {
         delegate?.textDidChange?(Notification(name: NSText.didChangeNotification, object: self))
     }

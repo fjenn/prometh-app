@@ -207,12 +207,17 @@ enum ChatToolRegistry {
             displayDescription: "Work on documents, code, websites, and shared terminals beside chat.",
             configuration: nil
         ))
-        // PROMETH-SEAM: S13 — advertise generate_video only in the Prometh app.
+        // PROMETH-SEAM: S13 — advertise generate_video / trim_video only in the Prometh app.
         // XCTest keeps the pinned Nativ tool list.
         if PromethFlags.promethShell && !PromethFlags.isRunningUnitTests && PromethFlags.video {
             tools.append(ChatNativeToolDescriptor(
                 definition: PromethGenerateVideoTool.definition,
                 displayDescription: "Create a short silent clip.",
+                configuration: nil
+            ))
+            tools.append(ChatNativeToolDescriptor(
+                definition: PromethTrimVideoTool.definition,
+                displayDescription: "Trim the latest clip and keep the original.",
                 configuration: nil
             ))
         }
@@ -306,6 +311,10 @@ enum ChatToolDispatcher {
             let text = try await PromethGenerateVideoTool.outcome(for: call.function?.arguments ?? "{}")
             return ChatToolExecutionOutcome(content: text, attachments: [])
         },
+        PromethTrimVideoTool.toolName: { call, _ in
+            let text = try await PromethTrimVideoTool.outcome(for: call.function?.arguments ?? "{}")
+            return ChatToolExecutionOutcome(content: text, attachments: [])
+        },
     ]
 
     private static let failureHandlers: [String: FailureHandler] = [
@@ -352,6 +361,9 @@ enum ChatToolDispatcher {
             ChatTerminalToolExecutor().failurePayload(error: error)
         },
         PromethGenerateVideoTool.toolName: { _, error in
+            #"{"ok":false,"error":"\#(error.localizedDescription)"}"#
+        },
+        PromethTrimVideoTool.toolName: { _, error in
             #"{"ok":false,"error":"\#(error.localizedDescription)"}"#
         },
     ]

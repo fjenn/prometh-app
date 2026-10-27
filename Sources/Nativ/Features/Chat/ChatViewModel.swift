@@ -3471,6 +3471,8 @@ final class ChatViewModel: ObservableObject {
     enum PromethPromptAdditions {
         nonisolated(unsafe) static var sections: (@Sendable () -> [String])?
         nonisolated(unsafe) static var prefetch: (@Sendable (UUID, String) async -> Void)?
+        /// Scrubs tool JSON before it is sent back to the model (attachment IDs, paths).
+        nonisolated(unsafe) static var sanitizeToolContent: (@Sendable (String?, String) -> String)?
     }
 
     static let corePrompt = """
@@ -3532,6 +3534,11 @@ final class ChatViewModel: ObservableObject {
             // Fingerprint stable attachment identities, never query-dependent excerpts.
             let documents = message.imageAttachments.filter { $0.chatAttachmentKind.documentFormat != nil }
             let references = documents.map { "\($0.id.uuidString): \($0.filename)" }.joined(separator: "\n")
+            if message.role == .tool,
+               !PromethFlags.isRunningUnitTests,
+               let sanitize = PromethPromptAdditions.sanitizeToolContent {
+                message.content = sanitize(message.toolName, message.content)
+            }
             if let apiMessage = message.apiMessage(
                 documentContext: references.isEmpty ? nil : "Attached files:\n" + references,
                 includesImages: includesImages

@@ -864,7 +864,10 @@ final class PromethStore: ObservableObject {
     }
 
     private static func showsToolCard(_ name: String?) -> Bool {
-        name == PromethGenerateVideoTool.toolName || name == "generate_image" || name == "edit_image"
+        name == PromethGenerateVideoTool.toolName
+            || name == PromethTrimVideoTool.toolName
+            || name == "generate_image"
+            || name == "edit_image"
     }
 
     private static func imageArtifact(_ message: ChatTranscriptMessage, in messages: [ChatTranscriptMessage]) -> PromethArtifact? {
@@ -926,6 +929,7 @@ final class PromethStore: ObservableObject {
                 next.trimEnd = trim.1
                 next.duration = duration
                 next.prompt = prompt.isEmpty ? artifact.prompt : prompt
+                PromethMediaRegistry.remember(dest)
                 var message = Message(role: "assistant", text: "", status: "complete", artifact: next)
                 message.id = next.id
                 if let chatID {
@@ -1278,10 +1282,13 @@ except Exception as error:
                         }
                     }
                 }
-                if message.toolName == PromethGenerateVideoTool.toolName {
+                if message.toolName == PromethGenerateVideoTool.toolName
+                    || message.toolName == PromethTrimVideoTool.toolName {
                     item.artifact = PromethVideoResult.artifact(from: message.content, prompt: "")
                     if message.toolStatus == .running || message.toolStatus == .preparing {
-                        item.text = "Making the clip…"
+                        item.text = message.toolName == PromethTrimVideoTool.toolName
+                            ? "Trimming the clip…"
+                            : "Making the clip…"
                         item.status = "preparing"
                     } else if item.artifact != nil {
                         item.text = ""
@@ -1289,7 +1296,9 @@ except Exception as error:
                         item.text = "The clip was stopped."
                         item.status = "stopped"
                     } else {
-                        item.text = "The clip didn't come through. Please try again."
+                        item.text = message.toolName == PromethTrimVideoTool.toolName
+                            ? "The trim didn't come through. Try Preview → Edit video."
+                            : "The clip didn't come through. Please try again."
                         item.status = "failed"
                     }
                 }

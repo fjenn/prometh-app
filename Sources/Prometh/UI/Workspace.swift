@@ -8,6 +8,7 @@ struct WorkspaceView: View {
     @State var sidebar=true;@State var renaming:UUID?;@State var renameText="";@State var deleting:UUID?
     @State var editing:Message?;@State var editText="";@State var sourcePreview=false
     @State var focusedCitation:Int?;@State var focusedMessage:UUID?
+    @State var editorHasContent=false
     var isEvil:Bool {store.displayedMode == .evil}
     var body:some View {
         HStack(spacing:0){if sidebar{sidebarView.frame(width:240);Divider()};main}
@@ -113,7 +114,7 @@ struct WorkspaceView: View {
         VStack(alignment:.leading,spacing:6) {
             if store.dictating {HStack{Text("Listening…").font(.system(size:12)).foregroundStyle(.secondary);Spacer();Button("Finish"){store.finishDictation()};Button("Cancel"){store.cancelDictation()}.font(.system(size:12))}}
             if let c=store.current,!c.attachments.isEmpty {ScrollView(.horizontal){HStack{ForEach(c.attachments){a in HStack{Button{store.previewAttachment=a}label:{Label(a.filename,systemImage:"paperclip").lineLimit(1)}.buttonStyle(.plain);IconButton(symbol:"xmark",title:"Remove attachment"){store.removeAttachment(a)}}.font(.caption).padding(.horizontal,8).padding(.vertical,4).background(Color.primary.opacity(0.05),in:Capsule())}}}}
-            ZStack(alignment:.topLeading){if (store.current?.draft ?? "").isEmpty{Text("Message "+Product.name).font(.system(size:16)).foregroundStyle(.tertiary).padding(.top,8).padding(.leading,4).allowsHitTesting(false)};ComposerEditor(text:Binding(get:{store.current?.draft ?? ""},set:{if store.current==nil{store.newChat()};store.setDraft($0)}),onSend:{store.send($0)}).frame(height:min(130,max(36,CGFloat((store.current?.draft.components(separatedBy:"\n").count ?? 1))*21+16)))}
+            ZStack(alignment:.topLeading){if (store.current?.draft ?? "").trimmingCharacters(in:.whitespacesAndNewlines).isEmpty && !editorHasContent{Text("Message "+Product.name).font(.system(size:16)).foregroundStyle(.tertiary).padding(.top,8).padding(.leading,4).allowsHitTesting(false)};ComposerEditor(text:Binding(get:{store.current?.draft ?? ""},set:{if store.current==nil{store.newChat()};store.setDraft($0)}),hasContent:$editorHasContent,conversationID:store.state.selectedChatID,onSend:{store.send($0);editorHasContent=false}).frame(height:min(130,max(36,CGFloat((store.current?.draft.components(separatedBy:"\n").count ?? 1))*21+16))).onChange(of:store.state.selectedChatID){_,_ in editorHasContent=false}}
             HStack(spacing:10) {
                 plusMenu
                 Spacer(minLength:4)

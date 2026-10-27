@@ -35,4 +35,26 @@ final class PromethMediaTests: XCTestCase {
         XCTAssertEqual(PromethVideoPlan.height, 480)
         XCTAssertEqual(PromethVideoPlan.fastVideoCommit, "8db2d71ef217e84bec7dbb6e4ab65c92b144df4f")
     }
+
+    func testTrimVideoPayloadBecomesVersionTwo() {
+        let payload = """
+        {"ok":true,"plan":{"output":"/tmp/clip-trimmed.mp4","poster":"/tmp/clip-trimmed.png","seconds":2,"width":832,"height":480,"version":2,"trim_start":1.0,"trim_end":3.0,"keep_original":true}}
+        """
+        let artifact = PromethVideoResult.artifact(from: payload, prompt: "trim")
+        XCTAssertEqual(artifact?.filename, "clip-trimmed.mp4")
+        XCTAssertEqual(artifact?.version, 2)
+        XCTAssertEqual(artifact?.duration ?? 0, 2, accuracy: 0.01)
+        XCTAssertEqual(artifact?.trimStart ?? -1, 1.0, accuracy: 0.01)
+        XCTAssertEqual(artifact?.trimEnd ?? -1, 3.0, accuracy: 0.01)
+    }
+
+    func testVideoToolSanitizerHidesPaths() {
+        let raw = """
+        {"ok":true,"plan":{"output":"/tmp/ABC.mp4","poster":"/tmp/ABC.png","seconds":5,"trim_start":1.0,"trim_end":3.0}}
+        """
+        let scrubbed = PromethToolResultSanitizer.modelFacing(toolName: "trim_video", content: raw)
+        XCTAssertFalse(scrubbed.contains("/tmp/"))
+        XCTAssertFalse(scrubbed.contains("ABC.mp4"))
+        XCTAssertTrue(scrubbed.contains("ok"))
+    }
 }

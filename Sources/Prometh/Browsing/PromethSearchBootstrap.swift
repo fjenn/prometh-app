@@ -29,6 +29,9 @@ enum PromethSearchBootstrap {
                 PromethWebPrefetch.promptSection(),
             ].filter { !$0.isEmpty }
         }
+        ChatViewModel.PromethPromptAdditions.sanitizeToolContent = { toolName, content in
+            PromethToolResultSanitizer.modelFacing(toolName: toolName, content: content)
+        }
         ChatViewModel.PromethPromptAdditions.prefetch = { userID, text in
             await PromethWebPrefetch.prepare(userID: userID, text: text)
         }
@@ -42,6 +45,9 @@ enum PromethSearchBootstrap {
         applyDefaultsIfUnset()
         PromethGenerateVideoTool.run = { arguments in
             try await PromethMediaWorker.generate(argumentsJSON: arguments)
+        }
+        PromethTrimVideoTool.run = { arguments in
+            try await PromethMediaWorker.trimLatest(argumentsJSON: arguments)
         }
         ChatViewModel.ChatEndpointResolver.resolve = { settings, sessionID in
             let mode = PromethModeTable.mode(for: sessionID)

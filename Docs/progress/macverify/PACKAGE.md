@@ -1,29 +1,29 @@
-# Phase C — judge package
+# Phase C — judge package (polish refresh)
 
-Host: Apple M5 Max, 128 GB, macOS 26.6.2, arm64. Branch `prometh`. Package built 2026-10-27 (America/Argentina/Buenos_Aires) for Finn’s noon BA judge send.
+Host: Apple M5 Max, 128 GB, macOS 26.6.2, arm64. Branch `prometh`. Package rebuilt 2026-10-27 (America/Argentina/Buenos_Aires) after reviewer defect fixes. See `POLISH.md`.
 
 ## Polish
 
-- Conversation titles derived from the first prompt now strip markdown markers (`**`, `__`, `` ` ``, `#`, `~~`) before truncation (`PromethConversationTitle.stripMarkdown`).
-- Unit test: `PromethTranscriptTests.testGeneratedTitleStripsMarkdownMarkers`.
+- Composer placeholder hides whenever the NSTextView or draft binding has content; chat switches force-sync the editor.
+- Chat `trim_video` tool trims the latest clip, keeps the original as Version 1, renders Version 2.
+- Image/video tool results are sanitized before the model sees them; displayed assistant text scrubs attachment UUIDs.
+- Conversation titles strip markdown on every path (`PromethConversationTitle.stripMarkdown`).
 - Nativ features were not deleted; unused surfaces stay hidden.
 
 ## Gates (all exit 0)
 
 | Gate | Result |
 |---|---|
-| `./scripts/prometh/build.sh` | **PASS** — Debug `Prometh.app` built and ad-hoc signed |
-| `make verify` | **PASS** — bundled `mlx_vlm.server` + `nativ_server` import OK |
-| `xcodebuild … -only-testing:PromethTests` | **PASS** — 49 tests, 0 failures |
+| `./scripts/prometh/build.sh` | **PASS** |
+| `make verify` | **PASS** |
+| `xcodebuild … -only-testing:PromethTests` | **PASS** — 54 tests, 0 failures |
 | `xcodebuild … -only-testing:PromethUITests` | **PASS** — 6 tests, 0 failures |
 
 ## Release app
 
-- Built: `xcodebuild -scheme Nativ -configuration Release NATIV_PRODUCT_NAME=Prometh`
-- Path: `build/NativDevelopmentDerivedData/Build/Products/Release/Prometh.app` (~1.7 GB on disk)
+- Built: `xcodebuild -scheme Nativ -configuration Release NATIV_PRODUCT_NAME=Prometh CODE_SIGNING_ALLOWED=NO`
+- Path: `build/NativDevelopmentDerivedData/Build/Products/Release/Prometh.app`
 - Signed: `codesign --force --deep -s -` (adhoc, `studio.prometh.Prometh`)
-- Bundled runtime check: `Contents/Resources/PromethRuntime/media/media_worker.py` present (cancel/`done` return path included), plus `composio_mcp`, `llama`, `media`, `reader`, `searxng`, `voice`
-- Launch: opened Release build; window titled Prometh; screenshot `Docs/progress/macverify/release-launch.png`
 
 ## Judge folder
 
@@ -32,13 +32,12 @@ Path: `~/Desktop/Prometh-judges/`
 | Item | Notes |
 |---|---|
 | `Prometh.zip` | `ditto -c -k --sequesterRsrc --keepParent Prometh.app Prometh.zip` |
-| Zip size | **624M** (654,367,996 bytes) |
-| SHA-256 | `5586d77d310470c0338e2a184cb0f13c0ad57b070f6c1d1a8e284194576e0a04` |
-| `JUDGES.md` | Same content as `Docs/JUDGES.md` |
-| Screenshots | `final-chat`, `final-search`, `final-image`, `final-image-edit`, `final-video`, `final-voice`, `final-evil` |
+| Zip size | **624M** (654,385,350 bytes) |
+| SHA-256 | `c7a01cf335de229af5489b73b5481eafb721391346dafe211489517712f3c27a` |
+| `JUDGES.md` | Same content as `Docs/JUDGES.md` (chat trim called out) |
+| Screenshots | `final-chat`, `final-search`, `final-image`, `final-image-edit`, `final-video`, `final-video-after-trim`, `final-voice`, `final-evil` |
 
 ## Docs / git
 
-- `Docs/JUDGES.md` added (install, try list, hardware from catalog / project settings).
-- Root `README.md` rewritten for Prometh; credits Nativ (MIT) as the base.
+- `Docs/progress/macverify/POLISH.md` records each defect → fix → evidence.
 - Pushed to `origin/prometh` only (no force-push, no releases, no other branches).

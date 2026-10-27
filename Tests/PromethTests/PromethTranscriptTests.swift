@@ -132,6 +132,15 @@ final class PromethTranscriptTests: XCTestCase {
             "Use bold and code here"
         )
         XCTAssertEqual(
+            PromethConversationTitle.title(
+                custom: nil,
+                preserveStored: false,
+                stored: "",
+                prompts: ["Show markdown: one **bold** word, three fruit bullets"]
+            ),
+            "Show markdown: one bold word, three fruit bullets"
+        )
+        XCTAssertEqual(
             PromethConversationTitle.stripMarkdown("# Heading with __emphasis__"),
             "Heading with emphasis"
         )
@@ -146,5 +155,45 @@ final class PromethTranscriptTests: XCTestCase {
         XCTAssertFalse(truncated.contains("*"))
         XCTAssertFalse(truncated.contains("`"))
         XCTAssertFalse(truncated.contains("#"))
+    }
+
+    func testStoredAndCustomTitlesAlsoStripMarkdown() {
+        XCTAssertEqual(
+            PromethConversationTitle.title(
+                custom: nil,
+                preserveStored: true,
+                stored: "Reply with: a **bold** word",
+                prompts: ["ignored"]
+            ),
+            "Reply with: a bold word"
+        )
+        XCTAssertEqual(
+            PromethConversationTitle.title(
+                custom: "Use **bold** title",
+                preserveStored: false,
+                stored: "Other",
+                prompts: ["prompt"]
+            ),
+            "Use bold title"
+        )
+    }
+
+    func testToolResultSanitizerHidesAttachmentIDs() {
+        let raw = """
+        {"ok":true,"operation":"edit","images":[{"attachment_id":"620E9990-6640-4D5A-A003-C25DDCDE3202","width":512,"height":512,"seed":1}]}
+        """
+        let scrubbed = PromethToolResultSanitizer.modelFacing(toolName: "edit_image", content: raw)
+        XCTAssertFalse(scrubbed.contains("620E9990"))
+        XCTAssertFalse(scrubbed.contains("attachment_id"))
+        XCTAssertTrue(scrubbed.contains("ok"))
+        XCTAssertTrue(scrubbed.lowercased().contains("version") || scrubbed.lowercased().contains("edited"))
+    }
+
+    func testVisibleReplyScrubsAttachmentIDs() {
+        let leaked = "I have edited the picture to depict the scene at dusk. The new version is available with the attachment ID 620E9990-6640-4D5A-A003-C25DDCDE3202."
+        let scrubbed = PromethTranscript.scrubInternals(leaked)
+        XCTAssertFalse(scrubbed.contains("620E9990"))
+        XCTAssertFalse(scrubbed.lowercased().contains("attachment id"))
+        XCTAssertTrue(scrubbed.localizedCaseInsensitiveContains("dusk"))
     }
 }

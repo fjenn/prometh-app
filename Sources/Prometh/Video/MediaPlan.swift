@@ -35,13 +35,16 @@ enum PromethVideoResult {
               let output = plan["output"] as? String
         else { return nil }
         let seconds = plan["seconds"] as? Double ?? PromethVideoPlan.seconds
+        let version = plan["version"] as? Int ?? 1
+        let trimStart = plan["trim_start"] as? Double ?? 0
+        let trimEnd = plan["trim_end"] as? Double ?? seconds
         return PromethArtifact(
             kind: "video",
             filename: URL(fileURLWithPath: output).lastPathComponent,
             prompt: prompt,
-            version: 1,
-            trimStart: 0,
-            trimEnd: seconds,
+            version: version,
+            trimStart: trimStart,
+            trimEnd: trimEnd,
             duration: seconds
         )
     }

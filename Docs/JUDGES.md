@@ -26,7 +26,7 @@ Everything stays on this Mac. No product account. Models download from Hugging F
 - **Chat** — ask anything; markdown (bold, lists, code) renders in replies.
 - **Search with citations** — ask for today’s news; open Sources / citation chips.
 - **Image** — generate, then edit the same chat (Version cards).
-- **Video** — generate a short clip; Preview → Edit video to trim; Cancel while generating.
+- **Video** — generate a short clip (~832×480, ~5 s); ask in chat to trim (keeps the original as Version 1), or use Preview → Edit video; Cancel while generating.
 - **Voice** — dictate or speak a reply; use **Interrupt** while speaking. macOS will prompt for **Microphone** (`studio.prometh.Prometh`). Allow it under System Settings → Privacy & Security if dictation is denied.
 - **Safe / Evil Mode** — switch in the composer mode menu.
 

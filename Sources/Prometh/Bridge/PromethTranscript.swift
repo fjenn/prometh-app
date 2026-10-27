@@ -18,14 +18,14 @@ enum PromethTranscript {
     ) -> String? {
         let body = content.trimmingCharacters(in: .whitespacesAndNewlines)
         if !body.isEmpty {
-            return content
+            return scrubInternals(content)
         }
         if hasToolCalls && !isLastAssistantInTurn {
             return nil
         }
         let thought = reasoning.trimmingCharacters(in: .whitespacesAndNewlines)
         if !thought.isEmpty {
-            return reasoning
+            return scrubInternals(reasoning)
         }
         if isLastAssistantInTurn && !isStreaming && !searchHits.isEmpty {
             return groundedSummary(searchHits)
@@ -67,5 +67,29 @@ enum PromethTranscript {
             }
             return "\(hit.title) \(marker)\n\(hit.snippet)"
         }.joined(separator: "\n\n")
+    }
+
+    /// Drops attachment IDs / UUID dumps that models sometimes echo from tool JSON.
+    static func scrubInternals(_ value: String) -> String {
+        var text = value
+        text = text.replacingOccurrences(
+            of: #"(?i)[,.]?\s*(?:the\s+)?(?:new\s+)?version is available with the attachment id(?:\s+[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?\.?"#,
+            with: ".",
+            options: .regularExpression
+        )
+        text = text.replacingOccurrences(
+            of: #"(?i)(?:with\s+)?(?:the\s+)?attachment\s*id\s*[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"#,
+            with: "",
+            options: .regularExpression
+        )
+        text = text.replacingOccurrences(
+            of: #"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"#,
+            with: "",
+            options: .regularExpression
+        )
+        text = text.replacingOccurrences(of: #"\s+\."#, with: ".", options: .regularExpression)
+        text = text.replacingOccurrences(of: #"\.\s*\."#, with: ".", options: .regularExpression)
+        text = text.replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

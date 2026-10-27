@@ -11,23 +11,23 @@ enum PromethConversationTitle {
     ) -> String {
         let customName = custom?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if !customName.isEmpty {
-            return customName
+            return display(customName)
         }
         let storedName = stored.trimmingCharacters(in: .whitespacesAndNewlines)
         if preserveStored, !storedName.isEmpty {
-            return storedName
+            return display(storedName)
         }
         guard let first = prompts.first else {
-            return storedName.isEmpty ? "New chat" : storedName
+            return storedName.isEmpty ? "New chat" : display(storedName)
         }
         let line = first
             .components(separatedBy: .newlines)
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .first { !$0.isEmpty } ?? ""
         if line.isEmpty {
-            return storedName.isEmpty ? "New chat" : storedName
+            return storedName.isEmpty ? "New chat" : display(storedName)
         }
-        return truncate(stripMarkdown(firstPrompt(in: line)))
+        return display(firstPrompt(in: line))
     }
 
     /// Cuts at the first `?` or `!` that is immediately followed by more text.
@@ -74,6 +74,16 @@ enum PromethConversationTitle {
             with: "$1",
             options: .regularExpression
         )
+        text = text.replacingOccurrences(
+            of: #"\*(.+?)\*"#,
+            with: "$1",
+            options: .regularExpression
+        )
+        text = text.replacingOccurrences(
+            of: #"_(.+?)_"#,
+            with: "$1",
+            options: .regularExpression
+        )
         text = text.replacingOccurrences(of: "**", with: "")
         text = text.replacingOccurrences(of: "__", with: "")
         text = text.replacingOccurrences(of: "~~", with: "")
@@ -88,5 +98,9 @@ enum PromethConversationTitle {
         guard value.count > maxLength else { return value }
         let keep = max(1, maxLength - 1)
         return "\(value.prefix(keep))…"
+    }
+
+    private static func display(_ value: String) -> String {
+        truncate(stripMarkdown(value))
     }
 }
