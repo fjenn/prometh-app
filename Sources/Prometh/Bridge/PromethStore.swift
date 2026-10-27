@@ -457,11 +457,20 @@ final class PromethStore: ObservableObject {
         }
     }
 
+    /// Safe chat runs Gemma 4 via mlx-vlm and accepts images. Evil GGUF is text-only here.
+    private func languageModelSupportsVision(for id: UUID) -> Bool {
+        modes[id.uuidString] != .evil
+    }
+
     @discardableResult
     private func deliver(_ id: UUID) -> Bool {
         let text = (drafts[id.uuidString] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         chat.draft = text
-        chat.send(using: model, languageModelSupportsTools: true, languageModelSupportsVision: false)
+        chat.send(
+            using: model,
+            languageModelSupportsTools: true,
+            languageModelSupportsVision: languageModelSupportsVision(for: id)
+        )
         let saved = chat.messages.contains {
             $0.role == .user && $0.content.trimmingCharacters(in: .whitespacesAndNewlines) == text
         }
@@ -491,7 +500,11 @@ final class PromethStore: ObservableObject {
         if chat.currentSessionID != id { select(id) }
         chat.beginEditingUserMessage(message.id)
         chat.draft = text
-        chat.send(using: model, languageModelSupportsTools: true, languageModelSupportsVision: false)
+        chat.send(
+            using: model,
+            languageModelSupportsTools: true,
+            languageModelSupportsVision: languageModelSupportsVision(for: id)
+        )
         drafts[id.uuidString] = ""
         persist()
     }
