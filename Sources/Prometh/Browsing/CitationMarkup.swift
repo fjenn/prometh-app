@@ -112,13 +112,79 @@ enum PromethReplyMarkup {
     static func attributed(markdown: String, cited: Set<Int>) -> AttributedString {
         // `.full` drops paragraph breaks (`A.\n\nB` → `A.B`). Keep whitespace and
         // turn list markers into visible bullets before the inline-only parse.
-        let prepared = shield(lists(spacing(markdown)))
-        let options = AttributedString.MarkdownParsingOptions(
-            interpretedSyntax: .inlineOnlyPreservingWhitespace,
-            failurePolicy: .returnPartiallyParsedIfPossible
-        )
-        let parsed = (try? AttributedString(markdown: prepared, options: options)) ?? AttributedString(prepared)
-        return chips(in: parsed, cited: cited)
+        // ATX headings are rendered as sized bold lines (inline-only ignores `#`).
+        var result = AttributedString()
+        var segment: [String] = []
+        let lines = markdown.replacingOccurrences(of: "\r\n", with: "\n")
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .map(String.init)
+
+        func flushSegment() {
+            guard !segment.isEmpty else { return }
+            let chunk = segment.joined(separator: "\n")
+            segment.removeAll(keepingCapacity: true)
+            let prepared = shield(lists(spacing(chunk)))
+            let options = AttributedString.MarkdownParsingOptions(
+                interpretedSyntax: .inlineOnlyPreservingWhitespace,
+                failurePolicy: .returnPartiallyParsedIfPossible
+            )
+            let parsed = (try? AttributedString(markdown: prepared, options: options)) ?? AttributedString(prepared)
+            let chipped = chips(in: parsed, cited: cited)
+            if !result.characters.isEmpty {
+                result.append(AttributedString("\n"))
+            }
+            result.append(chipped)
+        }
+
+        for line in lines {
+            if let heading = atxHeading(line) {
+                flushSegment()
+                if !result.characters.isEmpty {
+                    result.append(AttributedString("\n"))
+                }
+                result.append(headingAttributed(heading))
+            } else {
+                segment.append(line)
+            }
+        }
+        flushSegment()
+        return result
+    }
+
+    struct ATXHeading: Equatable {
+        var level: Int
+        var text: String
+    }
+
+    /// `#`, `##`, `###` (up to six) at line start → heading body without markers.
+    static func atxHeading(_ line: String) -> ATXHeading? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard trimmed.hasPrefix("#") else { return nil }
+        var level = 0
+        for character in trimmed {
+            guard character == "#" else { break }
+            level += 1
+            if level > 6 { return nil }
+        }
+        guard level >= 1, level <= 6 else { return nil }
+        let rest = trimmed.dropFirst(level)
+        guard rest.first?.isWhitespace == true else { return nil }
+        let text = rest.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty else { return nil }
+        return ATXHeading(level: level, text: text)
+    }
+
+    private static func headingAttributed(_ heading: ATXHeading) -> AttributedString {
+        var value = AttributedString(heading.text)
+        let size: CGFloat
+        switch heading.level {
+        case 1: size = 22
+        case 2: size = 18
+        case 3: size = 16
+        default: size = 15
+        }
+        value.font = .system(size: size, weight: .semibold)
+        return value
     }
 
     /// Soft spaces so emphasis and `[n]` chips are not glued to neighbors.

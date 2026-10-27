@@ -97,3 +97,32 @@ enum PromethMarkdown {
         return spans
     }
 }
+
+/// Splits a fenced-code body (text between ``` delimiters) into an optional
+/// info-string language label and the code that should render inside the card.
+enum PromethCodeFence {
+    struct Parts: Equatable, Sendable {
+        var language: String?
+        var code: String
+    }
+
+    /// `python\nprint("hello")` → language `python`, code `print("hello")`.
+    /// A bare first line of code (spaces / punctuation) stays in the body.
+    static func split(_ block: String) -> Parts {
+        var lines = block.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        guard let first = lines.first else {
+            return Parts(language: nil, code: block)
+        }
+        let info = first.trimmingCharacters(in: .whitespacesAndNewlines)
+        if info.isEmpty {
+            lines.removeFirst()
+            return Parts(language: nil, code: lines.joined(separator: "\n"))
+        }
+        // CommonMark info string: one token, no spaces (e.g. python, swift, c++).
+        guard info.range(of: #"^[A-Za-z0-9_+#.-]+$"#, options: .regularExpression) != nil else {
+            return Parts(language: nil, code: block)
+        }
+        lines.removeFirst()
+        return Parts(language: info, code: lines.joined(separator: "\n"))
+    }
+}

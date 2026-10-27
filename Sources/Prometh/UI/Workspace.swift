@@ -93,12 +93,21 @@ struct WorkspaceView: View {
         VStack(alignment: .leading, spacing: 14) {
             ForEach(Array(blocks.enumerated()), id: \.offset) { index, block in
                 if index % 2 == 1 {
-                    Text(block)
-                        .font(.system(size: 13, design: .monospaced))
-                        .textSelection(.enabled)
-                        .padding(16)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 14))
+                    let fence = PromethCodeFence.split(block)
+                    VStack(alignment: .leading, spacing: 6) {
+                        if let language = fence.language {
+                            Text(language)
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(.secondary)
+                                .accessibilityLabel("Language \(language)")
+                        }
+                        Text(fence.code)
+                            .font(.system(size: 13, design: .monospaced))
+                            .textSelection(.enabled)
+                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 14))
                 } else {
                     PromethCitationText(text: block, links: message.sourceLinks, onCite: { number in
                         focusedMessage = message.id
