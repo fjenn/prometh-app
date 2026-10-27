@@ -13,5 +13,5 @@ if [[ ! -d "$app" ]]; then
   exit 1
 fi
 
-codesign -s - --force --deep "$app"
+codesign -s - --force --deep --entitlements Configuration/Nativ.entitlements "$app"
 echo "Built and ad-hoc signed $app"

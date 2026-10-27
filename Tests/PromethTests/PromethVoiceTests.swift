@@ -15,6 +15,22 @@ final class PromethVoiceTests: XCTestCase {
         XCTAssertEqual(PromethVoiceDefaults.selfTestAnswer(for: "What is two plus two?"), nil)
     }
 
+    func testSilenceCannotStartATurnAndClickIsRejected() {
+        var detector = PromethVoiceDetector()
+        for i in 1...100 {
+            XCTAssertFalse(detector.step(rms: i == 20 ? 0.1 : 0.001, elapsed: Double(i) * 0.05))
+        }
+        XCTAssertFalse(detector.heardSpeech)
+    }
+
+    func testSpeechEndsAfterSevenHundredMillisecondsOfSilence() {
+        var detector = PromethVoiceDetector()
+        for i in 1...20 { XCTAssertFalse(detector.step(rms: 0.05, elapsed: Double(i) * 0.05)) }
+        XCTAssertTrue(detector.heardSpeech)
+        XCTAssertFalse(detector.step(rms: 0.001, elapsed: 1.65))
+        XCTAssertTrue(detector.step(rms: 0.001, elapsed: 1.71))
+    }
+
     @MainActor
     func testInterruptLeavesListeningInsteadOfSpeaking() {
         let voice = PromethVoice()

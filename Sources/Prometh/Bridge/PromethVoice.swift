@@ -50,6 +50,7 @@ enum PromethVoiceDefaults {
 @MainActor
 final class PromethVoice: ObservableObject {
     @Published var phase = "Listening"
+    @Published var inputLevel: Float = 0
     @Published var muted = false
     @Published var transcript = ""
     @Published var isOpen = false
@@ -124,5 +125,30 @@ final class PromethVoice: ObservableObject {
         isOpen = true
         phase = "Speaking"
         transcript = text
+    }
+}
+
+/// RMS turn detector: reject clicks, adapt slowly to room noise, then end after
+/// 700 ms of quiet. Capture pauses during TTS to avoid transcribing our speakers.
+struct PromethVoiceDetector {
+    private(set) var heardSpeech = false
+    private var noise: Float = 0.001
+    private var voiced: TimeInterval = 0
+    private var lastTick: TimeInterval = 0
+    private var lastLoud: TimeInterval = 0
+
+    mutating func step(rms: Float, elapsed: TimeInterval) -> Bool {
+        let dt = max(0, min(0.1, elapsed - lastTick))
+        lastTick = elapsed
+        let loud = rms > max(0.004, noise * 3)
+        if loud {
+            voiced += dt
+            lastLoud = elapsed
+            if voiced >= 0.18 { heardSpeech = true }
+        } else if !heardSpeech {
+            voiced = max(0, voiced - dt * 0.5)
+            noise = rms < noise ? noise * 0.7 + rms * 0.3 : noise * 0.995 + rms * 0.005
+        }
+        return heardSpeech && elapsed - lastLoud >= 0.7
     }
 }

@@ -64,11 +64,12 @@ struct WorkspaceView: View {
     }
     var voiceLayer:some View {
         VStack(spacing:10) {
-            Button{store.voice.sampleTurn()}label:{FluidOrb(speaking:store.voice.phase=="Speaking")}.buttonStyle(.plain).accessibilityLabel("Record or finish speaking")
+            Button{store.voice.phase == "Voice error" ? store.openVoice() : store.finishDictation()}label:{FluidOrb(speaking:store.voice.phase=="Speaking")}.buttonStyle(.plain).accessibilityLabel("Record or finish speaking")
+            ProgressView(value: Double(store.voice.inputLevel)).frame(width:160).accessibilityLabel("Microphone input level")
             Text(store.voice.phase).font(.system(size:12)).foregroundStyle(.secondary).lineLimit(3)
             if !store.voice.recovery.isEmpty {Text(store.voice.recovery).font(.system(size:11)).foregroundStyle(.secondary)}
             if !store.voice.transcript.isEmpty {ScrollView{Text(store.voice.transcript).font(.system(size:13)).textSelection(.enabled)}.frame(maxHeight:100)}
-            HStack{Button(store.voice.muted ? "Unmute":"Mute"){store.voice.toggleMute();store.stopSpeech()};Button("Interrupt"){store.stopSpeech();store.voice.interrupt()};Button("End voice"){store.stopSpeech();store.voice.end()}}.font(.caption)
+            HStack{Button(store.voice.muted ? "Unmute":"Mute"){store.toggleVoiceMute()};Button("Interrupt"){store.interruptVoice()};Button("End voice"){store.endVoice()}}.font(.caption)
         }.frame(maxWidth:680)
     }
     var modeMenu:some View {
@@ -149,7 +150,7 @@ struct WorkspaceView: View {
     }
     @ViewBuilder var trailingAction:some View {
         if store.voice.isOpen {
-            Button{store.voice.end()}label:{ZStack{ActionOrb();Image(systemName:"xmark").font(.system(size:13,weight:.bold)).foregroundStyle(.white)}.frame(width:36,height:36)}.buttonStyle(.plain).help("End voice").accessibilityLabel("End voice")
+            Button{store.endVoice()}label:{ZStack{ActionOrb();Image(systemName:"xmark").font(.system(size:13,weight:.bold)).foregroundStyle(.white)}.frame(width:36,height:36)}.buttonStyle(.plain).help("End voice").accessibilityLabel("End voice")
         } else if running || !draftEmpty {
             Button{if let c=store.current,store.isRunning(c.id){store.stop(c.id)}else{store.send()}}label:{ZStack{ActionOrb();Image(systemName:running ? "stop.fill":"arrow.up").font(.system(size:14,weight:.semibold)).foregroundStyle(.white)}.frame(width:36,height:36)}.buttonStyle(.plain).help(running ? "Stop":"Send").accessibilityLabel(running ? "Stop":"Send").accessibilityIdentifier("prometh.send")
         } else {
@@ -160,13 +161,6 @@ struct WorkspaceView: View {
     func openVoice(){
         guard store.state.preparations[Capability.voice.rawValue]?.status == .ready else {prepareVoice();return}
         if store.current==nil {store.newChat()}
-        let owner=store.state.selectedChatID
-        store.voice.onExchange={user,reply in
-            guard store.state.selectedChatID==owner else{return}
-            store.appendVoiceExchange(user,reply)
-            if !reply.isEmpty {store.speak(reply)}
-        }
-        store.voice.open()
-        if !store.voice.denied {store.voice.sampleTurn()}
+        store.openVoice()
     }
 }

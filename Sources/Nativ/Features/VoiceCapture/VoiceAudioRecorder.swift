@@ -127,6 +127,7 @@ enum VoiceAudioRetention {
 struct VoiceAudioBufferMeasurement: Sendable {
     let level: Float
     let duration: TimeInterval
+    var rms: Float = 0
 }
 
 protocol VoiceAudioBufferWriting: Sendable {
@@ -135,6 +136,7 @@ protocol VoiceAudioBufferWriting: Sendable {
 
 @MainActor
 final class VoiceAudioRecorder {
+    var onRMSUpdate: (@MainActor @Sendable (Float, TimeInterval) -> Void)?
     var onMeterUpdate: (@MainActor @Sendable (Float, TimeInterval) -> Void)?
     var onRecordingFailure: (@MainActor @Sendable (Error, URL?) -> Void)?
 
@@ -199,10 +201,11 @@ final class VoiceAudioRecorder {
         recordingWriter = writer
         recordingURL = outputURL
         let realtimeMeter = RealtimeAudioMeter(profile: .recording)
+        let rmsMeter = RealtimeAudioMeter(profile: .rms)
         do {
             try await inputSession.start(
                 deviceUniqueID: deviceUniqueID,
-                tap: Self.makeTap(writer: writer, realtimeMeter: realtimeMeter)
+                tap: Self.makeTap(writer: writer, realtimeMeter: realtimeMeter, rmsMeter: rmsMeter)
             ) { [weak self] error in
                 guard let self, self.recordingID == id else { return }
                 self.recordingFailed(error)
@@ -224,7 +227,7 @@ final class VoiceAudioRecorder {
         recordingURL = outputURL
         isRecording = true
         lastRecordingDuration = nil
-        startMeterPublisher(realtimeMeter: realtimeMeter)
+        startMeterPublisher(realtimeMeter: realtimeMeter, rmsMeter: rmsMeter)
         return outputURL
     }
 
@@ -267,7 +270,7 @@ final class VoiceAudioRecorder {
         onRecordingFailure?(error, savedURL)
     }
 
-    private func startMeterPublisher(realtimeMeter: RealtimeAudioMeter) {
+    private func startMeterPublisher(realtimeMeter: RealtimeAudioMeter, rmsMeter: RealtimeAudioMeter) {
         self.realtimeMeter = realtimeMeter
         meterPublisherTask = Task { [weak self, realtimeMeter] in
             await RealtimeAudioMeterPublisher.run(meter: realtimeMeter) {
@@ -280,6 +283,9 @@ final class VoiceAudioRecorder {
                     return
                 }
                 self.onMeterUpdate?(snapshot.level, snapshot.elapsed)
+                if let rms = rmsMeter.snapshot(after: 0) {
+                    self.onRMSUpdate?(rms.level, rms.elapsed)
+                }
             }
         }
     }
@@ -292,10 +298,12 @@ final class VoiceAudioRecorder {
 
     nonisolated static func makeTap(
         writer: any VoiceAudioBufferWriting,
-        realtimeMeter: RealtimeAudioMeter
+        realtimeMeter: RealtimeAudioMeter,
+        rmsMeter: RealtimeAudioMeter? = nil
     ) -> @Sendable (AVAudioPCMBuffer, AVAudioTime) -> Void {
         { buffer, _ in
             let measurement = writer.append(buffer)
+            rmsMeter?.submit(level: measurement.rms, elapsed: measurement.duration)
             realtimeMeter.submit(
                 level: measurement.level,
                 elapsed: measurement.duration
@@ -368,20 +376,26 @@ final class VoiceAudioRecordingWriter: VoiceAudioBufferWriting, @unchecked Senda
             }
 
             var peak: Float = 0
+            var squareSum: Double = 0
+            var sampleCount = 0
             if let channelData = buffer.floatChannelData {
                 let channelCount = Int(buffer.format.channelCount)
                 let frameCount = Int(buffer.frameLength)
                 for channel in 0..<channelCount {
                     let samples = channelData[channel]
                     for frame in 0..<frameCount {
-                        peak = max(peak, abs(samples[frame * buffer.stride]))
+                        let sample = samples[frame * buffer.stride]
+                        peak = max(peak, abs(sample))
+                        squareSum += Double(sample) * Double(sample)
+                        sampleCount += 1
                     }
                 }
             }
             let sampleRate = audioFile?.processingFormat.sampleRate ?? 0
             let elapsed = sampleRate > 0 ? Double(writtenFrames) / sampleRate : 0
             return (
-                VoiceAudioBufferMeasurement(level: min(1, peak * 3.5), duration: elapsed),
+                VoiceAudioBufferMeasurement(level: min(1, peak * 3.5), duration: elapsed,
+                    rms: Float(sqrt(squareSum / Double(max(1, sampleCount))))),
                 hadFailure ? nil : failure
             )
         }

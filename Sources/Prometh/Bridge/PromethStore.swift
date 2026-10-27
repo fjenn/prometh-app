@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import Combine
 import NativServerKit
 import SwiftUI
@@ -291,7 +292,7 @@ final class PromethStore: ObservableObject {
     }
 
     func restartOnboarding() {
-        voice.end()
+        endVoice()
         state.preparations = [:]
         state.onboardingComplete = false
         state.step = 0
@@ -342,6 +343,7 @@ final class PromethStore: ObservableObject {
     }
 
     func newChat() {
+        if voice.isOpen { endVoice() }
         chat.createSession()
         guard let id = chat.currentSessionID else { return }
         revealed.insert(id.uuidString)
@@ -361,6 +363,7 @@ final class PromethStore: ObservableObject {
     }
 
     func select(_ id: UUID) {
+        if state.selectedChatID != id, voice.isOpen { endVoice() }
         rememberDraft()
         state.selectedChatID = id
         if chat.currentSessionID != id {
@@ -597,33 +600,88 @@ final class PromethStore: ObservableObject {
         }
     }
 
+    func openVoice() {
+        if current == nil { newChat() }
+        endVoice()
+        voice.open()
+        voice.muted = false
+        voiceSession = UUID()
+        beginListening()
+    }
+
+    func endVoice() {
+        voiceSession = UUID()
+        voiceTurnTask?.cancel()
+        voiceTurnTask = nil
+        recorder.discard()
+        dictating = false
+        stopSpeech()
+        voice.end()
+        voice.inputLevel = 0
+    }
+
+    func toggleVoiceMute() {
+        voice.muted.toggle()
+        if voice.muted {
+            voiceSession = UUID()
+            voiceTurnTask?.cancel()
+            recorder.discard()
+            stopSpeech()
+            voice.phase = "Muted"
+            voice.inputLevel = 0
+        } else { beginListening() }
+    }
+
+    func interruptVoice() {
+        voiceSession = UUID()
+        voiceTurnTask?.cancel()
+        if let id = state.selectedChatID, isRunning(id) { stop(id) }
+        recorder.discard()
+        stopSpeech()
+        if voice.isOpen && !voice.muted { beginListening() }
+    }
+
     func dictate() {
+        if voice.isOpen { endVoice() }
         dictating = true
-        voice.denied = false
-        voice.phase = "Listening"
         voice.recovery = ""
-        if let text = PromethVoiceDefaults.fileTranscript() {
-            applyTranscript(text, fromFile: true)
-            return
-        }
         Task { await startMicrophone() }
     }
 
     func finishDictation() {
+        guard dictating || voice.isOpen, recorder.isRecording else { return }
         let url = recorder.stop()
-        guard dictating else { return }
+        voice.inputLevel = 0
         voice.finishRecording()
-        guard let url else {
-            dictating = false
+        guard let url, recorder.lastRecordingError == nil else {
+            voiceFailure("Microphone recording failed. " + (recorder.lastRecordingError?.localizedDescription ?? "No audio was captured."))
             return
         }
-        Task { await transcribeRecording(url) }
+        let token = voiceSession
+        voiceTurnTask = Task { await transcribeRecording(url, token: token) }
     }
 
     func cancelDictation() {
-        _ = recorder.stop()
+        endVoice()
+    }
+
+    private func beginListening() {
+        guard voice.isOpen, !voice.muted else { return }
+        voice.recovery = ""
+        voice.phase = "Starting microphone…"
+        detector = PromethVoiceDetector()
+        lastMicrophoneElapsed = 0
+        Task { await startMicrophone() }
+    }
+
+    private func voiceFailure(_ message: String) {
         dictating = false
-        voice.end()
+        recorder.discard()
+        voice.inputLevel = 0
+        voice.phase = "Voice error"
+        voice.recovery = message + " Click the orb to retry."
+        error = message
+        CatalogLog.append("voice error: " + message, support: persistence.directory)
     }
 
     func copyResponse(_ text: String) {
@@ -647,6 +705,8 @@ final class PromethStore: ObservableObject {
     func speak(_ text: String) {
         let spoken = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !spoken.isEmpty else { return }
+        recorder.discard()
+        voice.inputLevel = 0
         voice.readAloud(spoken)
         speechToken += 1
         let token = speechToken
@@ -660,17 +720,18 @@ final class PromethStore: ObservableObject {
                     return
                 }
                 speechPlayer = NSSound(contentsOf: wav, byReference: false)
-                speechPlayer?.play()
+                guard let player = speechPlayer, player.play() else { throw PromethPocketSpeechError.failed }
+                CatalogLog.append("voice Pocket TTS playback started", support: persistence.directory)
                 while token == speechToken, speechPlayer?.isPlaying == true {
                     try? await Task.sleep(nanoseconds: 100_000_000)
                 }
                 if token == speechToken, voice.phase == "Speaking" {
                     voice.phase = voice.denied ? "Microphone unavailable" : "Listening"
+                    if voice.isOpen && !voice.muted { beginListening() }
                 }
             } catch {
                 if token == speechToken {
-                    voice.phase = "Listening"
-                    voice.recovery = "Speech could not be played. Try again."
+                    voiceFailure("Speech could not be played. " + error.localizedDescription)
                 }
             }
         }
@@ -680,54 +741,111 @@ final class PromethStore: ObservableObject {
     private var speechPlayer: NSSound?
     private var speechToken = 0
 
-    private func applyTranscript(_ text: String, fromFile: Bool) {
-        voice.finishRecording()
-        voice.transcript = text
-        let existing = drafts[state.selectedChatID?.uuidString ?? ""] ?? current?.draft ?? ""
-        let separator = existing.isEmpty ? "" : " "
-        setDraft(existing + separator + text)
-        dictating = false
-        if fromFile, let answer = PromethVoiceDefaults.selfTestAnswer(for: text) {
-            appendVoiceExchange(text, answer)
-            speak(answer)
-            return
-        }
-        voice.phase = fromFile ? "Speaking" : "Listening"
-    }
+    private var voiceSession = UUID()
+    private var voiceTurnTask: Task<Void, Never>?
+    private var detector = PromethVoiceDetector()
+    private var lastMicrophoneElapsed: TimeInterval = 0
 
     private func startMicrophone() async {
+        let token = voiceSession
         do {
-            _ = try await recorder.start()
-            guard dictating else {
-                _ = recorder.stop()
+            let status = AVCaptureDevice.authorizationStatus(for: .audio)
+            if status == .notDetermined {
+                guard await AVCaptureDevice.requestAccess(for: .audio) else { throw VoiceAudioRecorderError.noAllowedMicrophone }
+            } else if status != .authorized { throw VoiceAudioRecorderError.noAllowedMicrophone }
+            guard token == voiceSession else { return }
+            recorder.onMeterUpdate = { [weak self] level, elapsed in
+                self?.voice.inputLevel = level
+                self?.lastMicrophoneElapsed = elapsed
+            }
+            recorder.onRMSUpdate = { [weak self] rms, elapsed in
+                guard let self, self.voice.isOpen, !self.voice.muted, self.recorder.isRecording else { return }
+                let ended = self.detector.step(rms: rms, elapsed: elapsed)
+                self.voice.phase = self.detector.heardSpeech ? "Hearing you…" : "Listening…"
+                if ended || elapsed >= 45 { self.finishDictation() }
+            }
+            recorder.onRecordingFailure = { [weak self] failure, _ in
+                self?.voiceFailure("Microphone capture failed. " + failure.localizedDescription)
+            }
+            let url = try await recorder.start()
+            guard token == voiceSession, dictating || (voice.isOpen && !voice.muted) else {
+                recorder.discard()
                 return
             }
-            voice.phase = "Listening"
+            voice.denied = false
+            voice.phase = "Listening…"
+            CatalogLog.append("voice real microphone capture started: " + url.lastPathComponent, support: persistence.directory)
+            // A device that opens but never delivers buffers must not look healthy.
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(4))
+                guard let self, token == self.voiceSession, self.recorder.isRecording else { return }
+                if self.lastMicrophoneElapsed == 0 {
+                    self.voiceFailure("The microphone opened but delivered no audio. Check the selected input device.")
+                } else if self.voice.inputLevel == 0 {
+                    self.voice.recovery = "No input level yet. Check your microphone and speak closer."
+                }
+            }
         } catch {
-            dictating = false
-            voice.denied = true
-            voice.phase = "Microphone unavailable"
-            voice.recovery = "Open System Settings and allow the microphone."
+            guard token == voiceSession else { return }
+            voiceFailure("Microphone could not start. " + error.localizedDescription + " Check System Settings → Privacy & Security → Microphone.")
         }
     }
 
-    private func transcribeRecording(_ url: URL) async {
-        defer { try? FileManager.default.removeItem(at: url) }
+    private func transcribeRecording(_ url: URL, token: UUID) async {
+        // Keep real captures for the existing five-minute retention window.
+        defer {
+            Task {
+                try? await Task.sleep(for: .seconds(VoiceAudioRetention.duration))
+                VoiceAudioRetention.removeAudioFile(at: url)
+            }
+        }
         do {
             let data = try Data(contentsOf: url)
+            CatalogLog.append("voice recording finished: \(data.count) bytes; requesting Whisper STT", support: persistence.directory)
             let settings = model.settings.normalized()
-            let client = NativAudioClient(
-                baseURL: settings.serverBaseURL,
-                apiKey: settings.serverAPIKey,
-                timeout: 60
-            )
-            let modelID = PromethVoiceDefaults.speechModel(current: settings.speechToTextModelID)
-            let result = try await client.transcribe(audioData: data, fileName: "dictation.wav", model: modelID)
-            applyTranscript(result.text, fromFile: false)
+            let client = NativAudioClient(baseURL: settings.serverBaseURL, apiKey: settings.serverAPIKey, timeout: 120)
+            let result = try await client.transcribe(audioData: data, fileName: "voice.wav",
+                model: PromethVoiceDefaults.speechModel(current: settings.speechToTextModelID))
+            guard token == voiceSession, !Task.isCancelled else { return }
+            let text = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else {
+                voiceFailure("Transcription returned no speech. Check the input level and try again.")
+                return
+            }
+            voice.transcript = text
+            CatalogLog.append("voice STT completed: \(text.count) characters", support: persistence.directory)
+            if dictating {
+                let existing = drafts[state.selectedChatID?.uuidString ?? ""] ?? current?.draft ?? ""
+                setDraft(existing + (existing.isEmpty ? "" : " ") + text)
+                dictating = false
+                voice.phase = "Listening"
+                return
+            }
+            guard voice.isOpen, !voice.muted, let id = state.selectedChatID else { return }
+            voice.phase = "Thinking"
+            let previous = Set(chat.messages.map(\.id))
+            send(text)
+            let deadline = Date().addingTimeInterval(180)
+            while Date() < deadline {
+                try await Task.sleep(for: .milliseconds(100))
+                guard token == voiceSession, voice.isOpen, !voice.muted, state.selectedChatID == id else { return }
+                if !isRunning(id), !waitingToSend {
+                    if let failure = chat.messages.last(where: { !previous.contains($0.id) && $0.role == .error }) {
+                        voiceFailure("Chat failed. " + failure.content)
+                        return
+                    }
+                    if let reply = chat.messages.last(where: { !previous.contains($0.id) && $0.role == .assistant && !$0.isStreaming && !$0.content.isEmpty }) {
+                        speak(reply.content)
+                        return
+                    }
+                }
+            }
+            voiceFailure("The local chat model did not reply in time. Try again.")
+        } catch is CancellationError {
+            return
         } catch {
-            dictating = false
-            voice.phase = "Listening"
-            voice.recovery = "Dictation did not catch that. Try again."
+            guard token == voiceSession else { return }
+            voiceFailure("Transcription failed. " + error.localizedDescription)
         }
     }
 

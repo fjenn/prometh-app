@@ -10,10 +10,13 @@ struct RealtimeAudioMeterSnapshot: Equatable, Sendable {
 enum RealtimeAudioMeterProfile: Sendable {
     case inputMonitor
     case recording
+    case rms
 
     func smoothedLevel(previous: Float, input: Float) -> Float {
         let clamped = max(0, min(1, input))
         switch self {
+        case .rms:
+            return clamped
         case .inputMonitor:
             return (previous * 0.65) + (clamped * 0.35)
         case .recording:
