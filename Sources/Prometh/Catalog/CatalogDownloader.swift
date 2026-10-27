@@ -237,6 +237,28 @@ enum CatalogDownloader {
         return true
     }
 
+    /// The MLX Whisper conversion is weights and `config.json` only. mlx-audio
+    /// loads the tokenizer from that same snapshot, so the official processor
+    /// files are linked beside the weights. The MLX `config.json` stays put.
+    static func placeWhisperProcessor(support: URL) throws -> Bool {
+        guard let catalog = try? ModelCatalogLoader.bundled(),
+              let weights = catalog.model(id: "stt"),
+              let processor = catalog.model(id: "stt-processor")
+        else { return false }
+        guard try linkInstalled(model: weights, support: support) else { return false }
+        guard try linkInstalled(model: processor, support: support) else { return false }
+        let folder = CatalogPaths.folder(root: CatalogPaths.modelsRoot(support: support), model: processor)
+        for file in processor.files where file.path != "config.json" {
+            let source = try safeFile(file.path, under: folder)
+            guard try CatalogHash.matches(file, at: source) else { return false }
+            let destination = CatalogPaths.snapshotFile(
+                hub: CatalogPaths.hub(support: support), model: weights, path: file.path
+            )
+            try linkItem(from: source, to: destination)
+        }
+        return true
+    }
+
     private static func writeMainRef(model: CatalogModel, support: URL) throws {
         let ref = CatalogPaths.mainRef(hub: CatalogPaths.hub(support: support), model: model)
         try FileManager.default.createDirectory(at: ref.deletingLastPathComponent(), withIntermediateDirectories: true)

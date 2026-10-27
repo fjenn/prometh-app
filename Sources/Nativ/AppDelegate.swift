@@ -137,6 +137,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @MainActor UNUserNotif
         if WelcomePreferences.hasCompleted {
             if PromethFlags.promethShell, !PromethFlags.isRunningUnitTests {
                 pinInstalledSafeModel()
+                _ = try? CatalogDownloader.placeWhisperProcessor(
+                    support: PromethIdentity.applicationSupportDirectory
+                )
             }
             model.startServer()
         }
