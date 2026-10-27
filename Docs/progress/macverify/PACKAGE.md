@@ -1,6 +1,6 @@
 # Phase C — judge package (polish refresh)
 
-Host: Apple M5 Max, 128 GB, macOS 26.6.2, arm64. Branch `prometh`. Package rebuilt 2026-10-27 (America/Argentina/Buenos_Aires) after reviewer defect fixes. See `POLISH.md`, `POLISH2.md`, and `POLISH3.md`.
+Host: Apple M5 Max, 128 GB, macOS 26.6.2, arm64. Branch `prometh`. Package rebuilt 2026-10-27 (America/Argentina/Buenos_Aires) after reviewer defect fixes. See `POLISH.md`, `POLISH2.md`, `POLISH3.md`, and `POLISH4.md`.
 
 ## Polish
 
@@ -16,8 +16,8 @@ Host: Apple M5 Max, 128 GB, macOS 26.6.2, arm64. Branch `prometh`. Package rebui
 |---|---|
 | `./scripts/prometh/build.sh` | **PASS** |
 | `make verify` | **PASS** |
-| `xcodebuild … -only-testing:PromethTests` | **PASS** — 54 tests, 0 failures |
-| `xcodebuild … -only-testing:PromethUITests` | **PASS** — 6 tests, 0 failures |
+| `xcodebuild … -only-testing:PromethTests` | **PASS** — 63 tests, 0 failures |
+| `xcodebuild … -only-testing:PromethUITests` | **BLOCKED** — Automation Mode disabled (`automationmodetool`) |
 
 ## Release app
 
@@ -32,8 +32,8 @@ Path: `~/Desktop/Prometh-judges/`
 | Item | Notes |
 |---|---|
 | `Prometh.zip` | `ditto -c -k --sequesterRsrc --keepParent Prometh.app Prometh.zip` |
-| Zip size | **624M** (654,387,647 bytes) |
-| SHA-256 | `225fe36e06d5d185eb56a8b5b02ca8c6051e8d837dc0472b8303cb27a1b3aece` |
+| Zip size | **624M** |
+| SHA-256 | `ef1bb1a43e34181bcb139d1219bde19751a0db3c854c4be596acf2135b490e97` |
 | `JUDGES.md` | Same content as `Docs/JUDGES.md` (chat trim called out) |
 | Screenshots | `final-chat`, `final-search`, `final-image`, `final-image-edit`, `final-video`, `final-video-after-trim`, `final-voice`, `final-evil` |
 
