@@ -64,3 +64,8 @@ typing_extensions==4.15.0
 urllib3==2.7.0
 uvicorn==0.46.0
 yarl==1.23.0
+
+# Voice: Silero ONNX and Kokoro English phonemization, bundled for offline use.
+onnxruntime==1.24.4
+misaki[en]==0.9.4
+en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl

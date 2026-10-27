@@ -21,7 +21,7 @@ struct ModelCatalog: Decodable, Sendable {
         case .chat:
             models.filter { $0.id == "safe" && $0.enabled }
         case .voice:
-            models.filter { $0.enabled && $0.capability == "Voice" }
+            models.filter { $0.enabled && $0.capability == "Voice" && $0.id != "tts" }
         case .images:
             models.filter { $0.enabled && $0.capability == "Images" }
         case .video:

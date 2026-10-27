@@ -31,6 +31,16 @@ final class PromethVoiceTests: XCTestCase {
         XCTAssertTrue(detector.step(rms: 0.001, elapsed: 1.71))
     }
 
+    func testSileroRejectsRoomNoiseAndEndsSpeech() {
+        var detector = PromethVoiceDetector()
+        for i in 1...30 { XCTAssertFalse(detector.step(rms: 0.04, elapsed: Double(i) * 0.032, probability: 0.01)) }
+        XCTAssertFalse(detector.heardSpeech)
+        for i in 31...50 { XCTAssertFalse(detector.step(rms: 0.06, elapsed: Double(i) * 0.032, probability: 0.9)) }
+        XCTAssertTrue(detector.heardSpeech)
+        XCTAssertFalse(detector.step(rms: 0.04, elapsed: 2.2, probability: 0.01))
+        XCTAssertTrue(detector.step(rms: 0.04, elapsed: 2.31, probability: 0.01))
+    }
+
     @MainActor
     func testInterruptLeavesListeningInsteadOfSpeaking() {
         let voice = PromethVoice()

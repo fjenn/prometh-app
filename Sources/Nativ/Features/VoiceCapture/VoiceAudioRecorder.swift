@@ -136,6 +136,7 @@ protocol VoiceAudioBufferWriting: Sendable {
 
 @MainActor
 final class VoiceAudioRecorder {
+    var onAudioBuffer: (@Sendable (AVAudioPCMBuffer) -> Void)?
     var onRMSUpdate: (@MainActor @Sendable (Float, TimeInterval) -> Void)?
     var onMeterUpdate: (@MainActor @Sendable (Float, TimeInterval) -> Void)?
     var onRecordingFailure: (@MainActor @Sendable (Error, URL?) -> Void)?
@@ -205,7 +206,7 @@ final class VoiceAudioRecorder {
         do {
             try await inputSession.start(
                 deviceUniqueID: deviceUniqueID,
-                tap: Self.makeTap(writer: writer, realtimeMeter: realtimeMeter, rmsMeter: rmsMeter)
+                tap: Self.makeTap(writer: writer, realtimeMeter: realtimeMeter, rmsMeter: rmsMeter, onBuffer: onAudioBuffer)
             ) { [weak self] error in
                 guard let self, self.recordingID == id else { return }
                 self.recordingFailed(error)
@@ -299,10 +300,12 @@ final class VoiceAudioRecorder {
     nonisolated static func makeTap(
         writer: any VoiceAudioBufferWriting,
         realtimeMeter: RealtimeAudioMeter,
-        rmsMeter: RealtimeAudioMeter? = nil
+        rmsMeter: RealtimeAudioMeter? = nil,
+        onBuffer: (@Sendable (AVAudioPCMBuffer) -> Void)? = nil
     ) -> @Sendable (AVAudioPCMBuffer, AVAudioTime) -> Void {
         { buffer, _ in
             let measurement = writer.append(buffer)
+            onBuffer?(buffer)
             rmsMeter?.submit(level: measurement.rms, elapsed: measurement.duration)
             realtimeMeter.submit(
                 level: measurement.level,

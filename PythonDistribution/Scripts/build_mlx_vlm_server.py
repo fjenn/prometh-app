@@ -634,11 +634,12 @@ def verify_distribution(output: Path, *, expect_mlx_vlm: bool) -> None:
     python = python_executable(output / "python")
     launcher = output / "bin" / "mlx-vlm-server"
 
-    run([str(python), "-c", "import sys; print(sys.version)"])
+    run([str(python), "-B", "-c", "import sys; print(sys.version)"])
     if expect_mlx_vlm:
         run(
             [
                 str(python),
+                "-B",
                 "-c",
                 "import importlib.util; "
                 "raise SystemExit(0 if importlib.util.find_spec('mlx_vlm.server') else 1)",
@@ -647,11 +648,13 @@ def verify_distribution(output: Path, *, expect_mlx_vlm: bool) -> None:
         run(
             [
                 str(python),
+                "-B",
                 "-c",
                 "import importlib.util; "
                 "raise SystemExit(0 if importlib.util.find_spec('nativ_server') else 1)",
             ]
         )
+        run([str(python), "-B", "-c", "import onnxruntime, misaki.en, en_core_web_sm; import mlx_audio.tts.models.kokoro"])
         manifest_path = output / MANIFEST_FILENAME
         if not manifest_path.exists():
             raise SystemExit(f"Missing model capability manifest: {manifest_path}")

@@ -1139,6 +1139,215 @@
       "summary": "Official MIT processor assets required by mlx-audio0.6.1 for the selected weights-only MLX conversion. No additional weights.",
       "downloadBytes": 4618475,
       "weightBytes": 0
+    },
+    {
+      "id": "kokoro",
+      "name": "Kokoro 82M",
+      "capability": "Voice",
+      "repo": "mlx-community/Kokoro-82M-bf16",
+      "runtime": "mlx-audio",
+      "enabled": true,
+      "workingMemoryGB": 0.8,
+      "revision": "a71e4d38b236d968966a2002c4c895dbd12b1c3c",
+      "files": [
+        {
+          "path": "config.json",
+          "size": 2351,
+          "hashAlgorithm": "git-blob-sha1",
+          "hash": "14a726edd3718279eac426630879ff743955b16a",
+          "sha256": null,
+          "oid": "14a726edd3718279eac426630879ff743955b16a",
+          "contentID": "git-blob-sha1:14a726edd3718279eac426630879ff743955b16a",
+          "url": "https://huggingface.co/mlx-community/Kokoro-82M-bf16/resolve/a71e4d38b236d968966a2002c4c895dbd12b1c3c/config.json"
+        },
+        {
+          "path": "kokoro-v1_0.safetensors",
+          "size": 327115152,
+          "hashAlgorithm": "sha256",
+          "hash": "4e9ecdf03b8b6cf906070390237feda473dc13327cb8d56a43deaa374c02acd8",
+          "sha256": "4e9ecdf03b8b6cf906070390237feda473dc13327cb8d56a43deaa374c02acd8",
+          "oid": null,
+          "contentID": "sha256:4e9ecdf03b8b6cf906070390237feda473dc13327cb8d56a43deaa374c02acd8",
+          "url": "https://huggingface.co/mlx-community/Kokoro-82M-bf16/resolve/a71e4d38b236d968966a2002c4c895dbd12b1c3c/kokoro-v1_0.safetensors"
+        },
+        {
+          "path": "voices/af_heart.safetensors",
+          "size": 522320,
+          "hashAlgorithm": "sha256",
+          "hash": "2c1c733b0e6576c810e268d3e440c21dea4e0f0131a3ba4cfc98d7fe6136d094",
+          "sha256": "2c1c733b0e6576c810e268d3e440c21dea4e0f0131a3ba4cfc98d7fe6136d094",
+          "oid": null,
+          "contentID": "sha256:2c1c733b0e6576c810e268d3e440c21dea4e0f0131a3ba4cfc98d7fe6136d094",
+          "url": "https://huggingface.co/mlx-community/Kokoro-82M-bf16/resolve/a71e4d38b236d968966a2002c4c895dbd12b1c3c/voices/af_heart.safetensors"
+        }
+      ],
+      "downloadBytes": 327639823
+    },
+    {
+      "id": "stt-base",
+      "name": "Whisper base",
+      "capability": "Voice option",
+      "repo": "mlx-community/whisper-base-asr-fp16",
+      "runtime": "mlx-audio",
+      "enabled": true,
+      "workingMemoryGB": 0.6,
+      "revision": "52f819c9c5fa6874a2f14a97112951fc951aa253",
+      "files": [
+        {
+          "path": "added_tokens.json",
+          "size": 34604,
+          "hashAlgorithm": "git-blob-sha1",
+          "hash": "e3d256c988462aa153dcabe2aa38b8e9b436c06f",
+          "sha256": null,
+          "oid": "e3d256c988462aa153dcabe2aa38b8e9b436c06f",
+          "contentID": "git-blob-sha1:e3d256c988462aa153dcabe2aa38b8e9b436c06f",
+          "url": "https://huggingface.co/mlx-community/whisper-base-asr-fp16/resolve/52f819c9c5fa6874a2f14a97112951fc951aa253/added_tokens.json"
+        },
+        {
+          "path": "config.json",
+          "size": 2440,
+          "hashAlgorithm": "git-blob-sha1",
+          "hash": "94da2098888eb1d1d95ef01778042aa5aa88add7",
+          "sha256": null,
+          "oid": "94da2098888eb1d1d95ef01778042aa5aa88add7",
+          "contentID": "git-blob-sha1:94da2098888eb1d1d95ef01778042aa5aa88add7",
+          "url": "https://huggingface.co/mlx-community/whisper-base-asr-fp16/resolve/52f819c9c5fa6874a2f14a97112951fc951aa253/config.json"
+        },
+        {
+          "path": "generation_config.json",
+          "size": 3807,
+          "hashAlgorithm": "git-blob-sha1",
+          "hash": "38eda87a0b22fdb85af5dfa14cf065147337137a",
+          "sha256": null,
+          "oid": "38eda87a0b22fdb85af5dfa14cf065147337137a",
+          "contentID": "git-blob-sha1:38eda87a0b22fdb85af5dfa14cf065147337137a",
+          "url": "https://huggingface.co/mlx-community/whisper-base-asr-fp16/resolve/52f819c9c5fa6874a2f14a97112951fc951aa253/generation_config.json"
+        },
+        {
+          "path": "merges.txt",
+          "size": 493869,
+          "hashAlgorithm": "git-blob-sha1",
+          "hash": "6038932a2a1f09a66991b1c2adae0d14066fa29e",
+          "sha256": null,
+          "oid": "6038932a2a1f09a66991b1c2adae0d14066fa29e",
+          "contentID": "git-blob-sha1:6038932a2a1f09a66991b1c2adae0d14066fa29e",
+          "url": "https://huggingface.co/mlx-community/whisper-base-asr-fp16/resolve/52f819c9c5fa6874a2f14a97112951fc951aa253/merges.txt"
+        },
+        {
+          "path": "model.safetensors",
+          "size": 143676708,
+          "hashAlgorithm": "sha256",
+          "hash": "58bb36ff2c46cdba54676edf9625e0c5f374c13c231fdf1440be19432e3c8618",
+          "sha256": "58bb36ff2c46cdba54676edf9625e0c5f374c13c231fdf1440be19432e3c8618",
+          "oid": null,
+          "contentID": "sha256:58bb36ff2c46cdba54676edf9625e0c5f374c13c231fdf1440be19432e3c8618",
+          "url": "https://huggingface.co/mlx-community/whisper-base-asr-fp16/resolve/52f819c9c5fa6874a2f14a97112951fc951aa253/model.safetensors"
+        },
+        {
+          "path": "model.safetensors.index.json",
+          "size": 15847,
+          "hashAlgorithm": "git-blob-sha1",
+          "hash": "13d842d267a9d881a9e1d8ac9db84246364a4660",
+          "sha256": null,
+          "oid": "13d842d267a9d881a9e1d8ac9db84246364a4660",
+          "contentID": "git-blob-sha1:13d842d267a9d881a9e1d8ac9db84246364a4660",
+          "url": "https://huggingface.co/mlx-community/whisper-base-asr-fp16/resolve/52f819c9c5fa6874a2f14a97112951fc951aa253/model.safetensors.index.json"
+        },
+        {
+          "path": "normalizer.json",
+          "size": 52666,
+          "hashAlgorithm": "git-blob-sha1",
+          "hash": "dd6ae819ad738ac1a546e9f9282ef325c33b9ea0",
+          "sha256": null,
+          "oid": "dd6ae819ad738ac1a546e9f9282ef325c33b9ea0",
+          "contentID": "git-blob-sha1:dd6ae819ad738ac1a546e9f9282ef325c33b9ea0",
+          "url": "https://huggingface.co/mlx-community/whisper-base-asr-fp16/resolve/52f819c9c5fa6874a2f14a97112951fc951aa253/normalizer.json"
+        },
+        {
+          "path": "preprocessor_config.json",
+          "size": 184990,
+          "hashAlgorithm": "git-blob-sha1",
+          "hash": "c2048dfa9fd94a052e62e908d2c4dfb18534b4d2",
+          "sha256": null,
+          "oid": "c2048dfa9fd94a052e62e908d2c4dfb18534b4d2",
+          "contentID": "git-blob-sha1:c2048dfa9fd94a052e62e908d2c4dfb18534b4d2",
+          "url": "https://huggingface.co/mlx-community/whisper-base-asr-fp16/resolve/52f819c9c5fa6874a2f14a97112951fc951aa253/preprocessor_config.json"
+        },
+        {
+          "path": "special_tokens_map.json",
+          "size": 2194,
+          "hashAlgorithm": "git-blob-sha1",
+          "hash": "bf69932dca4b3719b59fdd8f6cc1978109509f6c",
+          "sha256": null,
+          "oid": "bf69932dca4b3719b59fdd8f6cc1978109509f6c",
+          "contentID": "git-blob-sha1:bf69932dca4b3719b59fdd8f6cc1978109509f6c",
+          "url": "https://huggingface.co/mlx-community/whisper-base-asr-fp16/resolve/52f819c9c5fa6874a2f14a97112951fc951aa253/special_tokens_map.json"
+        },
+        {
+          "path": "tokenizer.json",
+          "size": 2480466,
+          "hashAlgorithm": "git-blob-sha1",
+          "hash": "1e95340ff836fad1b5932e800fb7b8c5e6d78a74",
+          "sha256": null,
+          "oid": "1e95340ff836fad1b5932e800fb7b8c5e6d78a74",
+          "contentID": "git-blob-sha1:1e95340ff836fad1b5932e800fb7b8c5e6d78a74",
+          "url": "https://huggingface.co/mlx-community/whisper-base-asr-fp16/resolve/52f819c9c5fa6874a2f14a97112951fc951aa253/tokenizer.json"
+        },
+        {
+          "path": "tokenizer_config.json",
+          "size": 282683,
+          "hashAlgorithm": "git-blob-sha1",
+          "hash": "d13b786c04765fb1a06492b53587752cd67665ea",
+          "sha256": null,
+          "oid": "d13b786c04765fb1a06492b53587752cd67665ea",
+          "contentID": "git-blob-sha1:d13b786c04765fb1a06492b53587752cd67665ea",
+          "url": "https://huggingface.co/mlx-community/whisper-base-asr-fp16/resolve/52f819c9c5fa6874a2f14a97112951fc951aa253/tokenizer_config.json"
+        },
+        {
+          "path": "vocab.json",
+          "size": 835550,
+          "hashAlgorithm": "git-blob-sha1",
+          "hash": "d7016e21da8776c8a9d577d0f559600f09a240eb",
+          "sha256": null,
+          "oid": "d7016e21da8776c8a9d577d0f559600f09a240eb",
+          "contentID": "git-blob-sha1:d7016e21da8776c8a9d577d0f559600f09a240eb",
+          "url": "https://huggingface.co/mlx-community/whisper-base-asr-fp16/resolve/52f819c9c5fa6874a2f14a97112951fc951aa253/vocab.json"
+        }
+      ],
+      "downloadBytes": 148065824
+    },
+    {
+      "id": "vad",
+      "name": "Silero VAD v5",
+      "capability": "Voice",
+      "repo": "onnx-community/silero-vad",
+      "runtime": "onnxruntime",
+      "enabled": true,
+      "workingMemoryGB": 0.05,
+      "revision": "e71cae966052b992a7eca6b17738916ce0eca4ec",
+      "files": [
+        {
+          "path": "LICENSE",
+          "size": 1075,
+          "hashAlgorithm": "git-blob-sha1",
+          "hash": "0bf5e90cac691b999d4a35044f97167d7bbbf0b9",
+          "sha256": null,
+          "oid": "0bf5e90cac691b999d4a35044f97167d7bbbf0b9",
+          "contentID": "git-blob-sha1:0bf5e90cac691b999d4a35044f97167d7bbbf0b9",
+          "url": "https://huggingface.co/onnx-community/silero-vad/resolve/e71cae966052b992a7eca6b17738916ce0eca4ec/LICENSE"
+        },
+        {
+          "path": "onnx/model.onnx",
+          "size": 2243022,
+          "hashAlgorithm": "sha256",
+          "hash": "a4a068cd6cf1ea8355b84327595838ca748ec29a25bc91fc82e6c299ccdc5808",
+          "sha256": "a4a068cd6cf1ea8355b84327595838ca748ec29a25bc91fc82e6c299ccdc5808",
+          "oid": null,
+          "contentID": "sha256:a4a068cd6cf1ea8355b84327595838ca748ec29a25bc91fc82e6c299ccdc5808",
+          "url": "https://huggingface.co/onnx-community/silero-vad/resolve/e71cae966052b992a7eca6b17738916ce0eca4ec/onnx/model.onnx"
+        }
+      ],
+      "downloadBytes": 2244097
     }
   ]
 }

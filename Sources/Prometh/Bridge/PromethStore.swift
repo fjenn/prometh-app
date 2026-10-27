@@ -606,6 +606,7 @@ final class PromethStore: ObservableObject {
         voice.open()
         voice.muted = false
         voiceSession = UUID()
+        if !model.isRunning { model.startServer() }
         beginListening()
     }
 
@@ -614,6 +615,7 @@ final class PromethStore: ObservableObject {
         voiceTurnTask?.cancel()
         voiceTurnTask = nil
         recorder.discard()
+        silero.stop()
         dictating = false
         stopSpeech()
         voice.end()
@@ -626,6 +628,7 @@ final class PromethStore: ObservableObject {
             voiceSession = UUID()
             voiceTurnTask?.cancel()
             recorder.discard()
+            silero.stop()
             stopSpeech()
             voice.phase = "Muted"
             voice.inputLevel = 0
@@ -651,6 +654,7 @@ final class PromethStore: ObservableObject {
     func finishDictation() {
         guard dictating || voice.isOpen, recorder.isRecording else { return }
         let url = recorder.stop()
+        silero.stop()
         voice.inputLevel = 0
         voice.finishRecording()
         guard let url, recorder.lastRecordingError == nil else {
@@ -677,6 +681,7 @@ final class PromethStore: ObservableObject {
     private func voiceFailure(_ message: String) {
         dictating = false
         recorder.discard()
+        silero.stop()
         voice.inputLevel = 0
         voice.phase = "Voice error"
         voice.recovery = message + " Click the orb to retry."
@@ -712,7 +717,8 @@ final class PromethStore: ObservableObject {
         let token = speechToken
         Task { @MainActor in
             do {
-                let wav = try await PromethPocketSpeech.synthesize(spoken)
+                let wav = try await PromethKokoroSpeech.synthesize(spoken)
+                defer { try? FileManager.default.removeItem(at: wav) }
                 guard token == speechToken, !voice.muted else {
                     if token != speechToken, voice.phase == "Speaking" {
                         voice.phase = voice.denied ? "Microphone unavailable" : "Listening"
@@ -721,12 +727,19 @@ final class PromethStore: ObservableObject {
                 }
                 speechPlayer = NSSound(contentsOf: wav, byReference: false)
                 guard let player = speechPlayer, player.play() else { throw PromethPocketSpeechError.failed }
-                CatalogLog.append("voice Pocket TTS playback started", support: persistence.directory)
+                CatalogLog.append("voice Kokoro playback started", support: persistence.directory)
+                // Standby capture enables a sustained voice above the speaker echo to interrupt.
+                echoStarted = nil
+                echoLevel = 0
+                bargeVoiced = 0
+                Task { await startMicrophone(standby: true) }
                 while token == speechToken, speechPlayer?.isPlaying == true {
                     try? await Task.sleep(nanoseconds: 100_000_000)
                 }
                 if token == speechToken, voice.phase == "Speaking" {
                     voice.phase = voice.denied ? "Microphone unavailable" : "Listening"
+                    recorder.discard()
+                    silero.stop()
                     if voice.isOpen && !voice.muted { beginListening() }
                 }
             } catch {
@@ -738,6 +751,10 @@ final class PromethStore: ObservableObject {
     }
 
     private let recorder = VoiceAudioRecorder()
+    private let silero = PromethSileroVAD()
+    private var echoStarted: TimeInterval?
+    private var echoLevel: Float = 0
+    private var bargeVoiced: TimeInterval = 0
     private var speechPlayer: NSSound?
     private var speechToken = 0
 
@@ -746,7 +763,7 @@ final class PromethStore: ObservableObject {
     private var detector = PromethVoiceDetector()
     private var lastMicrophoneElapsed: TimeInterval = 0
 
-    private func startMicrophone() async {
+    private func startMicrophone(standby: Bool = false) async {
         let token = voiceSession
         do {
             let status = AVCaptureDevice.authorizationStatus(for: .audio)
@@ -758,12 +775,30 @@ final class PromethStore: ObservableObject {
                 self?.voice.inputLevel = level
                 self?.lastMicrophoneElapsed = elapsed
             }
-            recorder.onRMSUpdate = { [weak self] rms, elapsed in
-                guard let self, self.voice.isOpen, !self.voice.muted, self.recorder.isRecording else { return }
-                let ended = self.detector.step(rms: rms, elapsed: elapsed)
-                self.voice.phase = self.detector.heardSpeech ? "Hearing you…" : "Listening…"
-                if ended || elapsed >= 45 { self.finishDictation() }
-            }
+            if voice.isOpen {
+                try silero.start(onFrame: { [weak self] probability, rms, elapsed in
+                    guard let self, token == self.voiceSession, self.voice.isOpen, !self.voice.muted, self.recorder.isRecording else { return }
+                    if self.voice.phase == "Speaking" {
+                        if self.echoStarted == nil { self.echoStarted = elapsed }
+                        if elapsed - (self.echoStarted ?? elapsed) < 0.4 {
+                            self.echoLevel = max(self.echoLevel, rms)
+                            return
+                        }
+                        let aboveEcho = probability >= 0.65 && rms > max(0.012, self.echoLevel * 2.5)
+                        self.bargeVoiced = aboveEcho ? self.bargeVoiced + 0.032 : max(0, self.bargeVoiced - 0.016)
+                        if self.bargeVoiced >= 0.22 {
+                            CatalogLog.append("voice Silero barge-in", support: self.persistence.directory)
+                            self.interruptVoice()
+                        }
+                        return
+                    }
+                    let ended = self.detector.step(rms: rms, elapsed: elapsed, probability: probability)
+                    self.voice.phase = self.detector.heardSpeech ? "Hearing you…" : "Listening…"
+                    if ended || elapsed >= 45 { self.finishDictation() }
+                }, onFailure: { [weak self] message in self?.voiceFailure(message) })
+                recorder.onAudioBuffer = { [silero] buffer in silero.append(buffer) }
+                CatalogLog.append("voice Silero v5 started (16 kHz, 512 + 64 context)", support: persistence.directory)
+            } else { recorder.onAudioBuffer = nil }
             recorder.onRecordingFailure = { [weak self] failure, _ in
                 self?.voiceFailure("Microphone capture failed. " + failure.localizedDescription)
             }
@@ -773,7 +808,7 @@ final class PromethStore: ObservableObject {
                 return
             }
             voice.denied = false
-            voice.phase = "Listening…"
+            if !standby { voice.phase = "Listening…" }
             CatalogLog.append("voice real microphone capture started: " + url.lastPathComponent, support: persistence.directory)
             // A device that opens but never delivers buffers must not look healthy.
             Task { [weak self] in

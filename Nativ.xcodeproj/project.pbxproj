@@ -430,6 +430,7 @@
 		97E650D432DEF7B2F1A4D5C0 /* ChatGitWorktree.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE367FA9B5C5C130C430C14 /* ChatGitWorktree.swift */; };
 		97EEA29CCD874048A8CE9D54 /* VoiceShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7405BB62742DE08EB640A2C5 /* VoiceShortcut.swift */; };
 		98086CE0CF71463BDF07F8A8 /* RoutineLaunchAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D34FBE730C051EFF28B1323B /* RoutineLaunchAgent.swift */; };
+		983F2C2085718292C8CFF178 /* PromethSileroVAD.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EB99723A5C5ADC01A66A6A6 /* PromethSileroVAD.swift */; };
 		9954F8086FE0A7A9B3378EC9 /* NativComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20EE1CE9AAE5A3B9A2D4669C /* NativComponents.swift */; };
 		99778858F3A94C2EC076D03F /* MediaViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22DAB844A9EDD36A3FCF5227 /* MediaViews.swift */; };
 		99CBBEE3F1E0092E70D172D4 /* Firecrawl.png in Resources */ = {isa = PBXBuildFile; fileRef = EEF71E7A328DFB6E2E741999 /* Firecrawl.png */; };
@@ -880,6 +881,7 @@
 		2DAD8909B0CA98AAC277761A /* XMLTextParsing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XMLTextParsing.swift; sourceTree = "<group>"; };
 		2E103C92A2FC5D00734DC471 /* NativWindowStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativWindowStateTests.swift; sourceTree = "<group>"; };
 		2E42A451AAEE2E693A52A355 /* PromethFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromethFlags.swift; sourceTree = "<group>"; };
+		2EB99723A5C5ADC01A66A6A6 /* PromethSileroVAD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromethSileroVAD.swift; sourceTree = "<group>"; };
 		2FF1D2267F5230F7692BC886 /* FileMutationState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileMutationState.swift; sourceTree = "<group>"; };
 		302EE24F97E59E927C003ECA /* ArtifactTrash.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtifactTrash.swift; sourceTree = "<group>"; };
 		30D9C81870FB504D03D2A1D5 /* MCPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPClient.swift; sourceTree = "<group>"; };
@@ -1759,6 +1761,7 @@
 				AD0093CA42BD8022339B3084 /* ModeRouter.swift */,
 				77823478292749ECABF32269 /* PromethConversationTitle.swift */,
 				4D9DD1A998576B1AECF3C75C /* PromethPocketSpeech.swift */,
+				2EB99723A5C5ADC01A66A6A6 /* PromethSileroVAD.swift */,
 				B04BAED71FDC9DEAD682613C /* PromethStore.swift */,
 				1114236F781C2DC01A713FC4 /* PromethTranscript.swift */,
 				1964B3EA2B6118B0492B19F8 /* PromethVoice.swift */,
@@ -2873,6 +2876,7 @@
 				D731836671A2CEACD2B779A5 /* PromethRootView.swift in Sources */,
 				248B94ABA6D4A96E139B9D37 /* PromethSearchBootstrap.swift in Sources */,
 				86024396D37CE2CF3F4AD2FB /* PromethSearchContext.swift in Sources */,
+				983F2C2085718292C8CFF178 /* PromethSileroVAD.swift in Sources */,
 				298A8F501E6D9DFC03C760A6 /* PromethStore.swift in Sources */,
 				D6B792C20D5E9A5FAFCD2C5D /* PromethToolVisibility.swift in Sources */,
 				3B5AD8CC3165AEF3839C50EA /* PromethTranscript.swift in Sources */,

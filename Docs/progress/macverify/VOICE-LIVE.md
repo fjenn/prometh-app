@@ -15,3 +15,24 @@ Exact local preparation log:
 ```
 
 Build gate passed; `make verify` passed; PromethTests: 65 tests, 0 failures. PromethUITests skipped: macOS Automation Mode requires the owner's password.
+
+## Silero + Kokoro follow-up (B)
+
+The default speech engine is now pinned `mlx-community/Kokoro-82M-bf16` (`af_heart`), run by mlx-audio in the bundled Python. Pocket remains compiled. Silero is `onnx-community/silero-vad` at `e71cae966052b992a7eca6b17738916ce0eca4ec` (repository dates July–December 2024, v5 era), ONNX Runtime CPU, 16 kHz mono, 512-sample frames plus 64-sample recurrent context. The app uses 700 ms silence after sustained speech. Capture also runs during playback with an echo gate for barge-in; microphone, worker, transcription, chat, and playback errors are visible.
+
+The production `CatalogDownloader` CLI downloaded and hash-verified Kokoro (327,639,823 bytes), Silero (2,244,097 bytes including license), and Whisper base (148,065,824 bytes). Kokoro generated a 113 KB WAV offline and `afplay` played it. Its bundled espeak data needs a short temporary path because its wrapper resolves bundle paths; no system espeak install is required.
+
+Live Debug test (14:38 BA): real microphone → Silero automatic end → Whisper → chat → Kokoro playback. A clear turn was transcribed as **“Yo, what's the capital of France?”** and the assistant replied **“The capital of France is Paris.”** Other turns captured other audible speech in the room, so they are not clean repetitions of the `say` file. No transcript was injected or saved data edited. The Release repeat and barge-in outcome are recorded later.
+
+```
+2026-10-27T17:38:13Z voice Silero v5 started (16 kHz, 512 + 64 context)
+2026-10-27T17:38:13Z voice real microphone capture started: Voice Recording 2026-10-27 at 14.38.13.510.wav
+2026-10-27T17:38:20Z voice recording finished: 1394688 bytes; requesting Whisper STT
+2026-10-27T17:38:22Z voice STT completed: 111 characters
+2026-10-27T17:38:34Z voice Kokoro playback started
+2026-10-27T17:38:45Z voice recording finished: 534528 bytes; requesting Whisper STT
+2026-10-27T17:38:46Z voice STT completed: 33 characters
+2026-10-27T17:38:53Z voice Kokoro playback started
+```
+
+Ad-hoc signing now uses `Configuration/Prometh-AdHoc.entitlements` (microphone only), avoiding unresolved restricted keychain groups from the development entitlement file. Python verification uses `-B` to preserve signed resource seals. Gates: build, make verify, 66 PromethTests passed, 0 failures; UI test target skipped for Automation Mode.

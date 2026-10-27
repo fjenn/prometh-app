@@ -137,10 +137,10 @@ struct PromethVoiceDetector {
     private var lastTick: TimeInterval = 0
     private var lastLoud: TimeInterval = 0
 
-    mutating func step(rms: Float, elapsed: TimeInterval) -> Bool {
+    mutating func step(rms: Float, elapsed: TimeInterval, probability: Float? = nil) -> Bool {
         let dt = max(0, min(0.1, elapsed - lastTick))
         lastTick = elapsed
-        let loud = rms > max(0.004, noise * 3)
+        let loud = probability.map { $0 >= (heardSpeech ? 0.35 : 0.5) && rms > 0.002 } ?? (rms > max(0.004, noise * 3))
         if loud {
             voiced += dt
             lastLoud = elapsed
