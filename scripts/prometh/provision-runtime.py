@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -25,6 +26,15 @@ def run(command: list[str], **kwargs: object) -> None:
 
 
 def venv_python(path: Path) -> Path:
+    python = path / "bin" / "python3"
+    if python.exists():
+        probe = subprocess.run(
+            [str(python), "-m", "pip", "--version"],
+            capture_output=True,
+            text=True,
+        )
+        if probe.returncode != 0:
+            shutil.rmtree(path)
     if not (path / "bin" / "python3").exists():
         run([sys.executable, "-m", "venv", str(path)])
     return path / "bin" / "python3"
