@@ -57,21 +57,22 @@ enum PromethConnectorSecret {
         )
     }
 
-    /// True when a key is present. The value is not kept or logged.
-    static func hasAPIKeyFile() -> Bool {
-        if let environment = ProcessInfo.processInfo.environment["COMPOSIO_API_KEY"]?
-            .trimmingCharacters(in: .whitespacesAndNewlines), !environment.isEmpty {
-            return true
-        }
+    /// Path to the on-disk key file. The value inside is never returned.
+    static func envFileURL() -> URL {
         let override = ProcessInfo.processInfo.environment["PROMETH_COMPOSIO_ENV"]?
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        let path: String
         if let override, !override.isEmpty {
-            path = (override as NSString).expandingTildeInPath
-        } else {
-            path = (NSHomeDirectory() as NSString).appendingPathComponent(".config/prometh/composio.env")
+            return URL(fileURLWithPath: (override as NSString).expandingTildeInPath)
         }
-        guard let text = try? String(contentsOfFile: path, encoding: .utf8) else { return false }
+        return URL(
+            fileURLWithPath: (NSHomeDirectory() as NSString)
+                .appendingPathComponent(".config/prometh/composio.env")
+        )
+    }
+
+    /// True when a non-empty `COMPOSIO_API_KEY` is on disk (not process env).
+    static func hasKeyOnDisk() -> Bool {
+        guard let text = try? String(contentsOf: envFileURL(), encoding: .utf8) else { return false }
         for line in text.split(whereSeparator: \.isNewline) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             guard !trimmed.isEmpty, !trimmed.hasPrefix("#"), let split = trimmed.firstIndex(of: "=") else { continue }
@@ -83,6 +84,15 @@ enum PromethConnectorSecret {
             return !value.isEmpty
         }
         return false
+    }
+
+    /// True when a key is present. The value is not kept or logged.
+    static func hasAPIKeyFile() -> Bool {
+        if let environment = ProcessInfo.processInfo.environment["COMPOSIO_API_KEY"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines), !environment.isEmpty {
+            return true
+        }
+        return hasKeyOnDisk()
     }
 
     private static var baseQuery: [String: Any] {

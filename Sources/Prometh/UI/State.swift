@@ -30,8 +30,27 @@ struct Preparation: Codable {
 
 enum Connection: String, Codable {
     case disconnected
+    case connecting
     case connected
     case expired
+
+    var label: String {
+        switch self {
+        case .connected: "Authorized connection"
+        case .expired: "Connection expired"
+        case .connecting: "Waiting for sign-in…"
+        case .disconnected: "Not connected"
+        }
+    }
+
+    var buttonTitle: String {
+        switch self {
+        case .connected: "Disconnect"
+        case .expired: "Reconnect"
+        case .connecting: "Waiting…"
+        case .disconnected: "Connect"
+        }
+    }
 }
 
 struct Attachment: Identifiable, Codable, Equatable {

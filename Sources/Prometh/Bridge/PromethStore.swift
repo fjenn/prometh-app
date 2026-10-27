@@ -994,14 +994,21 @@ final class PromethStore: ObservableObject {
     func connect(_ provider: Provider) {
         consent = nil
         error = nil
+        state.connections[provider.rawValue] = .connecting
         Task {
             let result = await PromethConnectorClient.link(provider)
-            if let url = result.redirectURL {
-                NSWorkspace.shared.open(url)
-                await pollConnection(provider)
-            } else {
+            guard let url = result.redirectURL else {
+                state.connections[provider.rawValue] = .disconnected
                 error = result.message ?? "The authorization page did not open."
+                return
             }
+            let opened = NSWorkspace.shared.open(url)
+            guard opened else {
+                state.connections[provider.rawValue] = .disconnected
+                error = "macOS would not open the authorization page. Check your default browser and try Connect again."
+                return
+            }
+            await pollConnection(provider)
         }
     }
 
@@ -1023,24 +1030,36 @@ final class PromethStore: ObservableObject {
     }
 
     private func pollConnection(_ provider: Provider) async {
-        for _ in 0..<30 {
-            if await applyConnectionStatus(provider) { return }
+        // ~2 minutes: owner finishes Google/GitHub sign-in in the browser.
+        for _ in 0..<60 {
+            if await applyConnectionStatus(provider, keepConnecting: true) { return }
             try? await Task.sleep(nanoseconds: 2_000_000_000)
+        }
+        if state.connections[provider.rawValue] == .connecting {
+            state.connections[provider.rawValue] = .disconnected
+            error = "Sign-in timed out for \(provider.rawValue). Click Connect and finish authorization in the browser."
         }
     }
 
     @discardableResult
-    private func applyConnectionStatus(_ provider: Provider) async -> Bool {
+    private func applyConnectionStatus(_ provider: Provider, keepConnecting: Bool = false) async -> Bool {
         let result = await PromethConnectorClient.status(provider)
-        if result.status == "connected" {
+        switch result.status {
+        case "connected":
             state.connections[provider.rawValue] = .connected
             return true
-        }
-        if result.status == "expired" {
+        case "expired":
             state.connections[provider.rawValue] = .expired
             return true
+        case "pending":
+            state.connections[provider.rawValue] = .connecting
+            return false
+        default:
+            if !keepConnecting {
+                state.connections[provider.rawValue] = .disconnected
+            }
+            return false
         }
-        return false
     }
 
     func expireConnection() {

@@ -316,6 +316,10 @@ def connection_status(toolkit: str, user_id: str, api_key: str) -> dict:
         if current in {"EXPIRED", "FAILED"}:
             status = "expired"
             account_id = item.get("id")
+        elif current in {"INITIATED", "INITIALIZING", "PENDING", "PENDING_AUTH"} and status != "expired":
+            # OAuth started but the owner has not finished sign-in yet.
+            status = "pending"
+            account_id = item.get("id") or account_id
     return {"ok": True, "status": status, "connected_account_id": account_id}
 
 

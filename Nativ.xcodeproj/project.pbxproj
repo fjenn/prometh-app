@@ -568,6 +568,7 @@
 		CB2186CE3DF58C79C1D8ACD1 /* MarkdownFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 696F983B4F1F1DEABA37ABBB /* MarkdownFixtures.swift */; };
 		CD5325BA28A70CF35CB16EA8 /* AudioCaptureSleepMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E03F44A59784052F3095DFE /* AudioCaptureSleepMonitor.swift */; };
 		CDF8E6C652790E68F71FEC06 /* SpreadsheetDocumentTextExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DEDC3ED3F36B830E8BF4499 /* SpreadsheetDocumentTextExtractor.swift */; };
+		CEA0479DAA1067D311CA0CD4 /* State.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3B4879B15892C880F7F2FF6 /* State.swift */; };
 		CEE42CCB57866B76CE85E588 /* MCPServerConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A7A7ACB288953FD476C47E8 /* MCPServerConfig.swift */; };
 		CEF825D42E70D0FFC22CD659 /* PromethConversationTitle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77823478292749ECABF32269 /* PromethConversationTitle.swift */; };
 		CFE41B9A0EF8EAA3CDA4B83F /* ChatTextSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BBF7A59DCE85B6CEBFFD743 /* ChatTextSearch.swift */; };
@@ -3297,6 +3298,7 @@
 				2FD8A604CD06216883D9ADDA /* PromethTranscriptTests.swift in Sources */,
 				DCD4066C16C5A886EF707091 /* PromethVoice.swift in Sources */,
 				3D867960D5CBE8B661C6EDF6 /* PromethVoiceTests.swift in Sources */,
+				CEA0479DAA1067D311CA0CD4 /* State.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

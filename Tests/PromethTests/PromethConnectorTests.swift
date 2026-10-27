@@ -27,6 +27,14 @@ final class PromethConnectorTests: XCTestCase {
         try FileManager.default.removeItem(at: directory)
     }
 
+    func testConnectionLabelsCoverWaitingState() {
+        XCTAssertEqual(Connection.connecting.label, "Waiting for sign-in…")
+        XCTAssertEqual(Connection.connecting.buttonTitle, "Waiting…")
+        XCTAssertEqual(Connection.disconnected.label, "Not connected")
+        XCTAssertEqual(Connection.connected.label, "Authorized connection")
+        XCTAssertEqual(Connection.expired.label, "Connection expired")
+    }
+
     func testPlanOmitsSecretsAndSkipsAnEmptyBroker() {
         XCTAssertNil(PromethConnectorPlan.make(
             python: "/usr/bin/python3",

@@ -222,6 +222,30 @@ async def direct_checks(tmp: Path, api: DirectAPI, port: int, key: str) -> None:
     assert key not in log.read_text(encoding="utf-8")
 
 
+def status_mapping_checks() -> None:
+    import server as composio_server
+
+    original = composio_server.composio_request
+
+    def fake(_method, _path, _api_key, body=None, query=None):
+        items = fake.items  # type: ignore[attr-defined]
+        return {"ok": True, "items": items}
+
+    fake.items = [{"id": "acct-1", "status": "INITIATED"}]
+    composio_server.composio_request = fake  # type: ignore[assignment]
+    try:
+        pending = composio_server.connection_status("github", "user-1", "key")
+        assert pending["status"] == "pending", pending
+        fake.items = [{"id": "acct-2", "status": "ACTIVE"}]
+        connected = composio_server.connection_status("gmail", "user-1", "key")
+        assert connected["status"] == "connected", connected
+        fake.items = [{"id": "acct-3", "status": "EXPIRED"}]
+        expired = composio_server.connection_status("googledrive", "user-1", "key")
+        assert expired["status"] == "expired", expired
+    finally:
+        composio_server.composio_request = original
+
+
 def main() -> None:
     key = "test-key-" + uuid.uuid4().hex
     tmp = Path("/tmp/prometh-composio-test")
@@ -229,6 +253,7 @@ def main() -> None:
         import shutil
         shutil.rmtree(tmp)
     tmp.mkdir()
+    status_mapping_checks()
     broker = Broker()
     broker.expected_key = key
     port = broker.serve()
@@ -239,7 +264,7 @@ def main() -> None:
     direct_tmp = tmp / "direct"
     direct_tmp.mkdir()
     anyio.run(direct_checks, direct_tmp, direct, direct_port, key)
-    print(json.dumps({"passed": True, "tests": 2, "mcp": "2.3.0", "executeWithoutApproval": 0}))
+    print(json.dumps({"passed": True, "tests": 3, "mcp": "2.3.0", "executeWithoutApproval": 0}))
 
 
 if __name__ == "__main__":

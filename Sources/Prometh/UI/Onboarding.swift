@@ -336,13 +336,18 @@ struct ConnectorsList:View {
                     PromethProviderLogo(provider:provider,size:25)
                     VStack(alignment:.leading,spacing:4) {
                         Text(provider.rawValue).font(.system(size:13,weight:.medium))
-                        Text(status == .connected ? "Authorized connection":status == .expired ? "Connection expired":"Not connected")
-                            .font(.system(size:10)).foregroundStyle(status == .expired ? .orange:.secondary)
+                        Text(status.label)
+                            .font(.system(size:10))
+                            .foregroundStyle(status == .expired ? .orange : status == .connecting ? .primary : .secondary)
                     }
                     Spacer()
-                    Button(status == .connected ? "Disconnect":status == .expired ? "Reconnect":"Connect") {
-                        if status == .connected{store.disconnect(provider)}else{store.consent=provider}
-                    }.buttonStyle(.bordered).controlSize(.small)
+                    Button(status.buttonTitle) {
+                        if status == .connected { store.disconnect(provider) }
+                        else if status != .connecting { store.consent = provider }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(status == .connecting)
                 }.padding(.vertical,11)
                 if provider != Provider.allCases.last{Divider().opacity(0.45)}
             }

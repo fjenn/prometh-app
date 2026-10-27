@@ -37,7 +37,11 @@ enum PromethConnectorClient {
             process.standardOutput = output
             process.standardError = FileHandle.nullDevice
             var environment = ProcessInfo.processInfo.environment
-            environment.removeValue(forKey: "COMPOSIO_API_KEY")
+            // Prefer the on-disk key file. Only strip the process env key when that
+            // file is present so env-only setups still reach the helper.
+            if PromethConnectorSecret.hasKeyOnDisk() {
+                environment.removeValue(forKey: "COMPOSIO_API_KEY")
+            }
             process.environment = environment
             do {
                 try process.run()
