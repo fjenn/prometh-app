@@ -122,18 +122,35 @@ enum PromethWebPrefetch {
         if ProcessInfo.processInfo.environment["PROMETH_OFFLINE"] == "1" { return }
         let query = PromethSearchContext.searchQuery(from: text)
         guard !query.isEmpty else { return }
+        await SearXNGSupervisor.shared.start()
+        await ReaderSupervisor.shared.start()
         let results = await Self.search(query)
         guard !results.isEmpty else { return }
         let mapped = results.map {
             PromethSearchContext.Result(title: $0.title, url: $0.url, snippet: $0.snippet)
         }
-        let readable = PromethSearchContext.preferReadable(mapped, limit: 4)
+        // Publish Sources as soon as search returns so the UI is not blocked on reads.
+        var hits: [PromethSearchContext.Hit] = mapped.enumerated().map { offset, result in
+            PromethSearchContext.Hit(
+                index: offset + 1,
+                title: result.title,
+                url: result.url,
+                snippet: result.snippet,
+                body: ""
+            )
+        }
+        store(
+            userID: userID,
+            links: hits.map { SourceLink(title: $0.title, url: $0.url, index: $0.index) },
+            note: PromethSearchContext.promptNote(hits: hits)
+        )
+        let readable = PromethSearchContext.preferReadable(mapped, limit: 3)
         let pages = await Self.readPages(readable.map(\.url), focus: String(text.prefix(500)))
         let byURL = Dictionary(uniqueKeysWithValues: pages.compactMap { page -> (String, WebReadPage)? in
             guard let content = page.content, !content.isEmpty else { return nil }
             return (page.url, page)
         })
-        let hits: [PromethSearchContext.Hit] = mapped.enumerated().map { offset, result in
+        hits = mapped.enumerated().map { offset, result in
             let page = byURL[result.url]
             let title = page?.title?.trimmingCharacters(in: .whitespacesAndNewlines)
             return PromethSearchContext.Hit(
@@ -144,9 +161,11 @@ enum PromethWebPrefetch {
                 body: page?.content ?? ""
             )
         }
-        let links = hits.map { SourceLink(title: $0.title, url: $0.url, index: $0.index) }
-        let note = PromethSearchContext.promptNote(hits: hits)
-        store(userID: userID, links: links, note: note)
+        store(
+            userID: userID,
+            links: hits.map { SourceLink(title: $0.title, url: $0.url, index: $0.index) },
+            note: PromethSearchContext.promptNote(hits: hits)
+        )
     }
 
     static func promptSection() -> String {
@@ -178,7 +197,8 @@ enum PromethWebPrefetch {
 
     private static func readPages(_ urls: [String], focus: String) async -> [WebReadPage] {
         guard !urls.isEmpty else { return [] }
-        return await withTimeout(seconds: 35) {
+        // Cap wait so a slow page does not starve the chat turn / UITests.
+        return await withTimeout(seconds: 18) {
             (try? await WebBrowsingRuntime().read(urls: urls, focus: focus)) ?? []
         } ?? []
     }

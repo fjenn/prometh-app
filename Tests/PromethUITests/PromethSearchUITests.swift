@@ -16,8 +16,9 @@ final class PromethSearchUITests: XCTestCase {
         draft.typeKey(.return, modifierFlags: [])
 
         let sources = app.staticTexts["Sources"]
-        XCTAssertTrue(sources.waitForExistence(timeout: 90))
-        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Source '")).firstMatch.waitForExistence(timeout: 5))
+        // Cold Safe-model load + SearXNG + local page reads can exceed a minute.
+        XCTAssertTrue(sources.waitForExistence(timeout: 180))
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Source '")).firstMatch.waitForExistence(timeout: 10))
     }
 
     func testAdvancedDoesNotRequireASearchKey() {
