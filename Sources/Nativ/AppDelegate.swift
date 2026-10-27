@@ -54,6 +54,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @MainActor UNUserNotif
         )
         // PROMETH-SEAM: S5 S6 S9 — embedded search defaults and local reader. No-op under XCTest.
         PromethSearchBootstrap.start()
+        // PROMETH-SEAM: media gate needs the live mlx-vlm URL to unload chat before image/video.
+        if PromethFlags.promethShell && !PromethFlags.isRunningUnitTests {
+            PromethMediaGate.resolveServer = { [weak model] in
+                let settings = (model?.settings ?? .init()).normalized()
+                return (settings.serverBaseURL, settings.serverAPIKey)
+            }
+        }
         // PROMETH-SEAM: S12 — Prometh's 4-bit image model replaces Nativ's 8-bit fallback.
         if PromethFlags.promethShell && !PromethFlags.isRunningUnitTests {
             var settings = model.settings

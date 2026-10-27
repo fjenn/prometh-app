@@ -29,17 +29,49 @@ def test_fastvideo_command_uses_the_pinned_decoder() -> None:
     assert "--mlx-checkpoint" in command
 
 
+def test_wan22_command_uses_fast_taehv() -> None:
+    command = media_worker.wan22_command(
+        "python3",
+        Path("mlx_wan22_generate.py"),
+        Path("/models/FastMetal-5B"),
+        "river at golden hour",
+        Path("/tmp/river.mp4"),
+    )
+    assert command[command.index("--decode-backend") + 1] == "taehv"
+    assert command[command.index("--width") + 1] == "832"
+    assert command[command.index("--height") + 1] == "448"
+    assert command[command.index("--num-frames") + 1] == "121"
+    assert "--fast" in command
+    assert "--text-encoder-root" in command
+    assert "--vae-root" in command
+
+
 def test_plan_and_trim_math() -> None:
-    # Pin the fallback so machines with video-14b installed still exercise 1.3B plan math.
+    # Pin the fallback so machines with video-14b/5b installed still exercise 1.3B plan math.
     os.environ["PROMETH_VIDEO_MODEL_ID"] = "video"
     try:
         plan = media_worker.job_plan("waves at sunset")
         assert plan["fastvideo"] == "8db2d71ef217e84bec7dbb6e4ab65c92b144df4f"
         assert plan["model"] == "FastVideo/FastMetal-1.3B-QAD"
         assert plan["revision"] == "2dac0154b217adabf8895d6cde7d6d93e68b7bec"
+        assert plan["pipeline"] == "wan21"
         assert plan["width"] == 832 and plan["height"] == 480
         assert plan["seconds"] == 5.0 and plan["silent"] is True
         assert abs(media_worker.trim_duration(1.0, 3.0) - 2.0) < 0.1
+    finally:
+        os.environ.pop("PROMETH_VIDEO_MODEL_ID", None)
+
+
+def test_plan_for_video_5b_uses_wan22() -> None:
+    os.environ["PROMETH_VIDEO_MODEL_ID"] = "video-5b"
+    try:
+        plan = media_worker.job_plan("river at golden hour")
+        assert plan["model"] == "FastVideo/FastMetal-5B-QAD"
+        assert plan["revision"] == "5e4819ec9c8dd062443cf015bd9022c700eca458"
+        assert plan["pipeline"] == "wan22"
+        assert plan["width"] == 832 and plan["height"] == 448
+        assert plan["frames"] == 121
+        assert plan["decodeBackend"] == "taehv"
     finally:
         os.environ.pop("PROMETH_VIDEO_MODEL_ID", None)
 
@@ -149,10 +181,12 @@ def main() -> None:
     subprocess.run(["rm", "-rf", str(tmp)], check=True)
     tmp.mkdir()
     test_fastvideo_command_uses_the_pinned_decoder()
+    test_wan22_command_uses_fast_taehv()
     test_plan_and_trim_math()
+    test_plan_for_video_5b_uses_wan22()
     test_standin_trim_and_poster(tmp / "standin")
     test_cancel_kills_the_child(tmp / "cancel")
-    print(json.dumps({"passed": True, "tests": 4, "fastvideo": media_worker.FASTVIDEO_COMMIT}))
+    print(json.dumps({"passed": True, "tests": 6, "fastvideo": media_worker.FASTVIDEO_COMMIT}))
 
 
 if __name__ == "__main__":

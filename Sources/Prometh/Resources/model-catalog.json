@@ -2149,6 +2149,169 @@
         }
       ],
       "downloadBytes": 27075777767
+    },
+    {
+      "id": "video-5b",
+      "name": "FastMetal 5B QAD",
+      "capability": "Video option",
+      "repo": "FastVideo/FastMetal-5B-QAD",
+      "runtime": "fastvideo-mlx",
+      "enabled": true,
+      "workingMemoryGB": 27.0,
+      "revision": "5e4819ec9c8dd062443cf015bd9022c700eca458",
+      "files": [
+        {
+          "path": "mlx_dit.json",
+          "size": 31940,
+          "hashAlgorithm": "git-blob-sha1",
+          "hash": "beb54574b9e3a9341be18bf777da25132859cce1",
+          "sha256": null,
+          "oid": "beb54574b9e3a9341be18bf777da25132859cce1",
+          "contentID": "git-blob-sha1:beb54574b9e3a9341be18bf777da25132859cce1",
+          "url": "https://huggingface.co/FastVideo/FastMetal-5B-QAD/resolve/5e4819ec9c8dd062443cf015bd9022c700eca458/mlx_dit.json"
+        },
+        {
+          "path": "mlx_dit.safetensors",
+          "size": 5314678720,
+          "hashAlgorithm": "sha256",
+          "hash": "652c322e954046dfea2fe5e5e239c2284ee5d8bcd18d40ed57d9c6cdf95b930a",
+          "sha256": "652c322e954046dfea2fe5e5e239c2284ee5d8bcd18d40ed57d9c6cdf95b930a",
+          "oid": null,
+          "contentID": "sha256:652c322e954046dfea2fe5e5e239c2284ee5d8bcd18d40ed57d9c6cdf95b930a",
+          "url": "https://huggingface.co/FastVideo/FastMetal-5B-QAD/resolve/5e4819ec9c8dd062443cf015bd9022c700eca458/mlx_dit.safetensors"
+        },
+        {
+          "path": "model_index.json",
+          "size": 502,
+          "hashAlgorithm": "git-blob-sha1",
+          "hash": "ff04a91f7a5defe4802dbcd899c39a5ab61f0d85",
+          "sha256": null,
+          "oid": "ff04a91f7a5defe4802dbcd899c39a5ab61f0d85",
+          "contentID": "git-blob-sha1:ff04a91f7a5defe4802dbcd899c39a5ab61f0d85",
+          "url": "https://huggingface.co/FastVideo/FastMetal-5B-QAD/resolve/5e4819ec9c8dd062443cf015bd9022c700eca458/model_index.json"
+        },
+        {
+          "path": "scheduler/scheduler_config.json",
+          "size": 820,
+          "hashAlgorithm": "git-blob-sha1",
+          "hash": "950d26faea717c8902ee197982026cb9c1b6463e",
+          "sha256": null,
+          "oid": "950d26faea717c8902ee197982026cb9c1b6463e",
+          "contentID": "git-blob-sha1:950d26faea717c8902ee197982026cb9c1b6463e",
+          "url": "https://huggingface.co/FastVideo/FastMetal-5B-QAD/resolve/5e4819ec9c8dd062443cf015bd9022c700eca458/scheduler/scheduler_config.json"
+        },
+        {
+          "path": "text_encoder/config.json",
+          "size": 855,
+          "hashAlgorithm": "git-blob-sha1",
+          "hash": "ab4a73bce055c6e32e66133032dcb3adfb26ee8d",
+          "sha256": null,
+          "oid": "ab4a73bce055c6e32e66133032dcb3adfb26ee8d",
+          "contentID": "git-blob-sha1:ab4a73bce055c6e32e66133032dcb3adfb26ee8d",
+          "url": "https://huggingface.co/FastVideo/FastMetal-5B-QAD/resolve/5e4819ec9c8dd062443cf015bd9022c700eca458/text_encoder/config.json"
+        },
+        {
+          "path": "text_encoder/model-00001-of-00003.safetensors",
+          "size": 4935812536,
+          "hashAlgorithm": "sha256",
+          "hash": "a8e861969c7433e707cc5a74065d795d36cca07ec96eb6763eb4083df7248f58",
+          "sha256": "a8e861969c7433e707cc5a74065d795d36cca07ec96eb6763eb4083df7248f58",
+          "oid": null,
+          "contentID": "sha256:a8e861969c7433e707cc5a74065d795d36cca07ec96eb6763eb4083df7248f58",
+          "url": "https://huggingface.co/FastVideo/FastMetal-5B-QAD/resolve/5e4819ec9c8dd062443cf015bd9022c700eca458/text_encoder/model-00001-of-00003.safetensors"
+        },
+        {
+          "path": "text_encoder/model-00002-of-00003.safetensors",
+          "size": 4983103192,
+          "hashAlgorithm": "sha256",
+          "hash": "d57d948ece4837d850b7a859a4415121d57cacf8b9ee1d4db200c67f592902d7",
+          "sha256": "d57d948ece4837d850b7a859a4415121d57cacf8b9ee1d4db200c67f592902d7",
+          "oid": null,
+          "contentID": "sha256:d57d948ece4837d850b7a859a4415121d57cacf8b9ee1d4db200c67f592902d7",
+          "url": "https://huggingface.co/FastVideo/FastMetal-5B-QAD/resolve/5e4819ec9c8dd062443cf015bd9022c700eca458/text_encoder/model-00002-of-00003.safetensors"
+        },
+        {
+          "path": "text_encoder/model-00003-of-00003.safetensors",
+          "size": 1442935480,
+          "hashAlgorithm": "sha256",
+          "hash": "0da9ee284e21d1406df708788db1d502d95d75f69faa25cd26151bf8829b7c5f",
+          "sha256": "0da9ee284e21d1406df708788db1d502d95d75f69faa25cd26151bf8829b7c5f",
+          "oid": null,
+          "contentID": "sha256:0da9ee284e21d1406df708788db1d502d95d75f69faa25cd26151bf8829b7c5f",
+          "url": "https://huggingface.co/FastVideo/FastMetal-5B-QAD/resolve/5e4819ec9c8dd062443cf015bd9022c700eca458/text_encoder/model-00003-of-00003.safetensors"
+        },
+        {
+          "path": "text_encoder/model.safetensors.index.json",
+          "size": 22476,
+          "hashAlgorithm": "git-blob-sha1",
+          "hash": "f3d3d4da90eb33e14c92d88ea346370fa3c0b5b2",
+          "sha256": null,
+          "oid": "f3d3d4da90eb33e14c92d88ea346370fa3c0b5b2",
+          "contentID": "git-blob-sha1:f3d3d4da90eb33e14c92d88ea346370fa3c0b5b2",
+          "url": "https://huggingface.co/FastVideo/FastMetal-5B-QAD/resolve/5e4819ec9c8dd062443cf015bd9022c700eca458/text_encoder/model.safetensors.index.json"
+        },
+        {
+          "path": "tokenizer/special_tokens_map.json",
+          "size": 7079,
+          "hashAlgorithm": "git-blob-sha1",
+          "hash": "2ed25bf989a28d20b5d4b5822fbc24666d12a6f7",
+          "sha256": null,
+          "oid": "2ed25bf989a28d20b5d4b5822fbc24666d12a6f7",
+          "contentID": "git-blob-sha1:2ed25bf989a28d20b5d4b5822fbc24666d12a6f7",
+          "url": "https://huggingface.co/FastVideo/FastMetal-5B-QAD/resolve/5e4819ec9c8dd062443cf015bd9022c700eca458/tokenizer/special_tokens_map.json"
+        },
+        {
+          "path": "tokenizer/spiece.model",
+          "size": 4548313,
+          "hashAlgorithm": "sha256",
+          "hash": "e3909a67b780650b35cf529ac782ad2b6b26e6d1f849d3fbb6a872905f452458",
+          "sha256": "e3909a67b780650b35cf529ac782ad2b6b26e6d1f849d3fbb6a872905f452458",
+          "oid": null,
+          "contentID": "sha256:e3909a67b780650b35cf529ac782ad2b6b26e6d1f849d3fbb6a872905f452458",
+          "url": "https://huggingface.co/FastVideo/FastMetal-5B-QAD/resolve/5e4819ec9c8dd062443cf015bd9022c700eca458/tokenizer/spiece.model"
+        },
+        {
+          "path": "tokenizer/tokenizer.json",
+          "size": 16837459,
+          "hashAlgorithm": "sha256",
+          "hash": "20a46ac256746594ed7e1e3ef733b83fbc5a6f0922aa7480eda961743de080ef",
+          "sha256": "20a46ac256746594ed7e1e3ef733b83fbc5a6f0922aa7480eda961743de080ef",
+          "oid": null,
+          "contentID": "sha256:20a46ac256746594ed7e1e3ef733b83fbc5a6f0922aa7480eda961743de080ef",
+          "url": "https://huggingface.co/FastVideo/FastMetal-5B-QAD/resolve/5e4819ec9c8dd062443cf015bd9022c700eca458/tokenizer/tokenizer.json"
+        },
+        {
+          "path": "tokenizer/tokenizer_config.json",
+          "size": 61758,
+          "hashAlgorithm": "git-blob-sha1",
+          "hash": "09d434f9457238f697f4c208aab47f58caa15bfe",
+          "sha256": null,
+          "oid": "09d434f9457238f697f4c208aab47f58caa15bfe",
+          "contentID": "git-blob-sha1:09d434f9457238f697f4c208aab47f58caa15bfe",
+          "url": "https://huggingface.co/FastVideo/FastMetal-5B-QAD/resolve/5e4819ec9c8dd062443cf015bd9022c700eca458/tokenizer/tokenizer_config.json"
+        },
+        {
+          "path": "vae/config.json",
+          "size": 1701,
+          "hashAlgorithm": "git-blob-sha1",
+          "hash": "29f65bc63e9daadb95e4c1a8344d162be4b7d533",
+          "sha256": null,
+          "oid": "29f65bc63e9daadb95e4c1a8344d162be4b7d533",
+          "contentID": "git-blob-sha1:29f65bc63e9daadb95e4c1a8344d162be4b7d533",
+          "url": "https://huggingface.co/FastVideo/FastMetal-5B-QAD/resolve/5e4819ec9c8dd062443cf015bd9022c700eca458/vae/config.json"
+        },
+        {
+          "path": "vae/diffusion_pytorch_model.safetensors",
+          "size": 2818777808,
+          "hashAlgorithm": "sha256",
+          "hash": "62cd18f19438e35b32ac63020e2852f566e9b02f46b6cdbd87972a356e3c6f4b",
+          "sha256": "62cd18f19438e35b32ac63020e2852f566e9b02f46b6cdbd87972a356e3c6f4b",
+          "oid": null,
+          "contentID": "sha256:62cd18f19438e35b32ac63020e2852f566e9b02f46b6cdbd87972a356e3c6f4b",
+          "url": "https://huggingface.co/FastVideo/FastMetal-5B-QAD/resolve/5e4819ec9c8dd062443cf015bd9022c700eca458/vae/diffusion_pytorch_model.safetensors"
+        }
+      ],
+      "downloadBytes": 19516820639
     }
   ]
 }

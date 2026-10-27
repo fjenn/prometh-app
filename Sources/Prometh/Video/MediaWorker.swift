@@ -45,6 +45,7 @@ enum PromethMediaWorker {
         if PromethBlocklist.isBlocked(prompt) {
             return #"{"ok":false,"error":"\#(PromethBlocklist.message)"}"#
         }
+        await PromethMediaGate.unloadChatEngines(reason: "video")
         let directory = PromethIdentity.applicationSupportDirectory
             .appendingPathComponent("Media", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -172,6 +173,8 @@ enum PromethMediaWorker {
         var environment = ProcessInfo.processInfo.environment
         environment["PYTHONNOUSERSITE"] = "1"
         environment["PYTHONUNBUFFERED"] = "1"
+        let videoID = PromethSelectedModels.id(.video, fallback: "video")
+        environment["PROMETH_VIDEO_MODEL_ID"] = videoID
         if let checkout = PromethRuntimeLocator.url(
             relative: "media/fastvideo/examples/inference/basic/mlx_wan_prompt_to_video.py"
         ) {

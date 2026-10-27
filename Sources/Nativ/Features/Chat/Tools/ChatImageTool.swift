@@ -169,7 +169,8 @@ struct ChatImageToolDependencies: Sendable {
             )
         },
         execute: { request, modelID, baseURL, apiKey, references in
-            try await ChatImageToolExecutor().execute(
+            await PromethImageMediaGate.prepare()
+            return try await ChatImageToolExecutor().execute(
                 request: request,
                 modelID: modelID,
                 baseURL: baseURL,
@@ -214,6 +215,12 @@ enum ChatImageToolError: LocalizedError {
 enum PromethImagePromptGuard {
     nonisolated(unsafe) static var isBlocked: @Sendable (String) -> Bool = { _ in false }
     nonisolated(unsafe) static var blockedMessage = "Blocked."
+}
+
+/// Prometh sets this to unload chat engines before an image job so media picks
+/// can use residentGB = 0. Nativ keeps a no-op default.
+enum PromethImageMediaGate {
+    nonisolated(unsafe) static var prepare: @Sendable () async -> Void = {}
 }
 
 struct ChatImageToolExecutor {

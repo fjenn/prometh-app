@@ -38,6 +38,14 @@ enum PromethSearchBootstrap {
         guard PromethFlags.promethShell, !PromethFlags.isRunningUnitTests else { return }
         PromethImagePromptGuard.isBlocked = { PromethBlocklist.isBlocked($0) }
         PromethImagePromptGuard.blockedMessage = PromethBlocklist.message
+        PromethImageMediaGate.prepare = {
+            await PromethMediaGate.unloadChatEngines(reason: "image")
+        }
+        PromethMediaGate.resolveServer = {
+            // Default local mlx-vlm; AppDelegate may overwrite with live settings.
+            (URL(string: "http://127.0.0.1:8080")!, nil)
+        }
+        PromethMediaGate.stopEvilServer = { LlamaSupervisor.shared.stop() }
         ChatViewModel.PromethPromptAdditions.sections = {
             let persona = PromethPromptAdditionsMode.voiceActive
                 ? PromethPrompts.voicePersona(mode: PromethPromptAdditionsMode.current)

@@ -72,14 +72,17 @@ if __name__ == '__main__':
 
     if args.media:
         # Skip ema/ DiT duplicate — generation uses the root mlx_dit checkpoint.
-        with urlopen('https://huggingface.co/api/models/FastVideo/FastMetal-14B-QAD?blobs=true', timeout=45) as response:
-            video_paths = [
-                blob['rfilename'] for blob in json.load(response)['siblings']
-                if not blob['rfilename'].startswith('ema/')
-                and blob['rfilename'].endswith(('.json', '.safetensors', '.txt', '.model'))
-            ]
+        def video_paths(repo):
+            with urlopen(f'https://huggingface.co/api/models/{repo}?blobs=true', timeout=45) as response:
+                return [
+                    blob['rfilename'] for blob in json.load(response)['siblings']
+                    if not blob['rfilename'].startswith('ema/')
+                    and blob['rfilename'].endswith(('.json', '.safetensors', '.txt', '.model', '.pth', '.pt'))
+                ]
         update([
             entry('images-9b', 'FLUX.2 Klein 9B · 8-bit', 'mlx-community/flux2-klein-9b-8bit', 'mflux', 14, 'Images option'),
             entry('video-14b', 'FastMetal 14B QAD', 'FastVideo/FastMetal-14B-QAD', 'fastvideo', 28, 'Video option',
-                  video_paths),
+                  video_paths('FastVideo/FastMetal-14B-QAD')),
+            entry('video-5b', 'FastMetal 5B QAD', 'FastVideo/FastMetal-5B-QAD', 'fastvideo-mlx', 27.0, 'Video option',
+                  video_paths('FastVideo/FastMetal-5B-QAD'), enabled=True),
         ])

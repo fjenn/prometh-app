@@ -69,3 +69,23 @@ enum PromethMemory {
         _ = try? await URLSession.shared.data(for: request)
     }
 }
+
+/// Serializes heavy media jobs against chat engines so image/video picks can
+/// use `residentGB = 0`. Stops Evil llama.cpp and posts `/unload` to the Safe
+/// mlx-vlm server before a media job; chat reloads on the next message.
+enum PromethMediaGate {
+    /// Live server locator filled by `PromethSearchBootstrap` / AppDelegate.
+    nonisolated(unsafe) static var resolveServer: (() -> (baseURL: URL, apiKey: String?))?
+    /// Stops Evil llama.cpp; wired from bootstrap so ModeRouter stays test-linkable.
+    nonisolated(unsafe) static var stopEvilServer: (() -> Void)?
+
+    static func unloadChatEngines(reason: String) async {
+        stopEvilServer?()
+        let resolved = resolveServer?()
+        let base = resolved?.baseURL ?? URL(string: "http://127.0.0.1:8080")!
+        let key = resolved?.apiKey
+        await PromethMemory.unloadMLX(baseURL: base, apiKey: key)
+        // Console evidence for measurement runs (no secrets).
+        print("prometh media-gate: unloaded chat before \(reason)")
+    }
+}

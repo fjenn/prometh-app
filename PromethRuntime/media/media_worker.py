@@ -12,53 +12,114 @@ import threading
 from pathlib import Path
 
 FASTVIDEO_COMMIT = "8db2d71ef217e84bec7dbb6e4ab65c92b144df4f"
-# Best-first video weights. Prefer 14B when the catalog folder is complete.
-# Tuple: (HF repo, revision, on-disk folder stem, catalog id).
+# Best-first video weights. Prefer the largest complete catalog folder.
+# Tuple: (HF repo, revision, on-disk folder stem, catalog id, pipeline).
+# pipeline: "wan21" → mlx_wan_prompt_to_video.py; "wan22" → mlx_wan22_generate.py.
 VIDEO_CANDIDATES = [
     ("FastVideo/FastMetal-14B-QAD", "fbc50323c677ee29a62d94204a62c996e505ac89",
-     "FastVideo--FastMetal-14B-QAD--fbc50323c677", "video-14b"),
+     "FastVideo--FastMetal-14B-QAD--fbc50323c677", "video-14b", "wan21"),
+    ("FastVideo/FastMetal-5B-QAD", "5e4819ec9c8dd062443cf015bd9022c700eca458",
+     "FastVideo--FastMetal-5B-QAD--5e4819ec9c8d", "video-5b", "wan22"),
     ("FastVideo/FastMetal-1.3B-QAD", "2dac0154b217adabf8895d6cde7d6d93e68b7bec",
-     "FastVideo--FastMetal-1.3B-QAD--2dac0154b217", "video"),
+     "FastVideo--FastMetal-1.3B-QAD--2dac0154b217", "video", "wan21"),
 ]
 MODEL = VIDEO_CANDIDATES[-1][0]
 REVISION = VIDEO_CANDIDATES[-1][1]
-WIDTH = 832
-HEIGHT = 480
+# Wan2.1 (1.3B / 14B) defaults used by Prometh.
+WAN21_WIDTH = 832
+WAN21_HEIGHT = 480
+WAN21_FRAMES = 81
+WAN21_FPS = 16
+# Wan2.2 TI2V 5B: README quickstart uses script defaults + --fast.
+# Script defaults are 448x832 / 121 frames / 24 fps (native training res is 704x1280).
+WAN22_WIDTH = 832
+WAN22_HEIGHT = 448
+WAN22_FRAMES = 121
+WAN22_FPS = 24
 SECONDS = 5.0
 
 
 def _video_ready(root: Path) -> bool:
-    return (
-        (root / "mlx_dit.safetensors").is_file()
-        and (root / "vae").is_dir()
-        and (root / "text_encoder").is_dir()
-    )
+    """True only when DiT, VAE weights, and text-encoder shards look complete."""
+    dit = root / "mlx_dit.safetensors"
+    if not dit.is_file() or dit.stat().st_size < 1_000_000:
+        return False
+    vae_weight = root / "vae" / "diffusion_pytorch_model.safetensors"
+    if not vae_weight.is_file() or vae_weight.stat().st_size < 1_000_000:
+        # Wan2.1 1.3B/14B may ship VAE under a nested name; accept any large safetensor.
+        vae_dir = root / "vae"
+        if not vae_dir.is_dir():
+            return False
+        vae_ok = any(
+            p.is_file() and p.stat().st_size >= 1_000_000
+            for p in vae_dir.rglob("*.safetensors")
+        )
+        if not vae_ok:
+            return False
+    te = root / "text_encoder"
+    if not te.is_dir():
+        return False
+    te_weights = [
+        p for p in te.rglob("*.safetensors")
+        if p.is_file() and p.stat().st_size >= 1_000_000 and ".partial" not in p.name
+    ]
+    if not te_weights:
+        return False
+    # Sharded UMT5 (5B) needs all three parts; single-file encoders (1.3B) need one.
+    index = te / "model.safetensors.index.json"
+    if index.is_file():
+        try:
+            import json as _json
+            meta = _json.loads(index.read_text())
+            expected = {
+                te / name
+                for name in set((meta.get("weight_map") or {}).values())
+            }
+            if expected and not all(p.is_file() and p.stat().st_size >= 1_000_000 for p in expected):
+                return False
+        except Exception:
+            return False
+    return True
 
 
-def _selected_video() -> tuple[str, str, str]:
+def _selected_video() -> tuple[str, str, str, str]:
     override = os.environ.get("PROMETH_VIDEO_MODEL_ID", "").strip()
     models = Path.home() / "Library/Application Support/Prometh/Models"
-    for repo, revision, folder, catalog_id in VIDEO_CANDIDATES:
-        aliases = {repo, folder, revision, catalog_id}
-        if override and override not in aliases:
-            continue
+    # Explicit override wins for plan/tests even before weights finish downloading.
+    if override:
+        for repo, revision, folder, catalog_id, pipeline in VIDEO_CANDIDATES:
+            aliases = {repo, folder, revision, catalog_id}
+            if override in aliases:
+                return repo, revision, folder, pipeline
+    for repo, revision, folder, catalog_id, pipeline in VIDEO_CANDIDATES:
         root = models / folder
         if _video_ready(root):
-            return repo, revision, folder
-    return VIDEO_CANDIDATES[-1][0], VIDEO_CANDIDATES[-1][1], VIDEO_CANDIDATES[-1][2]
+            return repo, revision, folder, pipeline
+    fallback = VIDEO_CANDIDATES[-1]
+    return fallback[0], fallback[1], fallback[2], fallback[4]
+
+
+def _geometry(pipeline: str) -> tuple[int, int, int, int, str]:
+    if pipeline == "wan22":
+        return WAN22_WIDTH, WAN22_HEIGHT, WAN22_FRAMES, WAN22_FPS, "taehv"
+    return WAN21_WIDTH, WAN21_HEIGHT, WAN21_FRAMES, WAN21_FPS, "wan-vae"
 
 
 def job_plan(prompt: str, seconds: float = SECONDS) -> dict:
-    repo, revision, _ = _selected_video()
+    repo, revision, _, pipeline = _selected_video()
+    width, height, frames, fps, decode = _geometry(pipeline)
     return {
         "model": repo,
         "revision": revision,
         "fastvideo": FASTVIDEO_COMMIT,
-        "width": WIDTH,
-        "height": HEIGHT,
+        "pipeline": pipeline,
+        "width": width,
+        "height": height,
+        "frames": frames,
+        "fps": fps,
         "seconds": seconds,
         "silent": True,
-        "decodeBackend": "wan-vae",
+        "decodeBackend": decode,
         "prompt": prompt,
     }
 
@@ -69,14 +130,14 @@ def trim_duration(start: float, end: float) -> float:
     return round(end - start, 3)
 
 
-def standin_command(path: Path, seconds: float) -> list[str]:
+def standin_command(path: Path, seconds: float, width: int = WAN21_WIDTH, height: int = WAN21_HEIGHT) -> list[str]:
     return [
         "ffmpeg",
         "-y",
         "-f",
         "lavfi",
         "-i",
-        f"color=c=black:s={WIDTH}x{HEIGHT}:d={seconds}",
+        f"color=c=black:s={width}x{height}:d={seconds}",
         "-an",
         "-c:v",
         "libx264",
@@ -115,6 +176,9 @@ def fastvideo_checkout() -> Path | None:
     candidates.append(Path(__file__).resolve().parent / "fastvideo")
     for root in candidates:
         script = root / "examples/inference/basic/mlx_wan_prompt_to_video.py"
+        wan22 = root / "examples/inference/basic/mlx_wan22_generate.py"
+        if script.is_file() and wan22.is_file():
+            return root
         if script.is_file():
             return root
     return None
@@ -126,7 +190,7 @@ def fastmetal_root() -> Path | None:
         root = Path(override)
         if _video_ready(root):
             return root
-    _, _, folder = _selected_video()
+    _, _, folder, _ = _selected_video()
     root = Path.home() / "Library/Application Support/Prometh/Models" / folder
     if _video_ready(root):
         return root
@@ -144,6 +208,7 @@ def fastvideo_python(checkout: Path) -> str:
 
 
 def fastvideo_command(python: str, script: Path, model: Path, prompt: str, output: Path) -> list[str]:
+    """Wan2.1 FastMetal 1.3B / 14B entrypoint."""
     return [
         python,
         str(script),
@@ -156,17 +221,48 @@ def fastvideo_command(python: str, script: Path, model: Path, prompt: str, outpu
         "--output-path",
         str(output),
         "--height",
-        str(HEIGHT),
+        str(WAN21_HEIGHT),
         "--width",
-        str(WIDTH),
+        str(WAN21_WIDTH),
         "--num-frames",
-        "81",
+        str(WAN21_FRAMES),
         "--fps",
-        "16",
+        str(WAN21_FPS),
         "--decode-backend",
         "wan-vae",
         "--seed",
         "1024",
+    ]
+
+
+def wan22_command(python: str, script: Path, model: Path, prompt: str, output: Path) -> list[str]:
+    """Wan2.2 FastMetal-5B-QAD entrypoint (README quickstart + Prometh geometry)."""
+    return [
+        python,
+        str(script),
+        "--text-encoder-root",
+        str(model),
+        "--mlx-checkpoint",
+        str(model),
+        "--vae-root",
+        str(model / "vae"),
+        "--prompt",
+        prompt,
+        "--output-path",
+        str(output),
+        "--height",
+        str(WAN22_HEIGHT),
+        "--width",
+        str(WAN22_WIDTH),
+        "--num-frames",
+        str(WAN22_FRAMES),
+        "--fps",
+        str(WAN22_FPS),
+        "--decode-backend",
+        "taehv",
+        "--seed",
+        "1024",
+        "--fast",
     ]
 
 
@@ -219,7 +315,9 @@ class Worker:
         plan = job_plan(prompt)
         output.parent.mkdir(parents=True, exist_ok=True)
         if os.environ.get("PROMETH_MEDIA_MOCK") == "1":
-            if self._spawn(standin_command(output, plan["seconds"])) != 0 or self._cancelled:
+            if self._spawn(
+                standin_command(output, plan["seconds"], plan["width"], plan["height"])
+            ) != 0 or self._cancelled:
                 output.unlink(missing_ok=True)
                 raise RuntimeError("cancelled" if self._cancelled else "stand-in failed")
             if self._spawn(poster_command(output, poster)) != 0:
@@ -235,19 +333,22 @@ class Worker:
         output = output.expanduser().resolve()
         poster = poster.expanduser().resolve()
         output.parent.mkdir(parents=True, exist_ok=True)
-        script = checkout / "examples/inference/basic/mlx_wan_prompt_to_video.py"
+        pipeline = plan.get("pipeline") or "wan21"
+        if pipeline == "wan22":
+            script = checkout / "examples/inference/basic/mlx_wan22_generate.py"
+            command = wan22_command(fastvideo_python(checkout), script, model, prompt, output)
+        else:
+            script = checkout / "examples/inference/basic/mlx_wan_prompt_to_video.py"
+            command = fastvideo_command(fastvideo_python(checkout), script, model, prompt, output)
+        if not script.is_file():
+            raise RuntimeError("Video is not ready yet.")
         env = os.environ.copy()
         env["PYTHONPATH"] = str(checkout) + os.pathsep + env.get("PYTHONPATH", "")
         env["PYTHONNOUSERSITE"] = "1"
         env["PYTHONUNBUFFERED"] = "1"
         env["HF_HUB_OFFLINE"] = "1"
         log = output.with_suffix(".log")
-        code = self._spawn(
-            fastvideo_command(fastvideo_python(checkout), script, model, prompt, output),
-            cwd=checkout,
-            env=env,
-            log=log,
-        )
+        code = self._spawn(command, cwd=checkout, env=env, log=log)
         if code != 0 or self._cancelled or not output.is_file():
             output.unlink(missing_ok=True)
             raise RuntimeError("cancelled" if self._cancelled else "video generation failed")
@@ -322,7 +423,13 @@ def main() -> None:
             emit({"ok": False, "error": "unknown op"})
             return
         except Exception as error:
-            emit({"ok": False, "error": str(error)})
+            # Cancel races the blocking generate/trim: the child is killed first,
+            # then RuntimeError("cancelled") surfaces here before the cancel op
+            # is read from the inbox.
+            if str(error) == "cancelled" or worker._cancelled:
+                emit({"ok": True, "cancelled": True})
+            else:
+                emit({"ok": False, "error": str(error)})
             return
 
 
