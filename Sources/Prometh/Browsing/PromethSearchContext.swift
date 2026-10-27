@@ -8,7 +8,7 @@ enum PromethSearchContext {
         var snippet: String
     }
 
-    struct Hit: Equatable, Sendable {
+    struct Hit: Equatable, Sendable, Codable {
         var index: Int
         var title: String
         var url: String

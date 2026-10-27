@@ -35,17 +35,20 @@ enum CitationRemapper {
         return scrubForeignOutlets(remapped, sources: sources)
     }
 
-    /// Assign each cited sentence/bullet to the best-matching source index.
-    /// A chip is kept only when overlap clears `minimumSupportScore`; otherwise
-    /// it is dropped. Repeated chips for one source are intentional when that
-    /// source supports multiple lines.
+    /// Assign each cited sentence/bullet to a supported source index.
+    /// Prefer the model's own chip when that source clears `minimumSupportScore`
+    /// (keeps distinct Sources distinct). Otherwise fall back to best overlap.
+    /// Unsupported chips are dropped. Repeated chips for one source stay when
+    /// that source is the only one that supports the line.
     static func remapCitations(_ reply: String, sources: [Source]) -> String {
         guard !sources.isEmpty else { return stripCitations(reply) }
         guard let expression = try? NSRegularExpression(pattern: #"\[(\d+(?:\s*,\s*\d+)*)\]"#) else {
             return reply
         }
+        let indexToOffset = Dictionary(uniqueKeysWithValues: sources.enumerated().map { ($0.element.index, $0.offset) })
         let lines = reply.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
         var citedLineIndexes: [Int] = []
+        var modelPreferences: [Int?] = []
         var scores: [[Double]] = []
         for (offset, line) in lines.enumerated() {
             let range = NSRange(line.startIndex..., in: line)
@@ -54,12 +57,25 @@ enum CitationRemapper {
             let plain = expression.stringByReplacingMatches(in: line, range: range, withTemplate: "")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             let tokens = Self.tokens(plain)
+            let preferred: Int? = {
+                guard let match = matches.first,
+                      let group = Range(match.range(at: 1), in: line) else { return nil }
+                let parts = line[group].split(separator: ",").compactMap {
+                    Int($0.trimmingCharacters(in: .whitespaces))
+                }
+                return parts.first
+            }()
             citedLineIndexes.append(offset)
+            modelPreferences.append(preferred)
             scores.append(sources.map { source in
                 tokens.isEmpty ? 0 : Self.score(tokens: tokens, source: source)
             })
         }
-        let assigned = bestOverlapAssignments(scores: scores)
+        let assigned = supportedAssignments(
+            scores: scores,
+            modelPreferences: modelPreferences,
+            indexToOffset: indexToOffset
+        )
         var resultLines = lines
         for (slot, lineIndex) in citedLineIndexes.enumerated() {
             let chosen: Int?
@@ -78,11 +94,22 @@ enum CitationRemapper {
         return resultLines.joined(separator: "\n")
     }
 
-    /// Per-line best overlap. No balancing, unique-forcing, or round-robin —
-    /// only content support decides the chip (or its removal).
-    static func bestOverlapAssignments(scores: [[Double]]) -> [Int?] {
+    /// Keep the model's chip when that source is supported; else best overlap.
+    /// No balancing or round-robin — unsupported chips are still dropped.
+    static func supportedAssignments(
+        scores: [[Double]],
+        modelPreferences: [Int?],
+        indexToOffset: [Int: Int]
+    ) -> [Int?] {
         guard !scores.isEmpty else { return [] }
-        return scores.map { row in
+        return scores.enumerated().map { slot, row in
+            if slot < modelPreferences.count,
+               let preferredIndex = modelPreferences[slot],
+               let offset = indexToOffset[preferredIndex],
+               offset < row.count,
+               row[offset] >= minimumSupportScore {
+                return offset
+            }
             var bestSource: Int?
             var bestScore = 0.0
             for (source, score) in row.enumerated() where score > bestScore {
@@ -92,6 +119,11 @@ enum CitationRemapper {
             guard bestScore >= minimumSupportScore else { return nil }
             return bestSource
         }
+    }
+
+    /// Per-line best overlap. Kept for call sites/tests that still import it.
+    static func bestOverlapAssignments(scores: [[Double]]) -> [Int?] {
+        supportedAssignments(scores: scores, modelPreferences: [], indexToOffset: [:])
     }
 
     /// Legacy name kept for call sites/tests that still import the old API.

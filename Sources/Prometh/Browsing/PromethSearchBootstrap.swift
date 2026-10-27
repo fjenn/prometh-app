@@ -109,6 +109,17 @@ enum PromethWebPrefetch {
     nonisolated(unsafe) private static var linksByUser: [UUID: [SourceLink]] = [:]
     nonisolated(unsafe) private static var hitsByUser: [UUID: [PromethSearchContext.Hit]] = [:]
     nonisolated(unsafe) private static var note = ""
+    /// Survives app relaunch / curated-screenshot restarts so Sources stay visible.
+    private static let diskName = "prefetch-sources.json"
+
+    private struct DiskRecord: Codable {
+        var links: [SourceLink]
+        var hits: [PromethSearchContext.Hit]
+    }
+
+    private struct DiskStore: Codable {
+        var byUser: [String: DiskRecord]
+    }
 
     static var enabled: Bool {
         get {
@@ -185,30 +196,47 @@ enum PromethWebPrefetch {
     }
 
     static func storedLinks(before assistantID: UUID, in messages: [ChatTranscriptMessage]) -> [SourceLink]? {
-        guard let index = messages.firstIndex(where: { $0.id == assistantID }) else { return nil }
-        var cursor = index - 1
-        while cursor >= 0 {
-            if messages[cursor].role == .user {
-                lock.lock()
-                defer { lock.unlock() }
-                let links = linksByUser[messages[cursor].id]
-                return links?.isEmpty == false ? links : nil
-            }
-            cursor -= 1
+        guard let userID = precedingUserID(before: assistantID, in: messages) else { return nil }
+        lock.lock()
+        if let links = linksByUser[userID], !links.isEmpty {
+            lock.unlock()
+            return links
         }
-        return nil
+        lock.unlock()
+        guard let record = loadDisk()[userID.uuidString], !record.links.isEmpty else { return nil }
+        lock.lock()
+        linksByUser[userID] = record.links
+        hitsByUser[userID] = record.hits
+        lock.unlock()
+        return record.links
     }
 
     /// Fetched page bodies for citation remapping after the reply streams in.
     static func storedHits(before assistantID: UUID, in messages: [ChatTranscriptMessage]) -> [PromethSearchContext.Hit]? {
+        guard let userID = precedingUserID(before: assistantID, in: messages) else { return nil }
+        lock.lock()
+        if let hits = hitsByUser[userID], !hits.isEmpty {
+            lock.unlock()
+            return hits
+        }
+        lock.unlock()
+        guard let record = loadDisk()[userID.uuidString], !record.hits.isEmpty else { return nil }
+        lock.lock()
+        linksByUser[userID] = record.links
+        hitsByUser[userID] = record.hits
+        lock.unlock()
+        return record.hits
+    }
+
+    private static func precedingUserID(
+        before assistantID: UUID,
+        in messages: [ChatTranscriptMessage]
+    ) -> UUID? {
         guard let index = messages.firstIndex(where: { $0.id == assistantID }) else { return nil }
         var cursor = index - 1
         while cursor >= 0 {
             if messages[cursor].role == .user {
-                lock.lock()
-                defer { lock.unlock() }
-                let hits = hitsByUser[messages[cursor].id]
-                return hits?.isEmpty == false ? hits : nil
+                return messages[cursor].id
             }
             cursor -= 1
         }
@@ -297,6 +325,31 @@ enum PromethWebPrefetch {
             hitsByUser[oldest] = nil
         }
         note = next
+        let snapshot = DiskStore(byUser: Dictionary(uniqueKeysWithValues: linksByUser.compactMap { key, value in
+            guard let hitList = hitsByUser[key], !value.isEmpty else { return nil }
+            return (key.uuidString, DiskRecord(links: value, hits: hitList))
+        }))
         lock.unlock()
+        saveDisk(snapshot)
+    }
+
+    private static func diskURL() -> URL {
+        PromethIdentity.applicationSupportDirectory.appendingPathComponent(diskName)
+    }
+
+    private static func loadDisk() -> [String: DiskRecord] {
+        let url = diskURL()
+        guard let data = try? Data(contentsOf: url),
+              let store = try? JSONDecoder().decode(DiskStore.self, from: data) else {
+            return [:]
+        }
+        return store.byUser
+    }
+
+    private static func saveDisk(_ store: DiskStore) {
+        let directory = PromethIdentity.applicationSupportDirectory
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        guard let data = try? JSONEncoder().encode(store) else { return }
+        try? data.write(to: diskURL(), options: .atomic)
     }
 }

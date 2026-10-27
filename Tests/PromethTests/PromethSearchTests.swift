@@ -265,6 +265,61 @@ final class PromethSearchTests: XCTestCase {
         XCTAssertEqual(CitationMarkup.citedIndices(in: rewritten), [1])
     }
 
+    func testCitationRemapperKeepsDistinctChipsAcrossMultipleSources() {
+        // Judge defect: final-search.png collapsed 5/6 chips to [1] even when the
+        // model already pointed supported claims at distinct Sources.
+        let sources = [
+            CitationRemapper.Source(
+                index: 1,
+                title: "The World Now",
+                url: "https://www.the-world-now.com/",
+                body: """
+                Cyclone Arnab is nearing the coast of India. The Ukrainian border region has seen clashes.
+                Gaza approaches 1000 days of war. Peace talks advanced in Cambodia.
+                """,
+                snippet: "world headlines"
+            ),
+            CitationRemapper.Source(
+                index: 2,
+                title: "7NEWS",
+                url: "https://7news.com.au/world",
+                body: "A dramatic recovery after Pike was found alive following days missing in the bush.",
+                snippet: "dramatic recovery Pike"
+            ),
+        ]
+        let reply = """
+        * **Cyclone** Arnab is nearing the coast of India [1]
+        * The Ukrainian border region has seen clashes [1]
+        * Gaza approaches 1000 days of war [1]
+        * Peace talks advanced in Cambodia [1]
+        * A dramatic recovery after Pike was found alive [2]
+        """
+        let rewritten = CitationRemapper.rewrite(reply, sources: sources)
+        let cyclone = rewritten.split(separator: "\n").first { $0.contains("Cyclone") }.map(String.init) ?? ""
+        let pike = rewritten.split(separator: "\n").first { $0.contains("Pike") }.map(String.init) ?? ""
+        XCTAssertTrue(cyclone.contains("[1]"), "World Now claim stays [1]: \(cyclone)")
+        XCTAssertTrue(pike.contains("[2]"), "7NEWS claim stays [2]: \(pike)")
+        XCTAssertEqual(CitationMarkup.citedIndices(in: rewritten), [1, 2])
+        // Even if World Now body also mentions "dramatic" weakly, a supported
+        // model chip for source 2 must not be collapsed onto [1].
+        let bothSupportPike = """
+        * A dramatic recovery after Pike was found alive [2]
+        """
+        let overlapping = [
+            CitationRemapper.Source(
+                index: 1,
+                title: "The World Now",
+                url: "https://www.the-world-now.com/",
+                body: "Also notes a dramatic recovery story about Pike found alive in brief.",
+                snippet: "Pike"
+            ),
+            sources[1],
+        ]
+        let kept = CitationRemapper.rewrite(bothSupportPike, sources: overlapping)
+        XCTAssertTrue(kept.contains("[2]"), "Supported model chip [2] must win over weaker [1]: \(kept)")
+        XCTAssertFalse(kept.contains("[1]"), kept)
+    }
+
     func testCitationRemapperDropsUnsupportedChips() {
         // Bodies share nothing with the bullets — chips must be dropped, not
         // round-robined onto unused Sources for cosmetic diversity.
