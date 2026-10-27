@@ -9,12 +9,13 @@ struct WorkspaceView: View {
     @State var editing:Message?;@State var editText="";@State var sourcePreview=false
     @State var focusedCitation:Int?;@State var focusedMessage:UUID?
     @State var editorHasContent=false
+    @State private var bubbleWidths:[UUID:CGFloat]=[:]
+    @FocusState private var inlineEditFocused:Bool
     var isEvil:Bool {store.displayedMode == .evil}
     var body:some View {
         HStack(spacing:0){if sidebar{sidebarView.frame(width:240);Divider()};main}
             .background(scheme == .dark ? Color(hex:0x20232B):Color(hex:0xFAF9F6))
             .sheet(isPresented:Binding(get:{renaming != nil},set:{if !$0{renaming=nil}})){VStack(alignment:.leading,spacing:20){Text("Name this conversation").font(.title2);TextField("Conversation title",text:$renameText).textFieldStyle(.roundedBorder).onSubmit{commitRename()};HStack{Button("Cancel"){renaming=nil}.keyboardShortcut(.cancelAction);Spacer();Button("Save"){commitRename()}.keyboardShortcut(.defaultAction)}}.padding(28).frame(width:420)}
-            .sheet(item:$editing){m in VStack(alignment:.leading,spacing:16){Text("Edit your message").font(.title2);Text("Saving replaces the replies that follow this message.").foregroundStyle(.secondary);TextEditor(text:$editText).font(.body).frame(height:130).padding(8).background(.quaternary,in:RoundedRectangle(cornerRadius:12));HStack{Button("Cancel"){editing=nil};Spacer();Button("Save & send"){store.editMessage(m,text:editText);editing=nil}.buttonStyle(PrimaryButton()).disabled(editText.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty)}}.padding(28).frame(width:520)}
             .confirmationDialog("Delete this conversation?",isPresented:Binding(get:{deleting != nil},set:{if !$0{deleting=nil}})){Button("Delete conversation",role:.destructive){if let id=deleting{store.delete(id)};deleting=nil};Button("Cancel",role:.cancel){deleting=nil}}message:{Text("This removes it from your history.")}
             .sheet(isPresented:$sourcePreview){VStack(alignment:.leading,spacing:20){Text("Connected apps").font(.title2);ConnectorsList(store:store);Button("Done"){sourcePreview=false}}.padding(32).frame(width:460)}
             .sheet(item:Binding(get:{store.pendingConnectorApproval},set:{if $0 == nil {store.connectorSheetDismissed()}})){_ in VStack(alignment:.leading,spacing:20){Text("Approve connected-app action").font(.title2);Text("This action is sent only after you approve it.").foregroundStyle(.secondary);HStack{Button("Deny"){store.denyConnector()}.keyboardShortcut(.cancelAction);Spacer();Button("Approve"){store.approveConnector()}.keyboardShortcut(.defaultAction).buttonStyle(PrimaryButton())}}.padding(28).frame(width:460).accessibilityIdentifier("prometh.connector.approval")}
@@ -76,10 +77,53 @@ struct WorkspaceView: View {
         Menu{Button("Safe Mode"){store.setMode(.safe)};Button("Evil Mode"){store.setMode(.evil)}}label:{HStack(spacing:4){Text(isEvil ? "Evil Mode":"Safe Mode").font(.system(size:13,weight:.medium));Image(systemName:"chevron.down").font(.system(size:9,weight:.semibold))}.foregroundStyle(.primary.opacity(0.72))}.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().help("Only this chat. New chats start in Safe Mode.").accessibilityLabel("Evil Mode for this chat").accessibilityIdentifier("prometh.mode")
     }
     func transcript(_ c:Conversation)->some View {
-        ScrollViewReader{proxy in ScrollView{LazyVStack(alignment:.leading,spacing:30){ForEach(c.messages){m in messageView(m,chat:c)};Color.clear.frame(height:1).id("bottom")}.frame(maxWidth:760).padding(.horizontal,35).padding(.vertical,30).frame(maxWidth:.infinity)}.onChange(of:c.messages.count){_,_ in if store.isRunning(c.id) || store.voice.isOpen {proxy.scrollTo("bottom",anchor:.bottom)}}.onChange(of:c.messages.last?.text){_,_ in if store.isRunning(c.id) || store.voice.isOpen {proxy.scrollTo("bottom",anchor:.bottom)}}.onChange(of:c.id,initial:true){_,_ in proxy.scrollTo("bottom",anchor:.bottom)}.onChange(of:focusedMessage){_,id in if let id {proxy.scrollTo("sources-\(id.uuidString)",anchor:.center)}}}
+        ScrollViewReader{proxy in ScrollView{LazyVStack(alignment:.leading,spacing:30){ForEach(c.messages){m in messageView(m,chat:c)};Color.clear.frame(height:1).id("bottom")}.frame(maxWidth:760).padding(.horizontal,35).padding(.vertical,30).frame(maxWidth:.infinity)}.onChange(of:c.messages.count){_,_ in if store.isRunning(c.id) || store.voice.isOpen {proxy.scrollTo("bottom",anchor:.bottom)}}.onChange(of:c.messages.last?.text){_,_ in if store.isRunning(c.id) || store.voice.isOpen {proxy.scrollTo("bottom",anchor:.bottom)}}.onChange(of:c.id,initial:true){_,_ in cancelInlineEdit();proxy.scrollTo("bottom",anchor:.bottom)}.onChange(of:focusedMessage){_,id in if let id {proxy.scrollTo("sources-\(id.uuidString)",anchor:.center)}}}
     }
     func messageView(_ m:Message,chat:Conversation)->some View {
-        VStack(alignment:.leading,spacing:12){if m.role=="user" {HStack{Spacer(minLength:55);VStack(alignment:.leading,spacing:10){Text(m.text).font(.system(size:15)).lineSpacing(5).textSelection(.enabled);ForEach(m.attachments){a in Button{store.previewAttachment=a}label:{Label(a.filename,systemImage:"paperclip")}}}.padding(.horizontal,19).padding(.vertical,14).background(Color.primary.opacity(0.05),in:RoundedRectangle(cornerRadius:21))};HStack{Spacer();Button("Edit"){editText=m.text;editing=m}.buttonStyle(.plain).font(.system(size:10)).foregroundStyle(.secondary)}} else {
+        VStack(alignment:.leading,spacing:12){if m.role=="user" {
+            HStack {
+                Spacer(minLength:55)
+                if editing?.id == m.id {
+                    VStack(alignment:.leading,spacing:12) {
+                        TextEditor(text:$editText)
+                            .font(.system(size:15))
+                            .scrollContentBackground(.hidden)
+                            .frame(minHeight:80,maxHeight:200)
+                            .focused($inlineEditFocused)
+                            .accessibilityLabel("Edit message inline")
+                        HStack(spacing:9) {
+                            Spacer()
+                            Button("Cancel"){cancelInlineEdit()}
+                                .buttonStyle(.plain).foregroundStyle(.primary)
+                                .padding(.horizontal,12).padding(.vertical,7)
+                                .overlay(RoundedRectangle(cornerRadius:8).stroke(.primary.opacity(0.3)))
+                                .keyboardShortcut(.cancelAction)
+                            Button("Send"){sendInlineEdit(m)}
+                                .buttonStyle(.borderedProminent).tint(.black)
+                                .keyboardShortcut(.return,modifiers:.command)
+                                .disabled(editText.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty)
+                        }
+                    }
+                    .padding(.horizontal,19).padding(.vertical,14)
+                    .frame(width:bubbleWidths[m.id] ?? 480)
+                    .background(Color.primary.opacity(0.05),in:RoundedRectangle(cornerRadius:21))
+                    .task{await Task.yield();inlineEditFocused=true}
+                    .onExitCommand{cancelInlineEdit()}
+                } else {
+                    VStack(alignment:.leading,spacing:10) {
+                        Text(m.text).font(.system(size:15)).lineSpacing(5).textSelection(.enabled)
+                        ForEach(m.attachments){a in Button{store.previewAttachment=a}label:{Label(a.filename,systemImage:"paperclip")}}
+                    }
+                    .frame(minWidth:220,alignment:.leading)
+                    .padding(.horizontal,19).padding(.vertical,14)
+                    .background(Color.primary.opacity(0.05),in:RoundedRectangle(cornerRadius:21))
+                    .onGeometryChange(for:CGFloat.self){$0.size.width}action:{bubbleWidths[m.id]=$0}
+                }
+            }
+            if editing?.id != m.id {
+                HStack{Spacer();Button("Edit"){editText=m.text;editing=m}.buttonStyle(.plain).font(.system(size:10)).foregroundStyle(.secondary)}
+            }
+        } else {
                 HStack(spacing:8){Text(Product.name).font(.system(size:11,weight:.semibold));if m.status=="streaming"{Text("· Writing").font(.system(size:10)).foregroundStyle(.secondary)}}
                 formattedText(m)
                 if m.status=="preparing"{ProgressView().controlSize(.small)}
@@ -89,6 +133,9 @@ struct WorkspaceView: View {
                 if m.status != "streaming" && m.status != "preparing" && !m.text.isEmpty{HStack(spacing:13){IconButton(symbol:"doc.on.doc",title:"Copy response"){store.copyResponse(m.text)};IconButton(symbol:"arrow.clockwise",title:m.status=="failed" ? "Retry response":"Regenerate response"){store.regenerate(m)};IconButton(symbol:"speaker.wave.2",title:"Read response aloud"){store.speak(m.text)};if m.status=="stopped"{Text("Stopped").font(.caption).foregroundStyle(.secondary)};if m.status=="failed"{Button("Try again"){store.regenerate(m)}.font(.caption)}}.foregroundStyle(.secondary)}
             }}.frame(maxWidth:.infinity,alignment:.leading).accessibilityIdentifier(m.role == "user" ? "prometh.user":"prometh.reply")
     }
+    func cancelInlineEdit(){editing=nil;editText="";inlineEditFocused=false}
+    func sendInlineEdit(_ message:Message){if store.editMessage(message,text:editText){cancelInlineEdit()}}
+
     @ViewBuilder func formattedText(_ message: Message) -> some View {
         let blocks = message.text.components(separatedBy: "```")
         VStack(alignment: .leading, spacing: 14) {

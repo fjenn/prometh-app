@@ -539,8 +539,13 @@ final class PromethStore: ObservableObject {
 
     func isRunning(_ id: UUID) -> Bool { chat.activeRequestSessionID == id }
 
-    func editMessage(_ message: Message, text: String) {
-        guard let id = state.selectedChatID else { return }
+    @discardableResult
+    func editMessage(_ message: Message, text: String) -> Bool {
+        guard let id = state.selectedChatID else { return false }
+        guard model.isRunning, !model.isModelLoading else {
+            error = "The local model is not ready yet. Your edit is still here."
+            return false
+        }
         if chat.currentSessionID != id { select(id) }
         chat.beginEditingUserMessage(message.id)
         chat.draft = text
@@ -549,8 +554,13 @@ final class PromethStore: ObservableObject {
             languageModelSupportsTools: true,
             languageModelSupportsVision: languageModelSupportsVision(for: id)
         )
+        guard chat.messages.contains(where: { $0.id == message.id && $0.content == text }) else {
+            error = "The edited message could not be sent. Try again."
+            return false
+        }
         drafts[id.uuidString] = ""
         persist()
+        return true
     }
 
     func regenerate(_ message: Message) {
