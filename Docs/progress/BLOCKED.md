@@ -15,3 +15,5 @@ Whisper dictation and Pocket TTS were not driven from the microphone. If the fir
 ## Not a Finn step
 
 Video jobs still stop in `PromethRuntime/media/media_worker.py` with "Video is not ready yet" unless `PROMETH_MEDIA_MOCK=1`. The FastMetal weights are on disk. Wiring FastVideo `8db2d71` is remaining code, not a missing permission.
+
+Pocket TTS weights are on disk, but `kyutai/pocket-tts-without-voice-cloning` has no `config.json`. mlx-audio refuses to load that snapshot. That is remaining code, not a permission.

@@ -14,9 +14,9 @@ Host: Apple M5 Max, 128 GB RAM, macOS 26.6.2, arm64. Branch `prometh`. Python on
 | Safe chat | PASS | Server command used `mlx-community/gemma-4-e4b-it-4bit`. After load, "Say hello in five words." returned in under a second. |
 | Evil chat | PASS | `llama-server` b11669 bound `127.0.0.1` only and answered "Hello there, friend!" from the Heretic GGUF. The in-app mode menu was not switched in this pass. |
 | Web search | PASS | SearXNG listened on `127.0.0.1:63530` only (`lsof`). A news question in the window produced a Sources row with Google News, CNN, CBS, AP, NBC, USA Today, BBC, and others. See `news-sources.png`. |
-| Image | FAIL | The server was started with the FLUX.2 Klein 4-bit id. No image was generated in this pass. |
+| Image | PASS | `POST /v1/images/generations` with `Runpod/FLUX.2-klein-4B-mflux-4bit` returned a 512×512 PNG (238,405 bytes) in 2.6 seconds. `Docs/progress/macverify/image.png`. |
 | Video | FAIL | `PromethRuntime/media/media_worker.py` still raises "Video is not ready yet" unless `PROMETH_MEDIA_MOCK=1`. Weights are on disk. FastVideo is not invoked. |
-| Voice | FAIL | Whisper and Pocket TTS weights are on disk. Dictation and speech were not run. A microphone prompt, if it appears, is in `Docs/progress/BLOCKED.md`. |
+| Voice | PARTIAL | Whisper transcribed a local clip, "the weekend by the sea", as "The Weekend by the Sea" (`POST /v1/audio/transcriptions`, HTTP 200, 0.56s). The processor files from `openai/whisper-large-v3-turbo` at `41f01f3fe87f` sit beside the MLX weights. Pocket TTS did not load: the pinned Kyutai snapshot has no `config.json`, and mlx-audio stops with "Config not found". The microphone was not opened. |
 | Composio | PASS for the API, FAIL for a connected account | The connector process is running and calls Composio directly with the local key file. No broker. GitHub's browser sign-in was not completed. See `Docs/progress/BLOCKED.md`. |
 | `Docs/progress/M9/parity.md` | PARTIAL | Six prompts scored from real replies. The other rows were not run. No crashes and no raw error text in the captured window. |
 
