@@ -1216,11 +1216,16 @@ except Exception as error:
                         item.text = decision.text
                         if item.status == "complete" { item.status = decision.status }
                     }
-                    item.sourceLinks = SourcesExtractor.links(
+                    // Prefetch already chose distinct domains and indices; prefer that
+                    // list so a later web_search tool round cannot collapse Sources to [1].
+                    item.sourceLinks = PromethWebPrefetch.storedLinks(
+                        before: message.id,
+                        in: messages
+                    ) ?? SourcesExtractor.links(
                         before: message.id,
                         in: messages,
                         assistantText: item.text
-                    ) ?? PromethWebPrefetch.storedLinks(before: message.id, in: messages)
+                    )
                 }
                 if message.toolName == PromethGenerateVideoTool.toolName {
                     item.artifact = PromethVideoResult.artifact(from: message.content, prompt: "")

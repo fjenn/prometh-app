@@ -130,7 +130,7 @@ enum PromethWebPrefetch {
             PromethSearchContext.Result(title: $0.title, url: $0.url, snippet: $0.snippet)
         }
         // Distinct domains (3–5) so Sources and [n] chips are not all one site.
-        let selected = PromethSearchContext.preferDistinctDomains(mapped, limit: 5)
+        var selected = PromethSearchContext.preferDistinctDomains(mapped, limit: 5)
         guard !selected.isEmpty else { return }
         // Publish Sources as soon as search returns so the UI is not blocked on reads.
         var hits = PromethSearchContext.indexedHits(selected: selected, bodies: [:])
@@ -139,11 +139,28 @@ enum PromethWebPrefetch {
             links: hits.map { SourceLink(title: $0.title, url: $0.url, index: $0.index) },
             note: PromethSearchContext.promptNote(hits: hits)
         )
-        let pages = await Self.readPages(selected.map(\.url), focus: String(text.prefix(500)))
-        let bodies = Dictionary(uniqueKeysWithValues: pages.compactMap { page -> (String, (title: String?, content: String))? in
+        var pages = await Self.readPages(selected.map(\.url), focus: String(text.prefix(500)))
+        var bodies = Dictionary(uniqueKeysWithValues: pages.compactMap { page -> (String, (title: String?, content: String))? in
             guard let content = page.content, !content.isEmpty else { return nil }
             return (page.url, (page.title, content))
         })
+        // If too few pages returned text, try the next distinct domains from the search list.
+        if bodies.count < 3 {
+            let picked = Set(selected.map(\.url))
+            let extras = PromethSearchContext.preferDistinctDomains(
+                mapped.filter { !picked.contains($0.url) },
+                limit: 5 - selected.count
+            )
+            if !extras.isEmpty {
+                selected = selected + extras
+                let more = await Self.readPages(extras.map(\.url), focus: String(text.prefix(500)))
+                pages = pages + more
+                bodies = Dictionary(uniqueKeysWithValues: pages.compactMap { page -> (String, (title: String?, content: String))? in
+                    guard let content = page.content, !content.isEmpty else { return nil }
+                    return (page.url, (page.title, content))
+                })
+            }
+        }
         hits = PromethSearchContext.indexedHits(selected: selected, bodies: bodies)
         store(
             userID: userID,

@@ -170,7 +170,10 @@ final class PromethSearchTests: XCTestCase {
         }
         XCTAssertTrue(note.contains("Page text:"))
         XCTAssertTrue(note.contains("Sudan fighting"))
-        XCTAssertTrue(note.contains("different index for each distinct source"))
+        XCTAssertTrue(
+            note.contains("several different indices") || note.contains("different index"),
+            note
+        )
 
         // Chip indices from a model answer must land on the Sources list.
         let answer = hits.prefix(3).map { "Fact from source [\($0.index)]." }.joined(separator: " ")

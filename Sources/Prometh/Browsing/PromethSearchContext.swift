@@ -49,7 +49,8 @@ enum PromethSearchContext {
     }
 
     /// Rebuild hits from the selected pages only, reindexed from 1 so `[n]` chips
-    /// match the Sources row. Prefer pages that actually returned body text.
+    /// match the Sources row. Pages with body text come first; empty slots stay so
+    /// the Sources row still lists several distinct domains.
     static func indexedHits(
         selected: [Result],
         bodies: [String: (title: String?, content: String)]
@@ -73,9 +74,7 @@ enum PromethSearchContext {
                 withBody.append(hit)
             }
         }
-        // Keep empty-body slots only when we would otherwise drop below 2 sources.
-        let keepEmpty = withBody.count < 2 ? withoutBody : Array(withoutBody.prefix(max(0, 5 - withBody.count)))
-        return (withBody + keepEmpty).enumerated().map { offset, hit in
+        return (withBody + withoutBody).enumerated().map { offset, hit in
             Hit(
                 index: offset + 1,
                 title: hit.title,
@@ -123,7 +122,7 @@ enum PromethSearchContext {
             hits.map { CitationMarkup.Item(title: $0.title, url: $0.url) }
         )
         var sections: [String] = [
-            "Searched the web for this question on \(today). The pages below were fetched with the local reader. Cite them with [n], using a different index for each distinct source. Summarize 3–5 concrete headlines from the page text; do not only list site names or tell the user to visit the links.",
+            "Searched the web for this question on \(today). The pages below were fetched with the local reader. Cite them with [n]. When \(hits.count) results are listed, use several different indices (for example [1], [2], [3]) — never reuse [1] for every fact. Summarize 3–5 concrete headlines from the page text; do not only list site names or tell the user to visit the links.",
             block,
         ]
         for hit in hits {
