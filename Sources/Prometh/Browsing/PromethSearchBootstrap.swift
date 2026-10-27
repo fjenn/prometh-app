@@ -120,17 +120,33 @@ enum PromethWebPrefetch {
         clearNote()
         guard enabled, needsWeb(text) else { return }
         if ProcessInfo.processInfo.environment["PROMETH_OFFLINE"] == "1" { return }
-        let query = String(text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(300))
+        let query = PromethSearchContext.searchQuery(from: text)
         guard !query.isEmpty else { return }
         let results = await Self.search(query)
         guard !results.isEmpty else { return }
-        let links = results.enumerated().map { offset, result in
-            SourceLink(title: result.title, url: result.url, index: offset + 1)
+        let mapped = results.map {
+            PromethSearchContext.Result(title: $0.title, url: $0.url, snippet: $0.snippet)
         }
-        let lines = results.enumerated().map { offset, result in
-            "[\(offset + 1)] \(result.title)\n\(result.url)\n\(result.snippet)"
-        }.joined(separator: "\n")
-        store(userID: userID, links: links, note: "Searched the web for this question. Cite these sources with [n].\n\(lines)")
+        let readable = PromethSearchContext.preferReadable(mapped, limit: 4)
+        let pages = await Self.readPages(readable.map(\.url), focus: String(text.prefix(500)))
+        let byURL = Dictionary(uniqueKeysWithValues: pages.compactMap { page -> (String, WebReadPage)? in
+            guard let content = page.content, !content.isEmpty else { return nil }
+            return (page.url, page)
+        })
+        let hits: [PromethSearchContext.Hit] = mapped.enumerated().map { offset, result in
+            let page = byURL[result.url]
+            let title = page?.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+            return PromethSearchContext.Hit(
+                index: offset + 1,
+                title: (title?.isEmpty == false ? title! : result.title),
+                url: result.url,
+                snippet: result.snippet,
+                body: page?.content ?? ""
+            )
+        }
+        let links = hits.map { SourceLink(title: $0.title, url: $0.url, index: $0.index) }
+        let note = PromethSearchContext.promptNote(hits: hits)
+        store(userID: userID, links: links, note: note)
     }
 
     static func promptSection() -> String {
@@ -155,17 +171,31 @@ enum PromethWebPrefetch {
     }
 
     private static func search(_ query: String) async -> [WebSearchResult] {
-        await withTaskGroup(of: [WebSearchResult]?.self) { group in
+        await withTimeout(seconds: 25) {
+            (try? await WebBrowsingRuntime().search(query: query, limit: 8)) ?? []
+        } ?? []
+    }
+
+    private static func readPages(_ urls: [String], focus: String) async -> [WebReadPage] {
+        guard !urls.isEmpty else { return [] }
+        return await withTimeout(seconds: 35) {
+            (try? await WebBrowsingRuntime().read(urls: urls, focus: focus)) ?? []
+        } ?? []
+    }
+
+    private static func withTimeout<T: Sendable>(
+        seconds: UInt64,
+        operation: @escaping @Sendable () async -> T
+    ) async -> T? {
+        await withTaskGroup(of: T?.self) { group in
+            group.addTask { await operation() }
             group.addTask {
-                (try? await WebBrowsingRuntime().search(query: query, limit: 5)) ?? []
-            }
-            group.addTask {
-                try? await Task.sleep(nanoseconds: 25_000_000_000)
+                try? await Task.sleep(nanoseconds: seconds * 1_000_000_000)
                 return nil
             }
             let first = await group.next() ?? nil
             group.cancelAll()
-            return first ?? []
+            return first ?? nil
         }
     }
 

@@ -110,13 +110,32 @@ enum PromethVisibleReply {
 /// Markdown via `AttributedString`, with `[n]` and `[1, 4]` turned into sky chips.
 enum PromethReplyMarkup {
     static func attributed(markdown: String, cited: Set<Int>) -> AttributedString {
-        let shielded = shield(markdown)
+        // `.full` drops paragraph breaks (`A.\n\nB` → `A.B`). Keep whitespace.
+        let prepared = shield(spacing(markdown))
         let options = AttributedString.MarkdownParsingOptions(
-            interpretedSyntax: .full,
+            interpretedSyntax: .inlineOnlyPreservingWhitespace,
             failurePolicy: .returnPartiallyParsedIfPossible
         )
-        let parsed = (try? AttributedString(markdown: shielded, options: options)) ?? AttributedString(shielded)
+        let parsed = (try? AttributedString(markdown: prepared, options: options)) ?? AttributedString(prepared)
         return chips(in: parsed, cited: cited)
+    }
+
+    /// Soft spaces so emphasis and `[n]` chips are not glued to neighbors.
+    static func spacing(_ text: String) -> String {
+        var value = text
+        let patterns: [(String, String)] = [
+            (#"([.!?:,;])(\*\*)"#, "$1 $2"),
+            (#"(\*\*)(\[)"#, "$1 $2"),
+            (#"(\])(\*\*)"#, "$1 $2"),
+            (#"(\])(\p{L})"#, "$1 $2"),
+            (#"(\p{L}|\p{N})(\[\d)"#, "$1 $2"),
+        ]
+        for (pattern, template) in patterns {
+            guard let expression = try? NSRegularExpression(pattern: pattern) else { continue }
+            let range = NSRange(value.startIndex..., in: value)
+            value = expression.stringByReplacingMatches(in: value, range: range, withTemplate: template)
+        }
+        return value
     }
 
     private static func shield(_ text: String) -> String {
