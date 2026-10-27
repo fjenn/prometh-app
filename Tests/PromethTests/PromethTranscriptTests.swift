@@ -209,6 +209,16 @@ final class PromethTranscriptTests: XCTestCase {
             PromethTranscript.scrubInternals(backticked),
             "I have edited the picture to depict the scene at dusk."
         )
+        let usingPhrase = "I have generated a cinematic photograph of a glass house above the Atlantic at sunrise. You can view it using the attachment ID `254135D7-015D-422A-8530-7443BF111A6A`."
+        XCTAssertEqual(
+            PromethTranscript.scrubInternals(usingPhrase),
+            "I have generated a cinematic photograph of a glass house above the Atlantic at sunrise."
+        )
+        let danglingCite = "Iran news [2]. These summaries are drawn from the reports available on and."
+        XCTAssertEqual(
+            PromethTranscript.scrubInternals(danglingCite),
+            "Iran news [2]."
+        )
         let withEmptyParen = "Edited the picture ( ). Done."
         XCTAssertEqual(
             PromethTranscript.scrubInternals(withEmptyParen),
