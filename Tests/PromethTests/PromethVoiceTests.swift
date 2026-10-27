@@ -14,4 +14,14 @@ final class PromethVoiceTests: XCTestCase {
         XCTAssertEqual(body["model"], PromethVoiceDefaults.pocketRepo)
         XCTAssertEqual(PromethVoiceDefaults.selfTestAnswer(for: "What is two plus two?"), nil)
     }
+
+    @MainActor
+    func testInterruptLeavesListeningInsteadOfSpeaking() {
+        let voice = PromethVoice()
+        voice.open()
+        voice.readAloud("The answer is four.")
+        XCTAssertEqual(voice.phase, "Speaking")
+        voice.interrupt()
+        XCTAssertEqual(voice.phase, "Listening")
+    }
 }

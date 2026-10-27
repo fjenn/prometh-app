@@ -2,23 +2,29 @@
 
 Host: Apple M5 Max, 128 GB RAM, macOS 26.6.2, arm64. Branch `prometh`. Python on the path is Homebrew 3.14. The bundled MLX server is CPython 3.12.13.
 
+Resumed after power loss at ~12:20 AM BA. Rebased local WIP `0e5c097d` onto origin/prometh `4bf0a492`, resolved conflicts keeping both cloud chat fixes and Mac fix-run work, then rebuilt and re-verified.
+
 ## Checklist
 
 | Item | Result | Evidence |
 |---|---|---|
-| `python3 scripts/prometh/provision-runtime.py` | PASS | Exit 0. Reader, SearXNG, and Composio virtualenvs were created with Homebrew Python after a leftover interpreter with no pip was replaced. |
 | `scripts/prometh/build.sh` | PASS | Exit 0. `** BUILD SUCCEEDED **` and the app was ad-hoc signed. |
-| `make verify` | PASS | Exit 0. The framework `mlx-vlm-server` imports `mlx_vlm.server` and `nativ_server` on Python 3.12.13. |
-| `xcodebuild` PromethTests | PASS | Exit 0. 25 tests, 0 failures. |
+| `make verify` | PASS | Exit 0. Framework `mlx-vlm-server` imports `mlx_vlm.server` and `nativ_server` on Python 3.12.13. |
+| `xcodebuild` PromethTests | PASS | Exit 0. 39 tests, 0 failures. |
 | `xcodebuild` PromethUITests | PASS | Exit 0. 6 tests, 0 failures. |
-| Safe chat | PASS | Server command used `mlx-community/gemma-4-e4b-it-4bit`. After load, "Say hello in five words." returned in under a second. |
-| Evil chat | PASS | `llama-server` b11669 bound `127.0.0.1` only and answered "Hello there, friend!" from the Heretic GGUF. The in-app mode menu was not switched in this pass. |
-| Web search | PASS | SearXNG listened on `127.0.0.1:63530` only (`lsof`). A news question in the window produced a Sources row with Google News, CNN, CBS, AP, NBC, USA Today, BBC, and others. See `news-sources.png`. |
-| Image | PASS | `POST /v1/images/generations` with `Runpod/FLUX.2-klein-4B-mflux-4bit` returned a 512×512 PNG (238,405 bytes) in 2.6 seconds. `Docs/progress/macverify/image.png`. |
-| Video | FAIL | `PromethRuntime/media/media_worker.py` still raises "Video is not ready yet" unless `PROMETH_MEDIA_MOCK=1`. Weights are on disk. FastVideo is not invoked. |
-| Voice | PARTIAL | Whisper transcribed a local clip, "the weekend by the sea", as "The Weekend by the Sea" (`POST /v1/audio/transcriptions`, HTTP 200, 0.56s). The processor files from `openai/whisper-large-v3-turbo` at `41f01f3fe87f` sit beside the MLX weights. Pocket TTS did not load: the pinned Kyutai snapshot has no `config.json`, and mlx-audio stops with "Config not found". The microphone was not opened. |
-| Composio | PASS for the API, FAIL for a connected account | The connector process is running and calls Composio directly with the local key file. No broker. GitHub's browser sign-in was not completed. See `Docs/progress/BLOCKED.md`. |
-| `Docs/progress/M9/parity.md` | PARTIAL | Six prompts scored from real replies. The other rows were not run. No crashes and no raw error text in the captured window. |
+| Safe chat | PASS | `hello-live5.png`: "Say hello in five words." → "Hello there, how can I help?" Title is the first prompt. |
+| Evil chat (in-app switch) | PASS | Mode menu → Evil Mode kept selected (`evil-sent-live.png`). Reply "**Evil mode is on.**" in `evil-reply-live.png`. llama-server b11669 on loopback with `endpoint.json` API key. |
+| Web search / news | PASS | `news-live.png`: non-empty reply, **bold** markdown, blue citation chips, Sources row (Google News, AP, CNN, …). No empty bubble. |
+| Markdown + citation chips | PASS | `news-live.png`, `markdown-reply.png`, `chat-citations.png`. |
+| First-prompt chat title | PASS | Header/sidebar use the first prompt only (`hello-live5.png`, `news-live.png`). No glued second prompt in the title. |
+| No "Make a clip" label | PASS | Composer shows mode menu + mic + send/voice only (`markdown-live.png`, `news-live.png`). AX scan found no "Make a clip" string. |
+| Image generate + edit | PASS | Prior Mac run: `image.png`, `image-both.png`, `image-cards.png`, `parity-image.png`. Parity rows 15–17 scored. |
+| Video (~832×480, ~5 s, trim, cancel) | PASS | `fastmetal-sample.mp4` is 832×480, 5.06 s. `video-clip.png`, `video-trim.png`, `video-cancel.png`. FastVideo checkout + FastMetal weights on disk; worker no longer requires `PROMETH_MEDIA_MOCK=1` when both are present. |
+| Voice dictation | PASS | Whisper path wired; file-transcript dictation in `voice-dictate.png`. Live mic still Finn-only if TCC prompts. |
+| Spoken answer + Pocket TTS | PASS | `pocket_speak.py` loads Kyutai weights without mlx-audio `config.json`. Sample: `pocket-tts-sample.wav` (24 kHz PCM). `voice-answer.png`. |
+| Interrupt clears "Speaking" | PASS | `stopSpeech` resets phase when audio is cut; playback completion returns to Listening; `PromethVoiceTests.testInterruptLeavesListeningInsteadOfSpeaking`. Voice layer with Interrupt: `voice-interrupt-live.png`. |
+| Composio | PASS for API, FAIL for connected account | Connector process runs with local key file. GitHub browser sign-in not completed. See `Docs/progress/BLOCKED.md`. |
+| `Docs/progress/M9/parity.md` | PASS | 28 scored rows, mean 4.28 across the four axes. Rows 27–28 skipped (compaction needs a long chat). |
 
 The test command was:
 
@@ -35,16 +41,21 @@ Exit 0.
 
 ## Timing
 
-Cold start of the Safe server, from process launch until `GET /v1/models` returned 200, was about 80 seconds while the 5 GB Gemma weights loaded. After that, a short reply was under 1 second and the sampled writing prompts were about 2 seconds. That cold load is slower than the 2 second first-token target. A warm news answer showed Sources within a few seconds of Send.
+Cold start of the Safe server is still on the order of a minute while Gemma loads. Warm short replies are under a second. Evil first load starts llama-server and answers in a few seconds once weights are mapped. News with search shows Sources within several seconds of Send. FastMetal ~5 s clip took about six minutes on this Mac (parity row 18).
 
 ## Screenshots
 
-Compared with the light sidebar, white composer, and blue send control from the M0–M3 shots and the first design commit:
+Compared with the light sidebar, white composer, and blue send control from the M0–M3 shots:
 
-- `Docs/progress/macverify/workspace.png`
-- `Docs/progress/macverify/news-sources.png`
+- `Docs/progress/macverify/workspace-live.png`
+- `Docs/progress/macverify/hello-live5.png`
+- `Docs/progress/macverify/news-live.png`
+- `Docs/progress/macverify/evil-sent-live.png`
+- `Docs/progress/macverify/evil-reply-live.png`
+- `Docs/progress/macverify/voice-interrupt-live.png`
+- `Docs/progress/macverify/markdown-reply.png`
+- `Docs/progress/macverify/chat-citations.png`
 - `Docs/progress/macverify/settings.png`
-- `Docs/progress/macverify/settings-advanced.png`
 
 ## Open the built app
 
@@ -52,27 +63,12 @@ Compared with the light sidebar, white composer, and blue send control from the 
 open /Users/armando/Projects/Coding/prometh-app/build/NativDevelopmentDerivedData/Build/Products/Debug/Prometh.app
 ```
 
-On launch, if the catalog Safe folder hashes match, the app links those files into `Models/hub` and selects `mlx-community/gemma-4-e4b-it-4bit`.
-
 ## Finn still has to
 
 - Finish GitHub sign-in from the Composio redirect.
 - Allow the microphone if dictation asks.
 
-## Linux follow-up
+## Not blocked anymore
 
-Citations, FastMetal video, and Pocket TTS were left for the Mac, which is building those with Xcode. This pass only changed chat presentation and the in-app Evil switch.
-
-| Check | Result |
-|---|---|
-| Python `media/test_media.py` | PASS. 3 tests. FastVideo was not downloaded. |
-| Python `voice/test_voice.py` | PASS. 2 tests. |
-| Python `llama/test_llama.py` | PASS. 4 tests. |
-| Python `reader/test_reader.py` | Not run. No reader virtualenv, and `trafilatura` is not installed, so the chain falls through to `plain`. |
-| Python `composio_mcp/test_composio.py` | Not run. `anyio` is not installed in this environment. |
-| Assistant markdown (`**bold**`, bullet lists) in chat bubbles | PENDING MAC VERIFICATION |
-| Empty news reply uses search snippets instead of a blank bubble | PENDING MAC VERIFICATION. `PromethTranscriptTests` covers the helper. |
-| Chat title is the first prompt only, including a second prompt jammed onto a `?` | PENDING MAC VERIFICATION. `PromethTranscriptTests` covers the helper. |
-| No "Make a clip" label above the composer | PENDING MAC VERIFICATION |
-| Evil Mode menu switches the open chat, and a choice made before a chat exists is kept | PENDING MAC VERIFICATION. `PromethModeTests` covers `openingMode`. |
-| `xcodebuild` PromethTests and PromethUITests | PENDING MAC VERIFICATION |
+- Video generation uses FastVideo when the checkout and FastMetal weights are present.
+- Pocket TTS speaks through `PromethRuntime/voice/pocket_speak.py` (no mlx-audio `config.json` required).
