@@ -4,6 +4,7 @@ import NativServerKit
 enum PromethPromptAdditionsMode: @unchecked Sendable {
     private static let lock = NSLock()
     nonisolated(unsafe) private static var mode = "Safe Mode"
+    nonisolated(unsafe) private static var voice = false
 
     static var current: String {
         get {
@@ -17,14 +18,32 @@ enum PromethPromptAdditionsMode: @unchecked Sendable {
             lock.unlock()
         }
     }
+
+    static var voiceActive: Bool {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return voice
+        }
+        set {
+            lock.lock()
+            voice = newValue
+            lock.unlock()
+        }
+    }
 }
 
 enum PromethSearchBootstrap {
     static func start() {
         guard PromethFlags.promethShell, !PromethFlags.isRunningUnitTests else { return }
+        PromethImagePromptGuard.isBlocked = { PromethBlocklist.isBlocked($0) }
+        PromethImagePromptGuard.blockedMessage = PromethBlocklist.message
         ChatViewModel.PromethPromptAdditions.sections = {
-            [
-                PromethPrompts.persona(mode: PromethPromptAdditionsMode.current),
+            let persona = PromethPromptAdditionsMode.voiceActive
+                ? PromethPrompts.voicePersona(mode: PromethPromptAdditionsMode.current)
+                : PromethPrompts.persona(mode: PromethPromptAdditionsMode.current)
+            return [
+                persona,
                 PromethPrompts.citationRules(),
                 PromethWebPrefetch.promptSection(),
             ].filter { !$0.isEmpty }

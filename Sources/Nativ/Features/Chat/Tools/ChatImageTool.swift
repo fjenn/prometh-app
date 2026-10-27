@@ -89,6 +89,9 @@ struct ChatImageToolRequest: Equatable, Sendable {
         guard !prompt.isEmpty else {
             throw ChatImageToolError.emptyPrompt
         }
+        if PromethImagePromptGuard.isBlocked(prompt) {
+            throw ChatImageToolError.blockedPrompt
+        }
         guard operation != .edit || hasImageReference else {
             throw ChatImageToolError.missingReference
         }
@@ -181,6 +184,7 @@ enum ChatImageToolError: LocalizedError {
     case unsupportedTool(String)
     case invalidArguments
     case emptyPrompt
+    case blockedPrompt
     case missingReference
     case modelSelectionUnavailable(ChatImageOperation)
     case noCompatibleModels(ChatImageOperation)
@@ -193,6 +197,8 @@ enum ChatImageToolError: LocalizedError {
             "The image tool arguments were not valid JSON."
         case .emptyPrompt:
             "The image prompt cannot be empty."
+        case .blockedPrompt:
+            PromethImagePromptGuard.blockedMessage
         case .missingReference:
             "No earlier image is available to edit."
         case .modelSelectionUnavailable(let operation):
@@ -201,6 +207,13 @@ enum ChatImageToolError: LocalizedError {
             "No compatible \(operation.capabilityName) model is installed. Download one from the Models tab, then try again."
         }
     }
+}
+
+/// Prometh fills this from its CSAM blocklist. Nativ keeps a no-op default so
+/// unit tests and the Nativ shell compile without Prometh sources.
+enum PromethImagePromptGuard {
+    nonisolated(unsafe) static var isBlocked: @Sendable (String) -> Bool = { _ in false }
+    nonisolated(unsafe) static var blockedMessage = "Blocked."
 }
 
 struct ChatImageToolExecutor {

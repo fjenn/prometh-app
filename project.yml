@@ -449,6 +449,7 @@ targets:
       - path: Sources/Prometh/Catalog/ModelCatalog.swift
       - path: Sources/Prometh/Catalog/ModelPicker.swift
       - path: Sources/Prometh/Catalog/CatalogDownloader.swift
+      - path: Sources/Prometh/Safety/PromethBlocklist.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: studio.prometh.PromethTests

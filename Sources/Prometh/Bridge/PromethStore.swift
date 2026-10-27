@@ -423,6 +423,13 @@ final class PromethStore: ObservableObject {
         let raw = (typed?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false) ? typed! : stored
         let text = PromethChatTitle.collapseExactRepeat(raw)
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        if PromethBlocklist.isBlocked(text) {
+            clearUIDraft(id)
+            pendingSend[id.uuidString] = nil
+            error = PromethBlocklist.message
+            rejectBlockedPrompt(text)
+            return
+        }
         // Keep the prompt on ChatViewModel only. Clearing the UI draft first stops
         // ComposerEditor from being re-filled by the intermediate binding write.
         pendingSend[id.uuidString] = text
@@ -559,6 +566,10 @@ final class PromethStore: ObservableObject {
     @discardableResult
     func editMessage(_ message: Message, text: String) -> Bool {
         guard let id = state.selectedChatID else { return false }
+        if PromethBlocklist.isBlocked(text) {
+            error = PromethBlocklist.message
+            return false
+        }
         guard model.isRunning, !model.isModelLoading else {
             error = "The local model is not ready yet. Your edit is still here."
             return false
@@ -630,6 +641,7 @@ final class PromethStore: ObservableObject {
     func openVoice() {
         if current == nil { newChat() }
         endVoice()
+        PromethPromptAdditionsMode.voiceActive = true
         voice.open()
         voice.muted = false
         voiceSession = UUID()
@@ -638,6 +650,7 @@ final class PromethStore: ObservableObject {
     }
 
     func endVoice() {
+        PromethPromptAdditionsMode.voiceActive = false
         voiceSession = UUID()
         voiceTurnTask?.cancel()
         voiceTurnTask = nil
@@ -1509,6 +1522,13 @@ except Exception as error:
     private func reload() {
         let liveID = chat.currentSessionID
         let liveMessages = chat.messages
+        if let streaming = liveMessages.last(where: \.isStreaming),
+           streaming.role == .assistant,
+           PromethBlocklist.shouldStopStreaming(streaming.content) {
+            chat.cancel()
+            error = PromethBlocklist.message
+            blockedAssistantIDs.insert(streaming.id)
+        }
         var loaded = sessions.loadSessions()
         if let liveID, !loaded.contains(where: { $0.id == liveID }), let current = chat.sessions.first(where: { $0.id == liveID }) {
             loaded.append(ChatSession(
@@ -1521,7 +1541,16 @@ except Exception as error:
         }
         chats = loaded.compactMap { session in
             let messages = session.id == liveID ? liveMessages : session.messages
-            let conversation = conversation(session, messages: messages)
+            var conversation = conversation(session, messages: messages)
+            conversation.messages = conversation.messages.map { message in
+                guard blockedAssistantIDs.contains(message.id) || PromethBlocklist.isBlocked(message.text) else {
+                    return message
+                }
+                var copy = message
+                copy.text = PromethBlocklist.message
+                copy.status = "complete"
+                return copy
+            }
             let started = !conversation.messages.isEmpty || !conversation.draft.isEmpty
             guard started || revealed.contains(session.id.uuidString) else { return nil }
             return conversation
@@ -1535,6 +1564,24 @@ except Exception as error:
         if waiting?.id != pendingConnectorApproval?.id {
             pendingConnectorApproval = waiting.map { PromethConnectorConsent(id: $0.id) }
         }
+    }
+
+    private var blockedAssistantIDs = Set<UUID>()
+
+    /// Record a blocked user prompt locally without calling the model.
+    private func rejectBlockedPrompt(_ text: String) {
+        guard let id = state.selectedChatID else { return }
+        let user = Message(role: "user", text: text, status: "complete")
+        let assistant = Message(role: "assistant", text: PromethBlocklist.message, status: "complete")
+        chats = chats.map { conversation in
+            guard conversation.id == id else { return conversation }
+            var copy = conversation
+            copy.messages.append(contentsOf: [user, assistant])
+            copy.updated = Date()
+            copy.draft = ""
+            return copy
+        }
+        persist()
     }
 
     private func conversation(_ session: ChatSession, messages: [ChatTranscriptMessage]) -> Conversation {

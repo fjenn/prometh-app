@@ -42,6 +42,9 @@ enum PromethMediaWorker {
             return #"{"ok":false,"error":"Video is not ready yet."}"#
         }
         let prompt = prompt(from: argumentsJSON)
+        if PromethBlocklist.isBlocked(prompt) {
+            return #"{"ok":false,"error":"\#(PromethBlocklist.message)"}"#
+        }
         let directory = PromethIdentity.applicationSupportDirectory
             .appendingPathComponent("Media", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
