@@ -58,3 +58,21 @@ On launch, if the catalog Safe folder hashes match, the app links those files in
 
 - Finish GitHub sign-in from the Composio redirect.
 - Allow the microphone if dictation asks.
+
+## Linux follow-up
+
+Citations, FastMetal video, and Pocket TTS were left for the Mac, which is building those with Xcode. This pass only changed chat presentation and the in-app Evil switch.
+
+| Check | Result |
+|---|---|
+| Python `media/test_media.py` | PASS. 3 tests. FastVideo was not downloaded. |
+| Python `voice/test_voice.py` | PASS. 2 tests. |
+| Python `llama/test_llama.py` | PASS. 4 tests. |
+| Python `reader/test_reader.py` | Not run. No reader virtualenv, and `trafilatura` is not installed, so the chain falls through to `plain`. |
+| Python `composio_mcp/test_composio.py` | Not run. `anyio` is not installed in this environment. |
+| Assistant markdown (`**bold**`, bullet lists) in chat bubbles | PENDING MAC VERIFICATION |
+| Empty news reply uses search snippets instead of a blank bubble | PENDING MAC VERIFICATION. `PromethTranscriptTests` covers the helper. |
+| Chat title is the first prompt only, including a second prompt jammed onto a `?` | PENDING MAC VERIFICATION. `PromethTranscriptTests` covers the helper. |
+| No "Make a clip" label above the composer | PENDING MAC VERIFICATION |
+| Evil Mode menu switches the open chat, and a choice made before a chat exists is kept | PENDING MAC VERIFICATION. `PromethModeTests` covers `openingMode`. |
+| `xcodebuild` PromethTests and PromethUITests | PENDING MAC VERIFICATION |
