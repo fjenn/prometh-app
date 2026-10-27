@@ -64,24 +64,30 @@ struct PromethConnectorPlan: Equatable {
     var environment: [String: String]
     var catalogID: String
 
-    /// Nil when no broker URL is configured, so the server is not registered.
+    /// A blank broker registers nothing unless `direct` is true. Direct mode
+    /// calls Composio from the stdio server, which reads the key itself.
+    /// The key is never an argument or an environment value.
     static func make(
         python: String,
         script: String,
         broker: String,
         approvalFile: String,
-        installFile: String
+        installFile: String,
+        direct: Bool = false
     ) -> PromethConnectorPlan? {
         let trimmed = broker.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
+        guard !trimmed.isEmpty || direct else { return nil }
+        var arguments = [
+            script,
+            "--approval-file", approvalFile,
+            "--install-file", installFile,
+        ]
+        if !trimmed.isEmpty {
+            arguments.append(contentsOf: ["--broker", trimmed])
+        }
         return PromethConnectorPlan(
             command: python,
-            arguments: [
-                script,
-                "--approval-file", approvalFile,
-                "--broker", trimmed,
-                "--install-file", installFile,
-            ],
+            arguments: arguments,
             environment: [:],
             catalogID: PromethConnectorApproval.catalogID
         )

@@ -80,6 +80,28 @@ enum Provider: String, CaseIterable, Codable, Identifiable {
         case .github: "Read selected repositories and issues"
         }
     }
+
+    var toolkit: String {
+        switch self {
+        case .gmail: "gmail"
+        case .outlook: "outlook"
+        case .drive: "googledrive"
+        case .github: "github"
+        }
+    }
+}
+
+struct PromethArtifact: Identifiable, Codable, Equatable {
+    var id = UUID()
+    var kind: String
+    var filename: String
+    var prompt: String
+    var parentID: UUID?
+    var version = 1
+    var trimStart: Double = 0
+    var trimEnd: Double = 6
+    var duration: Double?
+    var modelID: String?
 }
 
 enum Resources {

@@ -34,19 +34,6 @@ enum Connection: String, Codable {
     case expired
 }
 
-struct PromethArtifact: Identifiable, Codable, Equatable {
-    var id = UUID()
-    var kind: String
-    var filename: String
-    var prompt: String
-    var parentID: UUID?
-    var version = 1
-    var trimStart: Double = 0
-    var trimEnd: Double = 6
-    var duration: Double?
-    var modelID: String?
-}
-
 struct Attachment: Identifiable, Codable, Equatable {
     var id = UUID()
     var filename: String
@@ -120,7 +107,7 @@ struct MacSpecs {
 }
 
 struct Snapshot: Codable {
-    var version = 1
+    var version = 2
     var onboardingComplete = false
     var step = 0
     var selected: Set<Capability> = [.chat]
@@ -130,7 +117,7 @@ struct Snapshot: Codable {
     var defaultMode: BehaviorMode = .safe
     var connections: [String: Connection] = [:]
     var appearance = "Light"
-    var webSearch = false
+    var webSearch = true
     var selectedChatID: UUID?
     var skills: [SkillRecord] = []
     var fileReadingEnabled: Bool?
@@ -150,8 +137,13 @@ struct Persistence {
     private var file: URL { directory.appendingPathComponent("state-v1.json") }
 
     func load() -> Snapshot? {
-        guard let data = try? Data(contentsOf: file) else { return nil }
-        return try? JSONDecoder().decode(Snapshot.self, from: data)
+        guard let data = try? Data(contentsOf: file),
+              var snapshot = try? JSONDecoder().decode(Snapshot.self, from: data) else { return nil }
+        if snapshot.version < 2 {
+            snapshot.webSearch = true
+            snapshot.version = 2
+        }
+        return snapshot
     }
 
     func save(_ state: Snapshot) throws {

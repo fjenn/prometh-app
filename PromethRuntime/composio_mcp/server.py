@@ -1,8 +1,9 @@
 """stdio MCP server for Prometh connectors.
 
-The Composio API key is read at runtime from COMPOSIO_API_KEY or
-~/.config/prometh/composio.env. It is never printed. Execute calls are
-refused unless the app adds an approval token after the user agrees.
+The Composio API key is read at call time from COMPOSIO_API_KEY or
+~/.config/prometh/composio.env. It is never printed, logged, or returned.
+Execute calls are refused unless the app adds an approval token after the
+user agrees. With no broker URL, search and execute call Composio's API.
 """
 
 from __future__ import annotations
@@ -12,7 +13,9 @@ import hmac
 import json
 import logging
 import os
+import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 import uuid
 from pathlib import Path
@@ -20,6 +23,17 @@ from pathlib import Path
 from mcp.server.mcpserver import MCPServer
 
 logging.disable(logging.INFO)
+for _logger_name in ("httpx", "httpcore", "mcp", "urllib3"):
+    logging.getLogger(_logger_name).setLevel(logging.CRITICAL)
+
+COMPOSIO_API = "https://backend.composio.dev/api/v3.1"
+TOOLKITS = {
+    "gmail": "gmail",
+    "outlook": "outlook",
+    "google drive": "googledrive",
+    "googledrive": "googledrive",
+    "github": "github",
+}
 
 
 def load_api_key() -> str:
@@ -65,6 +79,17 @@ def tokens_match(supplied: object, expected: str) -> bool:
     return hmac.compare_digest(supplied.encode(), expected.encode())
 
 
+def redact(text: str, secret: str) -> str:
+    if secret and secret in text:
+        return text.replace(secret, "[redacted]")
+    return text
+
+
+def api_base() -> str:
+    override = os.environ.get("PROMETH_COMPOSIO_API_BASE", "").strip()
+    return (override or COMPOSIO_API).rstrip("/")
+
+
 def broker_request(broker: str, path: str, payload: dict, api_key: str) -> dict:
     if not broker:
         return {"ok": False, "error": "Connectors are not configured."}
@@ -85,19 +110,252 @@ def broker_request(broker: str, path: str, payload: dict, api_key: str) -> dict:
         return {"ok": False, "error": "broker unreachable"}
 
 
+def composio_request(
+    method: str,
+    path: str,
+    api_key: str,
+    payload: dict | None = None,
+    query: dict | None = None,
+) -> dict:
+    if not api_key:
+        return {"ok": False, "error": "Connectors are not configured."}
+    url = api_base() + path
+    if query:
+        url += "?" + urllib.parse.urlencode(query)
+    data = None if payload is None else json.dumps(payload).encode()
+    request = urllib.request.Request(url, data=data, method=method)
+    request.add_header("x-api-key", api_key)
+    if payload is not None:
+        request.add_header("Content-Type", "application/json")
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            raw = response.read().decode()
+    except urllib.error.HTTPError as error:
+        detail = redact(error.read().decode(errors="replace"), api_key)[:400]
+        return {"ok": False, "error": f"composio status {error.code}", "detail": detail}
+    except urllib.error.URLError:
+        return {"ok": False, "error": "composio unreachable"}
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return {"ok": False, "error": "composio returned an unreadable response"}
+    if not isinstance(parsed, dict):
+        return {"ok": True, "data": parsed}
+    if "ok" not in parsed:
+        parsed["ok"] = parsed.get("error") in (None, "")
+    return parsed
+
+
+def toolkit_from_query(query_text: str) -> str:
+    lowered = query_text.lower()
+    for name in ("google drive", "gmail", "outlook", "github"):
+        if name in lowered:
+            return TOOLKITS[name]
+    return ""
+
+
+def composio_search(query_text: str, user_id: str, api_key: str) -> dict:
+    query = {"query": query_text, "limit": "8", "toolkit_versions": "latest"}
+    toolkit = toolkit_from_query(query_text)
+    if toolkit:
+        query["toolkit_slug"] = toolkit
+    result = composio_request(
+        "GET",
+        "/tools",
+        api_key,
+        query=query,
+    )
+    items = result.get("items") if isinstance(result.get("items"), list) else []
+    if result.get("ok") is False and not items:
+        return result
+    tools: list[str] = []
+    summaries: list[dict] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        slug = item.get("slug")
+        if not isinstance(slug, str) or not slug:
+            continue
+        tools.append(slug)
+        description = item.get("description") if isinstance(item.get("description"), str) else ""
+        summaries.append({"slug": slug, "description": description})
+    tools, summaries = pin_known_tool(query_text, toolkit, tools, summaries, api_key)
+    return {"ok": True, "tools": tools, "items": summaries, "user_id": user_id}
+
+
+def pin_known_tool(
+    query_text: str,
+    toolkit: str,
+    tools: list[str],
+    summaries: list[dict],
+    api_key: str,
+) -> tuple[list[str], list[dict]]:
+    """Surface the authenticated-user repo list when that is what was asked."""
+    lowered = query_text.lower()
+    if toolkit != "github":
+        return tools, summaries
+    asks_for_repos = any(word in lowered for word in ("repo", "repos", "repositor"))
+    asks_to_list = any(word in lowered for word in ("list", "my", "show", "what"))
+    if not asks_for_repos or not asks_to_list:
+        return tools, summaries
+    preferred = "GITHUB_LIST_REPOSITORIES_FOR_THE_AUTHENTICATED_USER"
+    if preferred not in tools:
+        pinned = composio_request(
+            "GET",
+            "/tools",
+            api_key,
+            query={"tool_slugs": preferred, "toolkit_versions": "latest"},
+        )
+        found = pinned.get("items") if isinstance(pinned.get("items"), list) else []
+        if not any(isinstance(item, dict) and item.get("slug") == preferred for item in found):
+            return tools, summaries
+        tools = [preferred, *tools]
+        summaries = [
+            {"slug": preferred, "description": "List repositories for the authenticated user"},
+            *summaries,
+        ]
+    else:
+        tools = [preferred, *[item for item in tools if item != preferred]]
+    return tools[:8], summaries[:8]
+
+
+def composio_execute(tool: str, arguments: dict, user_id: str, api_key: str) -> dict:
+    if not tool or any(mark in tool for mark in ("/", "?", "#", " ")):
+        return {"ok": False, "error": "unknown tool", "executed": False}
+    result = composio_request(
+        "POST",
+        "/tools/execute/" + urllib.parse.quote(tool),
+        api_key,
+        {"user_id": user_id, "arguments": arguments, "version": "latest"},
+    )
+    failed = result.get("successful") is False or result.get("ok") is False
+    result["ok"] = not failed
+    result["executed"] = True
+    return result
+
+
+def toolkit_slug(name: str) -> str:
+    return TOOLKITS.get(name.strip().lower(), "")
+
+
+def ensure_auth_config(toolkit: str, api_key: str) -> dict:
+    listed = composio_request(
+        "GET",
+        "/auth_configs",
+        api_key,
+        query={"toolkit_slug": toolkit, "limit": "20"},
+    )
+    items = listed.get("items") if isinstance(listed.get("items"), list) else []
+    for item in items:
+        if not isinstance(item, dict) or not item.get("id"):
+            continue
+        toolkit_info = item.get("toolkit")
+        slug = toolkit_info.get("slug") if isinstance(toolkit_info, dict) else None
+        if slug in (None, toolkit):
+            return {"ok": True, "auth_config_id": item["id"]}
+    created = composio_request(
+        "POST",
+        "/auth_configs",
+        api_key,
+        {
+            "toolkit": {"slug": toolkit},
+            "auth_config": {"type": "use_composio_managed_auth", "credentials": {}},
+        },
+    )
+    config = created.get("auth_config")
+    config_id = config.get("id") if isinstance(config, dict) else None
+    if not config_id:
+        return {"ok": False, "error": created.get("error") or "Could not prepare the connection."}
+    return {"ok": True, "auth_config_id": config_id}
+
+
+def create_link(toolkit: str, user_id: str, api_key: str) -> dict:
+    if not toolkit:
+        return {"ok": False, "error": "Unknown app."}
+    prepared = ensure_auth_config(toolkit, api_key)
+    if not prepared.get("ok"):
+        return prepared
+    linked = composio_request(
+        "POST",
+        "/connected_accounts/link",
+        api_key,
+        {"auth_config_id": prepared["auth_config_id"], "user_id": user_id},
+    )
+    url = linked.get("redirect_url")
+    if not isinstance(url, str) or not url:
+        return {"ok": False, "error": linked.get("error") or "The authorization page was not returned."}
+    return {
+        "ok": True,
+        "redirect_url": url,
+        "connected_account_id": linked.get("connected_account_id"),
+    }
+
+
+def connection_status(toolkit: str, user_id: str, api_key: str) -> dict:
+    if not toolkit:
+        return {"ok": False, "error": "Unknown app.", "status": "disconnected"}
+    listed = composio_request(
+        "GET",
+        "/connected_accounts",
+        api_key,
+        query={"toolkit_slugs": toolkit, "user_ids": user_id, "limit": "20"},
+    )
+    items = listed.get("items") if isinstance(listed.get("items"), list) else []
+    if listed.get("ok") is False and not items:
+        listed["status"] = "disconnected"
+        return listed
+    status = "disconnected"
+    account_id = None
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        current = str(item.get("status") or "").upper()
+        account_id = item.get("id") or account_id
+        if current == "ACTIVE":
+            return {"ok": True, "status": "connected", "connected_account_id": item.get("id")}
+        if current in {"EXPIRED", "FAILED"}:
+            status = "expired"
+            account_id = item.get("id")
+    return {"ok": True, "status": status, "connected_account_id": account_id}
+
+
+def disconnect_account(toolkit: str, user_id: str, api_key: str) -> dict:
+    current = connection_status(toolkit, user_id, api_key)
+    account = current.get("connected_account_id")
+    if not isinstance(account, str) or not account:
+        return {"ok": True, "status": "disconnected"}
+    deleted = composio_request(
+        "DELETE",
+        "/connected_accounts/" + urllib.parse.quote(account),
+        api_key,
+    )
+    if deleted.get("ok") is False:
+        return deleted
+    return {"ok": True, "status": "disconnected"}
+
+
+def public_payload(payload: dict, api_key: str) -> str:
+    text = json.dumps(payload)
+    return redact(text, api_key)
+
+
 def build_server(approval_file: Path, broker: str, install_file: Path) -> MCPServer:
     server = MCPServer("prometh-composio")
     user_id = install_id(install_file)
 
     @server.tool(name="connectors_search", description="Find actions the user can run in a connected app.")
     def connectors_search(query: str) -> str:
-        result = broker_request(
-            broker,
-            "/tools/search",
-            {"query": query, "user_id": user_id},
-            load_api_key(),
-        )
-        return json.dumps(result)
+        api_key = load_api_key()
+        if broker:
+            result = broker_request(
+                broker,
+                "/tools/search",
+                {"query": query, "user_id": user_id},
+                api_key,
+            )
+        else:
+            result = composio_search(query, user_id, api_key)
+        return public_payload(result, api_key)
 
     @server.tool(
         name="connectors_execute",
@@ -107,32 +365,57 @@ def build_server(approval_file: Path, broker: str, install_file: Path) -> MCPSer
         ),
     )
     def connectors_execute(tool: str, arguments_json: str = "{}", approval_token: str = "") -> str:
+        api_key = load_api_key()
         if not tokens_match(approval_token, read_token(approval_file)):
-            return json.dumps({"ok": False, "error": "approval required", "executed": False})
+            return public_payload(
+                {"ok": False, "error": "approval required", "executed": False},
+                api_key,
+            )
         try:
             arguments = json.loads(arguments_json) if arguments_json else {}
         except json.JSONDecodeError:
             arguments = {}
         if not isinstance(arguments, dict):
             arguments = {}
-        result = broker_request(
-            broker,
-            "/tools/execute",
-            {"user_id": user_id, "tool": tool, "arguments": arguments},
-            load_api_key(),
-        )
-        result["executed"] = True
-        return json.dumps(result)
+        if broker:
+            result = broker_request(
+                broker,
+                "/tools/execute",
+                {"user_id": user_id, "tool": tool, "arguments": arguments},
+                api_key,
+            )
+            result["executed"] = True
+        else:
+            result = composio_execute(tool, arguments, user_id, api_key)
+        return public_payload(result, api_key)
 
     return server
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--approval-file", required=True)
+    parser.add_argument("--approval-file", default="")
     parser.add_argument("--broker", default="")
     parser.add_argument("--install-file", required=True)
+    parser.add_argument("--link", default="")
+    parser.add_argument("--status", default="")
+    parser.add_argument("--disconnect", default="")
     args = parser.parse_args()
+    user_id = install_id(Path(args.install_file))
+    api_key = load_api_key()
+    if args.link or args.status or args.disconnect:
+        name = args.link or args.status or args.disconnect
+        toolkit = toolkit_slug(name)
+        if args.link:
+            payload = create_link(toolkit, user_id, api_key)
+        elif args.disconnect:
+            payload = disconnect_account(toolkit, user_id, api_key)
+        else:
+            payload = connection_status(toolkit, user_id, api_key)
+        sys.stdout.write(public_payload(payload, api_key) + "\n")
+        return
+    if not args.approval_file:
+        raise SystemExit("approval file is required")
     build_server(Path(args.approval_file), args.broker, Path(args.install_file)).run(transport="stdio")
 
 

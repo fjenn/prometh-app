@@ -1,4 +1,5 @@
 import Foundation
+import NativServerKit
 import Security
 
 /// One install id per Mac, stored in Keychain and mirrored to a mode-0600 file
@@ -56,6 +57,34 @@ enum PromethConnectorSecret {
         )
     }
 
+    /// True when a key is present. The value is not kept or logged.
+    static func hasAPIKeyFile() -> Bool {
+        if let environment = ProcessInfo.processInfo.environment["COMPOSIO_API_KEY"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines), !environment.isEmpty {
+            return true
+        }
+        let override = ProcessInfo.processInfo.environment["PROMETH_COMPOSIO_ENV"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let path: String
+        if let override, !override.isEmpty {
+            path = (override as NSString).expandingTildeInPath
+        } else {
+            path = (NSHomeDirectory() as NSString).appendingPathComponent(".config/prometh/composio.env")
+        }
+        guard let text = try? String(contentsOfFile: path, encoding: .utf8) else { return false }
+        for line in text.split(whereSeparator: \.isNewline) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.isEmpty, !trimmed.hasPrefix("#"), let split = trimmed.firstIndex(of: "=") else { continue }
+            let name = trimmed[..<split].trimmingCharacters(in: .whitespaces)
+            guard name == "COMPOSIO_API_KEY" else { continue }
+            let value = trimmed[trimmed.index(after: split)...]
+                .trimmingCharacters(in: .whitespaces)
+                .trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+            return !value.isEmpty
+        }
+        return false
+    }
+
     private static var baseQuery: [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,
@@ -66,8 +95,9 @@ enum PromethConnectorSecret {
     }
 }
 
-/// Registers `prometh.composio` only while a broker URL is set. The API key and
-/// the approval token stay out of `MCPServerConfig.environment`.
+/// Registers `prometh.composio` when a Composio key file exists, or when a
+/// broker URL is set and no key file is. The API key and the approval token
+/// stay out of `MCPServerConfig.environment`.
 @MainActor
 final class PromethConnectorHost {
     let manager = MCPHostManager()
@@ -80,7 +110,8 @@ final class PromethConnectorHost {
 
     func apply(brokerURL: String?) {
         guard PromethFlags.promethShell, !PromethFlags.isRunningUnitTests else { return }
-        guard let plan = plan(for: brokerURL) else {
+        let direct = PromethConnectorSecret.hasAPIKeyFile()
+        guard let plan = plan(for: direct ? nil : brokerURL, direct: direct) else {
             manager.reload(servers: [])
             return
         }
@@ -97,8 +128,9 @@ final class PromethConnectorHost {
         ])
     }
 
-    private func plan(for brokerURL: String?) -> PromethConnectorPlan? {
-        guard let brokerURL,
+    private func plan(for brokerURL: String?, direct: Bool) -> PromethConnectorPlan? {
+        let trimmed = brokerURL?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard direct || !trimmed.isEmpty,
               let python = PromethPython.composio(),
               let script = PromethRuntimeLocator.url(relative: "composio_mcp/server.py") else {
             return nil
@@ -114,9 +146,10 @@ final class PromethConnectorHost {
         return PromethConnectorPlan.make(
             python: python.path,
             script: script.path,
-            broker: brokerURL,
+            broker: trimmed,
             approvalFile: approval.path,
-            installFile: install.path
+            installFile: install.path,
+            direct: direct
         )
     }
 }

@@ -46,5 +46,17 @@ final class PromethConnectorTests: XCTestCase {
         XCTAssertEqual(plan?.environment, [:])
         XCTAssertEqual(plan?.arguments.contains("--broker"), true)
         XCTAssertFalse(plan?.arguments.contains("COMPOSIO_API_KEY") ?? true)
+
+        let direct = PromethConnectorPlan.make(
+            python: "/usr/bin/python3",
+            script: "server.py",
+            broker: "  ",
+            approvalFile: "/tmp/approval",
+            installFile: "/tmp/install",
+            direct: true
+        )
+        XCTAssertEqual(direct?.environment, [:])
+        XCTAssertEqual(direct?.arguments.contains("--broker"), false)
+        XCTAssertEqual(direct?.arguments.contains("--install-file"), true)
     }
 }
