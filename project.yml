@@ -426,6 +426,7 @@ targets:
       - path: Sources/Prometh/Flags/PromethFlags.swift
       - path: Sources/Prometh/Flags/PromethToolVisibility.swift
       - path: Sources/Prometh/Browsing/CitationMarkup.swift
+      - path: Sources/Prometh/Browsing/PromethMarkdown.swift
       - path: Sources/Prometh/Browsing/PromethPrompts.swift
       - path: Sources/Prometh/Bridge/ModeRouter.swift
       - path: Sources/Prometh/Bridge/PromethVoice.swift

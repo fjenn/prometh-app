@@ -28,9 +28,48 @@ private struct WrappingCitationText: View {
     }
 
     private static func pieces(text: String, links: [SourceLink]) -> AttributedString {
+        let blocks = PromethMarkdown.blocks(in: text)
+        guard !blocks.isEmpty else { return AttributedString(text) }
+        var result = AttributedString()
+        for (index, block) in blocks.enumerated() {
+            if index > 0 {
+                result.append(AttributedString("\n"))
+            }
+            switch block {
+            case .paragraph(let spans):
+                result.append(rendered(spans, links: links, bullet: false))
+            case .bullet(let spans):
+                result.append(rendered(spans, links: links, bullet: true))
+            }
+        }
+        return result
+    }
+
+    private static func rendered(_ spans: [PromethMarkdown.Span], links: [SourceLink], bullet: Bool) -> AttributedString {
+        var result = AttributedString()
+        if bullet {
+            result.append(AttributedString("• "))
+        }
+        for span in spans {
+            switch span {
+            case .text(let value):
+                result.append(cited(value, links: links, strong: false))
+            case .strong(let value):
+                result.append(cited(value, links: links, strong: true))
+            case .code(let value):
+                var code = AttributedString(value)
+                code.font = .system(size: 13, design: .monospaced)
+                result.append(code)
+            }
+        }
+        return result
+    }
+
+    /// A single `[n]` marker becomes a sky chip. A marker with no source is dropped.
+    private static func cited(_ text: String, links: [SourceLink], strong: Bool) -> AttributedString {
         let known = Set(links.compactMap(\.index))
         guard let expression = try? NSRegularExpression(pattern: "\\[(\\d+)\\]") else {
-            return AttributedString(text)
+            return styled(text, strong: strong)
         }
         let ns = text as NSString
         let matches = expression.matches(in: text, range: NSRange(location: 0, length: ns.length))
@@ -39,7 +78,7 @@ private struct WrappingCitationText: View {
         for match in matches {
             let whole = match.range
             if whole.location > cursor {
-                result.append(AttributedString(ns.substring(with: NSRange(location: cursor, length: whole.location - cursor))))
+                result.append(styled(ns.substring(with: NSRange(location: cursor, length: whole.location - cursor)), strong: strong))
             }
             let number = Int(ns.substring(with: match.range(at: 1))) ?? 0
             if known.isEmpty || known.contains(number) {
@@ -55,9 +94,17 @@ private struct WrappingCitationText: View {
             cursor = whole.location + whole.length
         }
         if cursor < ns.length {
-            result.append(AttributedString(ns.substring(from: cursor)))
+            result.append(styled(ns.substring(from: cursor), strong: strong))
         }
         return result
+    }
+
+    private static func styled(_ text: String, strong: Bool) -> AttributedString {
+        var value = AttributedString(text)
+        if strong {
+            value.font = .system(size: 15, weight: .semibold)
+        }
+        return value
     }
 }
 
