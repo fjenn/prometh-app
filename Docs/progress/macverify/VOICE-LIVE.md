@@ -36,3 +36,30 @@ Live Debug test (14:38 BA): real microphone → Silero automatic end → Whisper
 ```
 
 Ad-hoc signing now uses `Configuration/Prometh-AdHoc.entitlements` (microphone only), avoiding unresolved restricted keychain groups from the development entitlement file. Python verification uses `-B` to preserve signed resource seals. Gates: build, make verify, 66 PromethTests passed, 0 failures; UI test target skipped for Automation Mode.
+
+## Release re-test + barge-in (16:36 BA)
+
+Release build: `xcodebuild -scheme Nativ -configuration Release NATIV_PRODUCT_NAME=Prometh CODE_SIGNING_ALLOWED=NO`, then ad-hoc signed with `Configuration/Prometh-AdHoc.entitlements` (`com.apple.security.device.audio-input`). Bundle `studio.prometh.Prometh`. No `PROMETH_STT_FILE` / `PROMETH_STT_TRANSCRIPT`. Quit Debug Prometh and Nativ first; launched `build/.../Release/Prometh.app`.
+
+Flow: New chat → Voice → `say`/`afplay` through speakers into the real mic. Silero ended the turn; Whisper transcribed; chat answered; Kokoro spoke.
+
+**Turn 1 (live mic):** user **“What is the capital of France? Please answer briefly.”** → assistant **“The capital of France is Paris.”**
+
+**Barge-in:** while Kokoro was playing that reply, played **“Interrupt now. Stop speaking. Interrupt.”** Log line `voice Silero barge-in` at `19:36:39Z` (2s after Kokoro start). Follow-up turn transcribed **“Stop speaking. Interrupt.”** Screenshot: `parity-B-release-voice2.png`.
+
+```
+2026-10-27T19:36:23Z voice Silero v5 started (16 kHz, 512 + 64 context)
+2026-10-27T19:36:23Z voice real microphone capture started: Voice Recording 2026-10-27 at 16.36.23.256.wav
+2026-10-27T19:36:29Z voice recording finished: 1284096 bytes; requesting Whisper STT
+2026-10-27T19:36:30Z voice STT completed: 53 characters
+2026-10-27T19:36:37Z voice Kokoro playback started
+2026-10-27T19:36:37Z voice Silero v5 started (16 kHz, 512 + 64 context)
+2026-10-27T19:36:37Z voice real microphone capture started: Voice Recording 2026-10-27 at 16.36.37.906.wav
+2026-10-27T19:36:39Z voice Silero barge-in
+2026-10-27T19:36:39Z voice Silero v5 started (16 kHz, 512 + 64 context)
+2026-10-27T19:36:39Z voice real microphone capture started: Voice Recording 2026-10-27 at 16.36.39.680.wav
+2026-10-27T19:36:42Z voice recording finished: 503808 bytes; requesting Whisper STT
+2026-10-27T19:36:42Z voice STT completed: 25 characters
+```
+
+Release gates for this section: Release `xcodebuild` **BUILD SUCCEEDED**; Debug gates already green from Section C (`make verify`, 76 PromethTests). PromethUITests still skipped (Automation Mode).
