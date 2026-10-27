@@ -1,6 +1,25 @@
 import SwiftUI
 import AppKit
 
+/// Decides when SwiftUI's draft binding may replace the focused NSTextView string.
+enum ComposerDraftSync {
+    static func shouldApply(
+        binding: String,
+        view: String,
+        editing: Bool,
+        conversationChanged: Bool,
+        lastBound: String
+    ) -> Bool {
+        if view == binding { return false }
+        // Chat switches and non-empty bindings always apply.
+        if conversationChanged || !binding.isEmpty || view.isEmpty { return true }
+        // Empty binding while focused normally protects an AX/paste race — except
+        // when the binding just cleared after holding the sent draft.
+        if binding.isEmpty && !lastBound.isEmpty { return true }
+        return !editing
+    }
+}
+
 // Independently implemented AppKit editor; Nativ's marked-text and Shift-Return pattern informed this boundary.
 struct ComposerEditor: NSViewRepresentable {
     @Binding var text: String
@@ -34,6 +53,7 @@ struct ComposerEditor: NSViewRepresentable {
         view.applyingExternalUpdate = true
         view.string = text
         view.applyingExternalUpdate = false
+        context.coordinator.lastBoundText = text
         view.send = { context.coordinator.commit($0) }
         view.setAccessibilityLabel("Message draft")
         view.setAccessibilityIdentifier("prometh.draft")
@@ -52,16 +72,18 @@ struct ComposerEditor: NSViewRepresentable {
         if conversationChanged {
             context.coordinator.conversationID = conversationID
         }
-        // While the field is focused, never clobber its string from an empty binding
-        // (AX paste race). Chat switches and non-empty bindings still apply.
-        if view.string != text {
-            let editing = view.window?.firstResponder === view
-            if conversationChanged || !editing || !text.isEmpty || view.string.isEmpty {
-                view.applyingExternalUpdate = true
-                view.string = text
-                view.applyingExternalUpdate = false
-            }
+        if ComposerDraftSync.shouldApply(
+            binding: text,
+            view: view.string,
+            editing: view.window?.firstResponder === view,
+            conversationChanged: conversationChanged,
+            lastBound: context.coordinator.lastBoundText
+        ) {
+            view.applyingExternalUpdate = true
+            view.string = text
+            view.applyingExternalUpdate = false
         }
+        context.coordinator.lastBoundText = text
         let present = !view.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         if hasContent != present {
             DispatchQueue.main.async {
@@ -75,6 +97,8 @@ struct ComposerEditor: NSViewRepresentable {
     class Coordinator: NSObject, NSTextViewDelegate {
         var parent: ComposerEditor
         var conversationID: UUID?
+        /// Last draft string applied from the SwiftUI binding (not from typing).
+        var lastBoundText = ""
         init(_ parent: ComposerEditor) { self.parent = parent }
 
         func textDidChange(_ notification: Notification) {
@@ -95,6 +119,7 @@ struct ComposerEditor: NSViewRepresentable {
             parent.onSend(value)
             parent.text = ""
             parent.hasContent = false
+            lastBoundText = ""
         }
     }
 }

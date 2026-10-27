@@ -85,6 +85,19 @@ final class PromethWorkspaceUITests: XCTestCase {
         }
         XCTAssertTrue(ready, replyDiagnostics(app))
 
+        // Composer must be empty after send (no leftover prompt / placeholder overlap).
+        let draftAfterSend = Date().addingTimeInterval(10)
+        var draftValue = draft.value as? String ?? "missing"
+        while Date() < draftAfterSend {
+            draftValue = draft.value as? String ?? ""
+            if draftValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { break }
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        XCTAssertTrue(
+            draftValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            "composer still held [\(draftValue)] after send"
+        )
+
         draft.click()
         app.typeText("Write a long story about the ocean in many paragraphs.")
         app.typeKey(.return, modifierFlags: [])

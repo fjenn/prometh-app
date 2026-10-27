@@ -196,4 +196,56 @@ final class PromethTranscriptTests: XCTestCase {
         XCTAssertFalse(scrubbed.lowercased().contains("attachment id"))
         XCTAssertTrue(scrubbed.localizedCaseInsensitiveContains("dusk"))
     }
+
+    func testVisibleReplyScrubsEmptyCodeSpanLeftByAttachmentID() {
+        // Exact judge-visible artifact from final-image-edit.png after UUID scrub.
+        let leaked = "I have edited the picture to depict the scene at dusk. ``."
+        XCTAssertEqual(
+            PromethTranscript.scrubInternals(leaked),
+            "I have edited the picture to depict the scene at dusk."
+        )
+        let backticked = "I have edited the picture to depict the scene at dusk. `620E9990-6640-4D5A-A003-C25DDCDE3202`."
+        XCTAssertEqual(
+            PromethTranscript.scrubInternals(backticked),
+            "I have edited the picture to depict the scene at dusk."
+        )
+        let withEmptyParen = "Edited the picture ( ). Done."
+        XCTAssertEqual(
+            PromethTranscript.scrubInternals(withEmptyParen),
+            "Edited the picture. Done."
+        )
+    }
+
+    func testComposerClearsAfterSendButProtectsAXPaste() {
+        // After send: binding goes from the sent draft to empty while focused.
+        XCTAssertTrue(
+            ComposerDraftSync.shouldApply(
+                binding: "",
+                view: "Trim that clip from 1.0 to 3.0 seconds and keep the original.",
+                editing: true,
+                conversationChanged: false,
+                lastBound: "Trim that clip from 1.0 to 3.0 seconds and keep the original."
+            )
+        )
+        // AX/paste race: empty binding must not wipe view text that was never bound.
+        XCTAssertFalse(
+            ComposerDraftSync.shouldApply(
+                binding: "",
+                view: "pasted via accessibility",
+                editing: true,
+                conversationChanged: false,
+                lastBound: ""
+            )
+        )
+        // Non-empty binding still applies while focused.
+        XCTAssertTrue(
+            ComposerDraftSync.shouldApply(
+                binding: "hello",
+                view: "",
+                editing: true,
+                conversationChanged: false,
+                lastBound: ""
+            )
+        )
+    }
 }

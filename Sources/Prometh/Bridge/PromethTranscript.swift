@@ -73,21 +73,26 @@ enum PromethTranscript {
     static func scrubInternals(_ value: String) -> String {
         var text = value
         text = text.replacingOccurrences(
-            of: #"(?i)[,.]?\s*(?:the\s+)?(?:new\s+)?version is available with the attachment id(?:\s+[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?\.?"#,
+            of: #"(?i)[,.]?\s*(?:the\s+)?(?:new\s+)?version is available with the attachment id(?:\s+`?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`?)?\.?"#,
             with: ".",
             options: .regularExpression
         )
         text = text.replacingOccurrences(
-            of: #"(?i)(?:with\s+)?(?:the\s+)?attachment\s*id\s*[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"#,
+            of: #"(?i)(?:with\s+)?(?:the\s+)?attachment\s*id\s*`?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`?"#,
             with: "",
             options: .regularExpression
         )
+        // Bare or backticked UUIDs left behind by partial phrasing.
         text = text.replacingOccurrences(
-            of: #"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"#,
+            of: #"`?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`?"#,
             with: "",
             options: .regularExpression
         )
-        text = text.replacingOccurrences(of: #"\s+\."#, with: ".", options: .regularExpression)
+        // Empty inline code / brackets left after ID removal (e.g. "dusk. ``.").
+        text = text.replacingOccurrences(of: #"`\s*`"#, with: "", options: .regularExpression)
+        text = text.replacingOccurrences(of: #"\[\s*\]"#, with: "", options: .regularExpression)
+        text = text.replacingOccurrences(of: #"\(\s*\)"#, with: "", options: .regularExpression)
+        text = text.replacingOccurrences(of: #"\s+([.,;:!?])"#, with: "$1", options: .regularExpression)
         text = text.replacingOccurrences(of: #"\.\s*\."#, with: ".", options: .regularExpression)
         text = text.replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
         return text.trimmingCharacters(in: .whitespacesAndNewlines)

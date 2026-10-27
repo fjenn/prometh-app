@@ -403,26 +403,58 @@ final class PromethStore: ObservableObject {
         let raw = (typed?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false) ? typed! : stored
         let text = PromethChatTitle.collapseExactRepeat(raw)
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        drafts[id.uuidString] = text
+        // Keep the prompt on ChatViewModel only. Clearing the UI draft first stops
+        // ComposerEditor from being re-filled by the intermediate binding write.
+        pendingSend[id.uuidString] = text
+        clearUIDraft(id)
         chat.draft = text
         guard readyToSend() else {
+            restoreUIDraft(id, text)
             error = "The local model is not ready yet."
             scheduleSendWhenReady()
             return
         }
-        if !deliver(id) {
+        if !deliver(id, prompt: text) {
+            restoreUIDraft(id, text)
+            chat.draft = text
             error = "The local model is not ready yet."
             scheduleSendWhenReady()
         }
     }
 
     private var waitingToSend = false
+    /// Prompt held while the UI draft is cleared ahead of deliver / retry.
+    private var pendingSend: [String: String] = [:]
 
     private func readyToSend() -> Bool {
         !model.isModelLoading && chat.canSend(
             isRunning: model.isRunning,
             selectedModelID: model.settings.languageModelID
         )
+    }
+
+    private func clearUIDraft(_ id: UUID) {
+        drafts[id.uuidString] = ""
+        if chats.contains(where: { $0.id == id }) {
+            chats = chats.map { conversation in
+                guard conversation.id == id else { return conversation }
+                var copy = conversation
+                copy.draft = ""
+                return copy
+            }
+        }
+    }
+
+    private func restoreUIDraft(_ id: UUID, _ text: String) {
+        drafts[id.uuidString] = text
+        if chats.contains(where: { $0.id == id }) {
+            chats = chats.map { conversation in
+                guard conversation.id == id else { return conversation }
+                var copy = conversation
+                copy.draft = text
+                return copy
+            }
+        }
     }
 
     private func scheduleSendWhenReady() {
@@ -432,26 +464,32 @@ final class PromethStore: ObservableObject {
             waitingToSend = false
             return
         }
-        let captured = drafts[id.uuidString] ?? ""
+        let captured = pendingSend[id.uuidString] ?? drafts[id.uuidString] ?? ""
         Task { @MainActor in
             for _ in 0..<120 {
                 try? await Task.sleep(nanoseconds: 500_000_000)
                 guard waitingToSend, state.selectedChatID == id else { return }
                 let live = drafts[id.uuidString] ?? ""
-                let text = live.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? captured : live
-                guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                let pending = pendingSend[id.uuidString] ?? ""
+                let text = [live, pending, captured]
+                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                    .first { !$0.isEmpty } ?? ""
+                guard !text.isEmpty else {
                     waitingToSend = false
                     return
                 }
                 if chat.currentSessionID != id { select(id) }
-                drafts[id.uuidString] = text
+                clearUIDraft(id)
+                pendingSend[id.uuidString] = text
                 chat.draft = text
                 if modes[id.uuidString] == .evil, state.preparations["Evil"]?.status != .ready {
+                    restoreUIDraft(id, text)
                     continue
                 }
-                if readyToSend(), deliver(id) {
+                if readyToSend(), deliver(id, prompt: text) {
                     return
                 }
+                restoreUIDraft(id, text)
             }
             waitingToSend = false
         }
@@ -463,8 +501,10 @@ final class PromethStore: ObservableObject {
     }
 
     @discardableResult
-    private func deliver(_ id: UUID) -> Bool {
-        let text = (drafts[id.uuidString] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    private func deliver(_ id: UUID, prompt: String? = nil) -> Bool {
+        let text = (prompt ?? pendingSend[id.uuidString] ?? drafts[id.uuidString] ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return false }
         chat.draft = text
         chat.send(
             using: model,
@@ -475,7 +515,8 @@ final class PromethStore: ObservableObject {
             $0.role == .user && $0.content.trimmingCharacters(in: .whitespacesAndNewlines) == text
         }
         guard saved else { return false }
-        drafts[id.uuidString] = ""
+        pendingSend[id.uuidString] = nil
+        clearUIDraft(id)
         composerAttachments[id.uuidString] = []
         waitingToSend = false
         error = nil
