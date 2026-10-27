@@ -20,6 +20,61 @@ final class PromethTranscriptTests: XCTestCase {
         XCTAssertEqual(blocks, [.paragraph([.text("Use "), .code("code"), .text(" here")])])
     }
 
+    func testATXHeadingsRenderWithoutHashMarkers() {
+        // Judge defect: final-chat.png showed literal "# Example Document".
+        let markdown = """
+        # Example Document
+
+        Here is one **bold** word.
+        """
+        XCTAssertEqual(
+            PromethReplyMarkup.atxHeading("# Example Document"),
+            PromethReplyMarkup.ATXHeading(level: 1, text: "Example Document")
+        )
+        XCTAssertEqual(
+            PromethReplyMarkup.atxHeading("## Subsection"),
+            PromethReplyMarkup.ATXHeading(level: 2, text: "Subsection")
+        )
+        XCTAssertEqual(
+            PromethReplyMarkup.atxHeading("### Details"),
+            PromethReplyMarkup.ATXHeading(level: 3, text: "Details")
+        )
+        XCTAssertNil(PromethReplyMarkup.atxHeading("#NotAHeading"))
+        let rendered = PromethReplyMarkup.attributed(markdown: markdown, cited: [])
+        let plain = String(rendered.characters)
+        XCTAssertFalse(plain.contains("# Example"), "Hash markers must not survive: \(plain)")
+        XCTAssertTrue(plain.contains("Example Document"), plain)
+        XCTAssertTrue(plain.contains("bold"), plain)
+    }
+
+    func testFenceInfoStringIsNotCodeContent() {
+        // Judge defect: final-chat.png showed "python" as the first code line.
+        let fence = PromethCodeFence.split("python\nprint(\"hello\")\n")
+        XCTAssertEqual(fence.language, "python")
+        XCTAssertEqual(fence.code.trimmingCharacters(in: .newlines), "print(\"hello\")")
+        XCTAssertFalse(fence.code.hasPrefix("python"), fence.code)
+        let bare = PromethCodeFence.split("\nprint(\"hello\")\n")
+        XCTAssertNil(bare.language)
+        XCTAssertTrue(bare.code.contains("print"), bare.code)
+        let codeFirst = PromethCodeFence.split("print(\"hello\")")
+        XCTAssertNil(codeFirst.language, "A code line must not be mistaken for an info string")
+        XCTAssertEqual(codeFirst.code, "print(\"hello\")")
+    }
+
+    func testScrubDoesNotCorruptSeenIntoDotN() {
+        // Judge defect: final-search.png "has.n clashes" from see⊂seen scrub.
+        let reply = "The Ukrainian border region has seen clashes overnight near the frontier."
+        let scrubbed = PromethTranscript.scrubInternals(reply)
+        XCTAssertEqual(scrubbed, reply)
+        XCTAssertFalse(scrubbed.contains(".n"), scrubbed)
+        XCTAssertTrue(scrubbed.contains("has seen clashes"), scrubbed)
+        // Real attachment phrasing must still scrub cleanly.
+        let withID = "I edited the picture. You can view it using the attachment ID `620E9990-6640-4D5A-A003-C25DDCDE3202`."
+        let cleaned = PromethTranscript.scrubInternals(withID)
+        XCTAssertFalse(cleaned.contains("620E9990"), cleaned)
+        XCTAssertFalse(cleaned.lowercased().contains("attachment"), cleaned)
+    }
+
     func testEmptyNewsReplyUsesSearchSnippets() {
         let body = """
         {"results":[{"title":"Day in the news","url":"https://example.com/a","snippet":"Markets rose."}]}

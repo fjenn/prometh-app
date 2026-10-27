@@ -105,8 +105,10 @@ enum PromethTranscript {
             with: ".",
             options: .regularExpression
         )
+        // Word boundaries on view|see|open so "seen" / "opening" are not eaten
+        // (judge bug: "has seen clashes" → "has.n clashes").
         text = text.replacingOccurrences(
-            of: #"(?i)[,.]?\s*(?:you can )?(?:view|see|open)(?:\s+it)?(?:\s+using)?(?:\s+the)?(?:\s+attachment\s*id)?(?:\s+`?#uuid#`?)?\.?"#
+            of: #"(?i)[,.]?\s*(?:you can )?\b(?:view|see|open)\b(?:\s+it)?(?:\s+using)?(?:\s+the)?(?:\s+attachment\s*id)(?:\s+`?#uuid#`?)?\.?"#
                 .replacingOccurrences(of: "#uuid#", with: uuid),
             with: ".",
             options: .regularExpression
