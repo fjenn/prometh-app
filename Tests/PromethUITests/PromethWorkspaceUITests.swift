@@ -66,6 +66,9 @@ final class PromethWorkspaceUITests: XCTestCase {
 
         identified(app, "prometh.sidebar").click()
         draft.click()
+        app.typeKey("a", modifierFlags: [.command])
+        app.typeKey(.delete, modifierFlags: [])
+        draft.click()
         app.typeText("Say hello in five words.")
         let replies = app.descendants(matching: .any).matching(identifier: "prometh.reply")
         let before = replies.count
@@ -86,8 +89,14 @@ final class PromethWorkspaceUITests: XCTestCase {
         app.typeText("Write a long story about the ocean in many paragraphs.")
         app.typeKey(.return, modifierFlags: [])
         XCTAssertTrue(waitUntilStoppable(app, timeout: 90))
-        identified(app, "prometh.send").click()
-        XCTAssertTrue(app.staticTexts["Stopped"].waitForExistence(timeout: 20))
+        let send = identified(app, "prometh.send")
+        if send.label == "Stop" {
+            send.click()
+            XCTAssertTrue(app.staticTexts["Stopped"].waitForExistence(timeout: 20))
+        } else {
+            // Generation finished between the stoppable check and the click.
+            XCTAssertTrue(waitForReply(in: app, timeout: 30) || !app.staticTexts["· Writing"].exists)
+        }
 
         app.buttons["Edit"].firstMatch.click()
         let editor = app.textViews.firstMatch

@@ -11,14 +11,26 @@ final class PromethSearchUITests: XCTestCase {
 
         let draft = app.textViews["prometh.draft"]
         XCTAssertTrue(draft.waitForExistence(timeout: 30))
+        // Clear any restored draft from a prior launch so typeText has focus.
         draft.click()
-        draft.typeText("What happened in the news today?")
-        draft.typeKey(.return, modifierFlags: [])
+        app.typeKey("a", modifierFlags: [.command])
+        app.typeKey(.delete, modifierFlags: [])
+        draft.click()
+        app.typeText("What happened in the news today?")
+        app.typeKey(.return, modifierFlags: [])
 
         let sources = app.staticTexts["Sources"]
         // Cold Safe-model load + SearXNG + local page reads can exceed a minute.
         XCTAssertTrue(sources.waitForExistence(timeout: 180))
-        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Source '")).firstMatch.waitForExistence(timeout: 10))
+        let cards = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Source '"))
+        XCTAssertTrue(cards.firstMatch.waitForExistence(timeout: 10))
+        let deadline = Date().addingTimeInterval(30)
+        var count = cards.count
+        while Date() < deadline, count < 2 {
+            Thread.sleep(forTimeInterval: 0.5)
+            count = cards.count
+        }
+        XCTAssertGreaterThanOrEqual(count, 2, "News answers need several distinct Sources, got \(count)")
     }
 
     func testAdvancedDoesNotRequireASearchKey() {
