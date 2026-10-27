@@ -572,6 +572,15 @@ final class PromethStore: ObservableObject {
         voice.end()
     }
 
+    func copyResponse(_ text: String) {
+        let board = NSPasteboard.general
+        board.clearContents()
+        board.setString(text, forType: .string)
+        if let path = ProcessInfo.processInfo.environment["PROMETH_COPY_LOG"], !path.isEmpty {
+            try? text.write(to: URL(fileURLWithPath: path), atomically: true, encoding: .utf8)
+        }
+    }
+
     func stopSpeech() {
         speechToken += 1
         speechPlayer?.stop()

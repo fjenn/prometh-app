@@ -109,22 +109,28 @@ final class PromethWorkspaceUITests: XCTestCase {
         XCTAssertTrue(waitForReply(in: app, timeout: 180))
         Thread.sleep(forTimeInterval: 0.4)
 
-        let copyQuery = app.descendants(matching: .any).matching(identifier: "prometh.copy")
-        let copyCount = copyQuery.count
-        let copy = copyCount > 0
-            ? copyQuery.element(boundBy: copyCount - 1)
-            : app.buttons["Copy response"].firstMatch
-        XCTAssertTrue(copy.waitForExistence(timeout: 5))
+        // Scroll the latest reply into view; Copy sits under the bubble.
+        let replies = app.descendants(matching: .any).matching(identifier: "prometh.reply")
+        if replies.count > 0 {
+            replies.element(boundBy: replies.count - 1).hover()
+        }
+        let copies = app.buttons.matching(NSPredicate(format: "label == %@", "Copy response"))
+        XCTAssertTrue(copies.firstMatch.waitForExistence(timeout: 5))
+        let copy = copies.element(boundBy: max(0, copies.count - 1))
+        XCTAssertTrue(copy.isHittable, "Copy response not hittable: \(copy.debugDescription)")
         copy.click()
         var copied = copiedText()
         var logged = (try? String(contentsOf: copyLog, encoding: .utf8)) ?? ""
         if copied.isEmpty && logged.isEmpty {
-            copy.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
-            Thread.sleep(forTimeInterval: 0.3)
+            copy.doubleClick()
+            Thread.sleep(forTimeInterval: 0.4)
             copied = copiedText()
             logged = (try? String(contentsOf: copyLog, encoding: .utf8)) ?? ""
         }
-        XCTAssertFalse(copied.isEmpty && logged.isEmpty, "clipboard empty logged \(logged.debugDescription) frame \(copy.frame)")
+        XCTAssertFalse(
+            copied.isEmpty && logged.isEmpty,
+            "clipboard empty logged \(logged.debugDescription) hittable \(copy.isHittable) frame \(copy.frame)"
+        )
 
         let conversationName = "Ocean notes \(String(UUID().uuidString.prefix(4)))"
         identified(app, "prometh.conversation.menu").click()
