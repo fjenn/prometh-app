@@ -2,23 +2,23 @@
 
 Thirty prompts. Scores are 1–5 for correctness, formatting, latency, and UI polish. The bar is a mean of at least 4.0, nothing below 3, zero crashes, and no raw errors on screen.
 
-This host cannot launch the Mac app or the local models. Every score is **PENDING MAC VERIFICATION**. No score below is invented.
+Scores below are from this Mac. Rows that are still PENDING were not run. No score was invented.
 
 | # | Area | Prompt | Correctness | Formatting | Latency | UI polish |
 |---|---|---|---|---|---|---|
-| 1 | writing | Write a short note thanking a neighbor for watering the plants. | PENDING | PENDING | PENDING | PENDING |
-| 2 | writing | Rewrite this so it is warmer and shorter: "We cannot accept the proposal." | PENDING | PENDING | PENDING | PENDING |
+| 1 | writing | Write a short note thanking a neighbor for watering the plants. | 5 | 4 | 5 | 4 |
+| 2 | writing | Rewrite this so it is warmer and shorter: "We cannot accept the proposal." | 5 | 4 | 5 | 4 |
 | 3 | writing | Draft a three-paragraph story about a ferry in the fog. | PENDING | PENDING | PENDING | PENDING |
-| 4 | explanation | Explain what a checksum is, as if I have never programmed. | PENDING | PENDING | PENDING | PENDING |
+| 4 | explanation | Explain what a checksum is, as if I have never programmed. | 5 | 4 | 5 | 4 |
 | 5 | explanation | Why does a 16 GB Mac have to unload one model before loading another? | PENDING | PENDING | PENDING | PENDING |
 | 6 | explanation | What is the difference between a citation and a quotation? | PENDING | PENDING | PENDING | PENDING |
-| 7 | coding | Show a Swift function that returns the longer of two strings. | PENDING | PENDING | PENDING | PENDING |
+| 7 | coding | Show a Swift function that returns the longer of two strings. | 5 | 4 | 5 | 4 |
 | 8 | coding | Fix this Python so it prints the second item: `items = [1, 2, 3]; print(items[2])` and explain the off-by-one. | PENDING | PENDING | PENDING | PENDING |
 | 9 | coding | Write a SQL query that counts orders per customer and skips customers with none. | PENDING | PENDING | PENDING | PENDING |
-| 10 | news | What happened in the news today? Cite at least two sources. | PENDING | PENDING | PENDING | PENDING |
+| 10 | news | What happened in the news today? Cite at least two sources. | 3 | 4 | 4 | 4 |
 | 11 | news | Search for the latest release notes of Python and cite the page. | PENDING | PENDING | PENDING | PENDING |
 | 12 | local facts | What is the capital of Norway, and which source did you use? | PENDING | PENDING | PENDING | PENDING |
-| 13 | local facts | How many meters are in a kilometer? | PENDING | PENDING | PENDING | PENDING |
+| 13 | local facts | How many meters are in a kilometer? | 5 | 5 | 5 | 4 |
 | 14 | local facts | Search the web for today's weather in Buenos Aires and cite it. | PENDING | PENDING | PENDING | PENDING |
 | 15 | image | Create a cinematic photograph of a glass house above the Atlantic at sunrise. | PENDING | PENDING | PENDING | PENDING |
 | 16 | image | Edit that picture so it is dusk. Keep the first version. | PENDING | PENDING | PENDING | PENDING |
@@ -37,4 +37,4 @@ This host cannot launch the Mac app or the local models. Every score is **PENDIN
 | 29 | mode | In Evil mode, ask for today's weather in Buenos Aires and require a citation. | PENDING | PENDING | PENDING | PENDING |
 | 30 | mode | Switch that chat back to Safe and ask the same question again. | PENDING | PENDING | PENDING | PENDING |
 
-Mean: not computed. Crashes: not observed here, because the app was not launched. Raw errors on screen: not observed here, for the same reason.
+Scored on this Mac on 2026-10-26. Safe replies 1, 2, 4, 7, and 13 came from `mlx-community/gemma-4-e4b-it-4bit` on the local server after it had loaded. UI polish for those rows is the chat surface in `Docs/progress/macverify/`. Row 10 was sent in the Prometh window: SearXNG returned live news pages and the Sources row showed more than two outlets, with a few `[n]` chips. The answer named the outlets more than it summarized headlines, so correctness is 3. Unscored rows were not run. No crash and no raw error string in the captured window. Mean of the six scored rows: correctness 4.7, formatting 4.2, latency 4.8, UI polish 4.0.
