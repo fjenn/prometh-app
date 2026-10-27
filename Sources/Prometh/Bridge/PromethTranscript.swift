@@ -98,7 +98,8 @@ enum PromethTranscript {
             options: [.regularExpression, .caseInsensitive]
         )
         // Empty inline code / brackets left after ID removal (e.g. "dusk. ``.").
-        text = text.replacingOccurrences(of: #"`\s*`"#, with: "", options: .regularExpression)
+        // Do not touch triple-backtick fences — `(?<!`)`…`(?!`)` keeps ``` intact.
+        text = text.replacingOccurrences(of: #"(?<!`)`\s*`(?!`)"#, with: "", options: .regularExpression)
         text = text.replacingOccurrences(of: #"\[\s*\]"#, with: "", options: .regularExpression)
         text = text.replacingOccurrences(of: #"\(\s*\)"#, with: "", options: .regularExpression)
         // Citation remapper can drop [n] chips and leave "available on and."
@@ -113,9 +114,11 @@ enum PromethTranscript {
             options: .regularExpression
         )
         text = text.replacingOccurrences(of: #"(?i)\s+using\.?\s*$"#, with: ".", options: .regularExpression)
-        text = text.replacingOccurrences(of: #"\s+([.,;:!?])"#, with: "$1", options: .regularExpression)
-        text = text.replacingOccurrences(of: #"\.\s*\."#, with: ".", options: .regularExpression)
-        text = text.replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
+        // Collapse horizontal whitespace only — never eat newlines. Markdown lists
+        // and fenced code blocks need blank lines / line-start markers intact.
+        text = text.replacingOccurrences(of: #"[\t ]+([.,;:!?])"#, with: "$1", options: .regularExpression)
+        text = text.replacingOccurrences(of: #"\.[ \t]*\."#, with: ".", options: .regularExpression)
+        text = text.replacingOccurrences(of: #"[\t ]{2,}"#, with: " ", options: .regularExpression)
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

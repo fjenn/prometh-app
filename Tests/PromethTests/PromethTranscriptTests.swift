@@ -226,6 +226,109 @@ final class PromethTranscriptTests: XCTestCase {
         )
     }
 
+    func testScrubPreservesMarkdownListsAndFencedCode() {
+        // Exact shape of the judge chat prompt / reply that collapsed in final-chat.png
+        // when scrubInternals treated newlines as collapsible whitespace.
+        let modelReply = """
+        Here is a **bold** word.
+
+        * apple
+        * banana
+        * cherry
+
+        ```python
+        print("hello")
+        ```
+        """
+        let scrubbed = PromethTranscript.scrubInternals(modelReply)
+        XCTAssertTrue(scrubbed.contains("**bold**"), scrubbed)
+        XCTAssertFalse(
+            scrubbed.contains("word. * apple"),
+            "Intro must stay on its own line before the first bullet: \(scrubbed)"
+        )
+        XCTAssertTrue(scrubbed.contains("\n* apple\n"), scrubbed)
+        XCTAssertTrue(scrubbed.contains("\n* banana\n"), scrubbed)
+        XCTAssertTrue(scrubbed.contains("\n* cherry\n"), scrubbed)
+        XCTAssertTrue(scrubbed.contains("```python\nprint(\"hello\")\n```"), scrubbed)
+        XCTAssertFalse(
+            scrubbed.contains("cherry ```python") || scrubbed.contains("cherry Use print"),
+            "Fence must not glue onto the last bullet: \(scrubbed)"
+        )
+
+        let listPrepared = PromethReplyMarkup.lists(scrubbed)
+        XCTAssertFalse(listPrepared.contains("* apple"), listPrepared)
+        XCTAssertTrue(listPrepared.contains("• apple"), listPrepared)
+        XCTAssertTrue(listPrepared.contains("• banana"), listPrepared)
+        XCTAssertTrue(listPrepared.contains("• cherry"), listPrepared)
+
+        // Fenced blocks are split out before markup; after scrub they must still
+        // separate cleanly on ``` so Workspace can render a real code card.
+        let fenceParts = scrubbed.components(separatedBy: "```")
+        XCTAssertEqual(fenceParts.count, 3, "open + body + close: \(fenceParts)")
+        guard fenceParts.count == 3 else { return }
+        XCTAssertTrue(fenceParts[1].trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("python"))
+        XCTAssertTrue(fenceParts[1].contains("print(\"hello\")"))
+    }
+
+    func testScrubAndCitationRemapKeepListBreaksAndDistinctChips() {
+        let modelReply = """
+        Here are today's headlines:
+
+        * The **Civilian** hardship in Oleshky continues, with residents surviving by eating weeds [1]
+        * An Amnesty International report documents further abuses [2]
+        * Peace talks advanced in Cambodia [1]
+
+        ```python
+        print("hello")
+        ```
+        """
+        // Attachment-ID leftovers sometimes trail a news reply after tool scrubbing.
+        let withLeak = modelReply + " The new version is available with the attachment ID 620E9990-6640-4D5A-A003-C25DDCDE3202."
+        let scrubbed = PromethTranscript.scrubInternals(withLeak)
+        XCTAssertFalse(scrubbed.contains("620E9990"), scrubbed)
+        XCTAssertFalse(scrubbed.contains("word. *") || scrubbed.contains("headlines: *"), scrubbed)
+        XCTAssertTrue(scrubbed.contains("\n* The **Civilian**"), scrubbed)
+        XCTAssertTrue(scrubbed.contains("```python\nprint(\"hello\")\n```"), scrubbed)
+
+        let sources = [
+            CitationRemapper.Source(
+                index: 1,
+                title: "World | Latest News & Updates | BBC News",
+                url: "https://www.bbc.com/news/world",
+                body: "Civilian hardship in Russian-occupied Oleshky continues with residents surviving by eating weeds. Peace talks advanced in Cambodia.",
+                snippet: "Oleshky weeds Cambodia"
+            ),
+            CitationRemapper.Source(
+                index: 2,
+                title: "World News: Top & Breaking World News Today | AP News",
+                url: "https://apnews.com/",
+                body: "An Amnesty International report documents further abuses across the region.",
+                snippet: "Amnesty International report"
+            ),
+        ]
+        let remapped = CitationRemapper.rewrite(scrubbed, sources: sources)
+        let civilian = remapped.split(separator: "\n").first { $0.contains("Civilian") }.map(String.init) ?? ""
+        let amnesty = remapped.split(separator: "\n").first { $0.contains("Amnesty") }.map(String.init) ?? ""
+        let cambodia = remapped.split(separator: "\n").first { $0.contains("Cambodia") }.map(String.init) ?? ""
+        XCTAssertTrue(civilian.contains("[1]"), "Oleshky claim → BBC: \(civilian)")
+        XCTAssertTrue(amnesty.contains("[2]"), "Amnesty claim → AP: \(amnesty)")
+        XCTAssertTrue(cambodia.contains("[1]"), "Cambodia claim → BBC: \(cambodia)")
+        XCTAssertEqual(CitationMarkup.citedIndices(in: remapped), [1, 2])
+
+        let rendered = PromethReplyMarkup.attributed(
+            markdown: PromethReplyMarkup.lists(
+                remapped.components(separatedBy: "```").first ?? remapped
+            ),
+            cited: [1, 2]
+        )
+        let plain = String(rendered.characters)
+        XCTAssertFalse(plain.contains("* The"), "Raw list marker must not survive: \(plain)")
+        XCTAssertTrue(plain.contains("•"), plain)
+        let destinations = Set(rendered.runs.compactMap { $0.link?.absoluteString })
+        XCTAssertTrue(destinations.contains("prometh-cite://1"), "\(destinations)")
+        XCTAssertTrue(destinations.contains("prometh-cite://2"), "\(destinations)")
+    }
+
     func testComposerClearsAfterSendButProtectsAXPaste() {
         // After send: binding goes from the sent draft to empty while focused.
         XCTAssertTrue(
