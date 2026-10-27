@@ -40,4 +40,4 @@ Everything stays on this Mac. No product account. Models download from Hugging F
 ## Package contents
 
 - `Prometh.zip` — Release `Prometh.app`, ad-hoc signed.
-- Screenshots from the verified flows: `final-chat`, `final-search`, `final-image`, `final-image-edit`, `final-video`, `final-voice`, `final-evil`.
+- Screenshots from the verified flows: `final-chat`, `final-search`, `final-image`, `final-image-edit`, `final-video`, `final-video-after-trim`, `final-voice`, `final-evil`.

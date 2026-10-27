@@ -1,6 +1,6 @@
 # Phase C — judge package (polish refresh)
 
-Host: Apple M5 Max, 128 GB, macOS 26.6.2, arm64. Branch `prometh`. Package rebuilt 2026-10-27 (America/Argentina/Buenos_Aires) after reviewer defect fixes. See `POLISH.md`.
+Host: Apple M5 Max, 128 GB, macOS 26.6.2, arm64. Branch `prometh`. Package rebuilt 2026-10-27 (America/Argentina/Buenos_Aires) after reviewer defect fixes. See `POLISH.md` and `POLISH2.md`.
 
 ## Polish
 
@@ -32,8 +32,8 @@ Path: `~/Desktop/Prometh-judges/`
 | Item | Notes |
 |---|---|
 | `Prometh.zip` | `ditto -c -k --sequesterRsrc --keepParent Prometh.app Prometh.zip` |
-| Zip size | **624M** (654,385,350 bytes) |
-| SHA-256 | `c7a01cf335de229af5489b73b5481eafb721391346dafe211489517712f3c27a` |
+| Zip size | **624M** (654,387,647 bytes) |
+| SHA-256 | `39a4feb62dd9bd1f9fb7f68f95445290430e3c71f9f709d16c2a72dc0331bbe8` |
 | `JUDGES.md` | Same content as `Docs/JUDGES.md` (chat trim called out) |
 | Screenshots | `final-chat`, `final-search`, `final-image`, `final-image-edit`, `final-video`, `final-video-after-trim`, `final-voice`, `final-evil` |
 
