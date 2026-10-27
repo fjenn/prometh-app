@@ -1226,6 +1226,22 @@ except Exception as error:
                         in: messages,
                         assistantText: item.text
                     )
+                    // After streaming finishes, remap every [n] chip to the source
+                    // whose fetched text best matches that sentence (deterministic).
+                    if !message.isStreaming,
+                       let hits = PromethWebPrefetch.storedHits(before: message.id, in: messages),
+                       !hits.isEmpty {
+                        let sources = hits.map {
+                            CitationRemapper.Source(
+                                index: $0.index,
+                                title: $0.title,
+                                url: $0.url,
+                                body: $0.body,
+                                snippet: $0.snippet
+                            )
+                        }
+                        item.text = CitationRemapper.rewrite(item.text, sources: sources)
+                    }
                 }
                 if message.toolName == PromethGenerateVideoTool.toolName {
                     item.artifact = PromethVideoResult.artifact(from: message.content, prompt: "")

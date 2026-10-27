@@ -48,33 +48,30 @@ enum PromethSearchContext {
         return picked
     }
 
-    /// Rebuild hits from the selected pages only, reindexed from 1 so `[n]` chips
-    /// match the Sources row. Pages with body text come first; empty slots stay so
-    /// the Sources row still lists several distinct domains.
+    /// Rebuild hits from pages that were actually read (non-empty body), reindexed
+    /// from 1 so `[n]` chips match the Sources row. Unread search snippets are omitted.
     static func indexedHits(
         selected: [Result],
         bodies: [String: (title: String?, content: String)]
     ) -> [Hit] {
         var withBody: [Hit] = []
-        var withoutBody: [Hit] = []
         for result in selected {
             let page = bodies[result.url]
-            let title = page?.title?.trimmingCharacters(in: .whitespacesAndNewlines)
             let content = page?.content ?? ""
-            let hit = Hit(
-                index: 0,
-                title: (title?.isEmpty == false ? title! : result.title),
-                url: result.url,
-                snippet: result.snippet,
-                body: content
+            guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
+            let pageTitle = page?.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let title = PromethHTML.decode(
+                (pageTitle?.isEmpty == false ? pageTitle! : result.title)
             )
-            if content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                withoutBody.append(hit)
-            } else {
-                withBody.append(hit)
-            }
+            withBody.append(Hit(
+                index: 0,
+                title: title,
+                url: result.url,
+                snippet: PromethHTML.decode(result.snippet),
+                body: content
+            ))
         }
-        return (withBody + withoutBody).enumerated().map { offset, hit in
+        return withBody.enumerated().map { offset, hit in
             Hit(
                 index: offset + 1,
                 title: hit.title,
@@ -116,16 +113,24 @@ enum PromethSearchContext {
     }
 
     static func promptNote(hits: [Hit], date: Date = Date()) -> String {
-        guard !hits.isEmpty else { return "" }
+        // Only pages with fetched body text may be numbered sources.
+        let read = hits.filter { !$0.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        guard !read.isEmpty else { return "" }
         let today = date.formatted(date: .complete, time: .omitted)
+        let named = read.map { "[\($0.index)] \($0.title)" }.joined(separator: "; ")
         let block = CitationMarkup.searchResultsBlock(
-            hits.map { CitationMarkup.Item(title: $0.title, url: $0.url) }
+            read.map { CitationMarkup.Item(title: $0.title, url: $0.url) }
         )
         var sections: [String] = [
-            "Searched the web for this question on \(today). The pages below were fetched with the local reader. Cite them with [n]. When \(hits.count) results are listed, use several different indices (for example [1], [2], [3]) — never reuse [1] for every fact. Summarize 3–5 concrete headlines from the page text; do not only list site names or tell the user to visit the links.",
+            """
+            Searched the web for this question on \(today). The pages below were fetched with the local reader. \
+            These are the only sources you may cite or name: \(named). Do not mention any other outlet, site, or publisher. \
+            Cite them with [n]. When \(read.count) results are listed, use several different indices (for example [1], [2], [3]) — never reuse [1] for every fact. \
+            Summarize 3–5 concrete headlines from the page text; do not only list site names or tell the user to visit the links.
+            """,
             block,
         ]
-        for hit in hits {
+        for hit in read {
             var page = "[\(hit.index)] \(hit.title)\n\(hit.url)"
             if !hit.snippet.isEmpty {
                 page += "\nSnippet: \(hit.snippet)"

@@ -25,7 +25,7 @@ enum SourcesExtractor {
         let logged = logDates()
         let numbered = found.enumerated().map { offset, link in
             SourceLink(
-                title: link.title,
+                title: PromethHTML.decode(link.title),
                 url: link.url,
                 index: offset + 1,
                 published: dates[link.url] ?? logged[link.url]

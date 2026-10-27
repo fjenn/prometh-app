@@ -101,6 +101,7 @@ enum PromethWebPrefetch {
     private static let lock = NSLock()
     nonisolated(unsafe) private static var searchEnabled = true
     nonisolated(unsafe) private static var linksByUser: [UUID: [SourceLink]] = [:]
+    nonisolated(unsafe) private static var hitsByUser: [UUID: [PromethSearchContext.Hit]] = [:]
     nonisolated(unsafe) private static var note = ""
 
     static var enabled: Bool {
@@ -127,22 +128,19 @@ enum PromethWebPrefetch {
         let results = await Self.search(query)
         guard !results.isEmpty else { return }
         let mapped = results.map {
-            PromethSearchContext.Result(title: $0.title, url: $0.url, snippet: $0.snippet)
+            PromethSearchContext.Result(
+                title: PromethHTML.decode($0.title),
+                url: $0.url,
+                snippet: PromethHTML.decode($0.snippet)
+            )
         }
         // Distinct domains (3–5) so Sources and [n] chips are not all one site.
         var selected = PromethSearchContext.preferDistinctDomains(mapped, limit: 5)
         guard !selected.isEmpty else { return }
-        // Publish Sources as soon as search returns so the UI is not blocked on reads.
-        var hits = PromethSearchContext.indexedHits(selected: selected, bodies: [:])
-        store(
-            userID: userID,
-            links: hits.map { SourceLink(title: $0.title, url: $0.url, index: $0.index) },
-            note: PromethSearchContext.promptNote(hits: hits)
-        )
         var pages = await Self.readPages(selected.map(\.url), focus: String(text.prefix(500)))
         var bodies = Dictionary(uniqueKeysWithValues: pages.compactMap { page -> (String, (title: String?, content: String))? in
             guard let content = page.content, !content.isEmpty else { return nil }
-            return (page.url, (page.title, content))
+            return (page.url, (page.title.map(PromethHTML.decode), content))
         })
         // If too few pages returned text, try the next distinct domains from the search list.
         if bodies.count < 3 {
@@ -157,14 +155,19 @@ enum PromethWebPrefetch {
                 pages = pages + more
                 bodies = Dictionary(uniqueKeysWithValues: pages.compactMap { page -> (String, (title: String?, content: String))? in
                     guard let content = page.content, !content.isEmpty else { return nil }
-                    return (page.url, (page.title, content))
+                    return (page.url, (page.title.map(PromethHTML.decode), content))
                 })
             }
         }
-        hits = PromethSearchContext.indexedHits(selected: selected, bodies: bodies)
+        // Only pages that were actually read become numbered sources for the model and UI.
+        let hits = PromethSearchContext.indexedHits(selected: selected, bodies: bodies)
+        guard !hits.isEmpty else { return }
         store(
             userID: userID,
-            links: hits.map { SourceLink(title: $0.title, url: $0.url, index: $0.index) },
+            links: hits.map {
+                SourceLink(title: PromethHTML.decode($0.title), url: $0.url, index: $0.index)
+            },
+            hits: hits,
             note: PromethSearchContext.promptNote(hits: hits)
         )
     }
@@ -184,6 +187,22 @@ enum PromethWebPrefetch {
                 defer { lock.unlock() }
                 let links = linksByUser[messages[cursor].id]
                 return links?.isEmpty == false ? links : nil
+            }
+            cursor -= 1
+        }
+        return nil
+    }
+
+    /// Fetched page bodies for citation remapping after the reply streams in.
+    static func storedHits(before assistantID: UUID, in messages: [ChatTranscriptMessage]) -> [PromethSearchContext.Hit]? {
+        guard let index = messages.firstIndex(where: { $0.id == assistantID }) else { return nil }
+        var cursor = index - 1
+        while cursor >= 0 {
+            if messages[cursor].role == .user {
+                lock.lock()
+                defer { lock.unlock() }
+                let hits = hitsByUser[messages[cursor].id]
+                return hits?.isEmpty == false ? hits : nil
             }
             cursor -= 1
         }
@@ -258,11 +277,18 @@ enum PromethWebPrefetch {
         lock.unlock()
     }
 
-    private static func store(userID: UUID, links: [SourceLink], note next: String) {
+    private static func store(
+        userID: UUID,
+        links: [SourceLink],
+        hits: [PromethSearchContext.Hit],
+        note next: String
+    ) {
         lock.lock()
         linksByUser[userID] = links
+        hitsByUser[userID] = hits
         if linksByUser.count > 20, let oldest = linksByUser.keys.first {
             linksByUser[oldest] = nil
+            hitsByUser[oldest] = nil
         }
         note = next
         lock.unlock()

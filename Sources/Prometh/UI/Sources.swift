@@ -76,7 +76,7 @@ struct PromethSourcesRow: View {
                 .frame(width: 18, height: 18)
                 .background(Color.sky.opacity(0.18), in: RoundedRectangle(cornerRadius: 6))
             VStack(alignment: .leading, spacing: 2) {
-                Text(link.title).font(.system(size: 12, weight: .medium)).lineLimit(2)
+                Text(PromethHTML.decode(link.title)).font(.system(size: 12, weight: .medium)).lineLimit(2)
                 Text(Self.domain(link.url)).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
                 if let published = link.published, !published.isEmpty {
                     Text(published).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
