@@ -235,6 +235,40 @@ final class PromethSearchTests: XCTestCase {
         XCTAssertEqual(cited.subtracting([1, 2, 3]), [])
     }
 
+    func testCitationRemapperDiversifiesWhenOverlapCollapsesToOneSource() {
+        // Bodies share little with the bullets, so raw overlap would keep the
+        // model's all-[2] chips. The remapper must still emit distinct indices.
+        let sources = [
+            CitationRemapper.Source(
+                index: 1,
+                title: "World News: Latest & Breaking",
+                url: "https://7news.com.au/world",
+                body: "Homepage chrome and navigation links only.",
+                snippet: "World news"
+            ),
+            CitationRemapper.Source(
+                index: 2,
+                title: "Global Timeline",
+                url: "https://www.the-world-now.com/",
+                body: "A feed shell without the concrete headline bodies.",
+                snippet: "Timeline"
+            ),
+        ]
+        let reply = """
+        * Civilian deaths reported near Oleshky [2]
+        * El Fasher fighting continues [2]
+        * Zelenskyy urged allies for aid [2]
+        These summaries are drawn from the reports available on [2] and [2].
+        """
+        let rewritten = CitationRemapper.rewrite(reply, sources: sources)
+        let cited = CitationMarkup.citedIndices(in: rewritten)
+        XCTAssertEqual(cited, [1, 2], "Distinct Sources need distinct chips: \(rewritten)")
+        XCTAssertFalse(rewritten.contains("[99]"))
+        let lines = rewritten.split(separator: "\n").map(String.init)
+        let bullets = lines.filter { $0.contains("•") || $0.contains("*") || $0.contains("Civilian") || $0.contains("El Fasher") || $0.contains("Zelenskyy") }
+        XCTAssertGreaterThanOrEqual(bullets.count, 2)
+    }
+
     func testInjectedContextContainsOnlyReadSources() {
         let selected = [
             PromethSearchContext.Result(

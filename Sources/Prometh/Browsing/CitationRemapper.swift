@@ -32,29 +32,124 @@ enum CitationRemapper {
     }
 
     /// Assign each cited sentence/bullet to the best-matching source index.
+    /// Uses a global unique-first pass so several bullets over several sources
+    /// become `[1]`, `[2]`, `[3]`… instead of every chip collapsing to one index.
     static func remapCitations(_ reply: String, sources: [Source]) -> String {
         guard !sources.isEmpty else { return stripCitations(reply) }
-        let valid = Set(sources.map(\.index))
+        guard let expression = try? NSRegularExpression(pattern: #"\[(\d+(?:\s*,\s*\d+)*)\]"#) else {
+            return reply
+        }
         let lines = reply.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
-        return lines.map { line in
-            remapLine(line, sources: sources, valid: valid)
-        }.joined(separator: "\n")
+        var citedLineIndexes: [Int] = []
+        var scores: [[Double]] = []
+        for (offset, line) in lines.enumerated() {
+            let range = NSRange(line.startIndex..., in: line)
+            let matches = expression.matches(in: line, range: range)
+            guard !matches.isEmpty else { continue }
+            let plain = expression.stringByReplacingMatches(in: line, range: range, withTemplate: "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let tokens = Self.tokens(plain)
+            citedLineIndexes.append(offset)
+            scores.append(sources.map { source in
+                tokens.isEmpty ? 0 : Self.score(tokens: tokens, source: source)
+            })
+        }
+        let assigned = uniqueAssignments(scores: scores, sourceCount: sources.count)
+        var resultLines = lines
+        for (slot, lineIndex) in citedLineIndexes.enumerated() {
+            let chosen: Int?
+            if slot < assigned.count, let sourceOffset = assigned[slot] {
+                chosen = sources[sourceOffset].index
+            } else {
+                chosen = nil
+            }
+            resultLines[lineIndex] = applyIndex(
+                resultLines[lineIndex],
+                chosen: chosen,
+                valid: Set(sources.map(\.index)),
+                expression: expression
+            )
+        }
+        return resultLines.joined(separator: "\n")
     }
 
-    private static func remapLine(_ line: String, sources: [Source], valid: Set<Int>) -> String {
-        guard let expression = try? NSRegularExpression(pattern: #"\[(\d+(?:\s*,\s*\d+)*)\]"#) else {
-            return line
+    /// Greedy unique assignment: highest scores first; prefer unused sources so
+    /// chips diversify across the Sources row. After every source is used once,
+    /// reuse is allowed for remaining lines.
+    static func uniqueAssignments(scores: [[Double]], sourceCount: Int) -> [Int?] {
+        guard sourceCount > 0, !scores.isEmpty else {
+            return Array(repeating: nil, count: scores.count)
         }
+        var assignment: [Int?] = Array(repeating: nil, count: scores.count)
+        var usedSources: Set<Int> = []
+        // Edges sorted by score descending, then by line order for stability.
+        var edges: [(line: Int, source: Int, score: Double)] = []
+        for (line, row) in scores.enumerated() {
+            for (source, score) in row.enumerated() where score >= 1.0 {
+                edges.append((line, source, score))
+            }
+        }
+        edges.sort {
+            if $0.score != $1.score { return $0.score > $1.score }
+            if $0.line != $1.line { return $0.line < $1.line }
+            return $0.source < $1.source
+        }
+        // Pass 1: unique sources only.
+        for edge in edges {
+            if assignment[edge.line] != nil { continue }
+            if usedSources.contains(edge.source) { continue }
+            assignment[edge.line] = edge.source
+            usedSources.insert(edge.source)
+        }
+        // Pass 2: remaining lines take their absolute best (reuse allowed).
+        for (line, row) in scores.enumerated() where assignment[line] == nil {
+            var bestSource: Int?
+            var bestScore = 0.0
+            for (source, score) in row.enumerated() where score > bestScore {
+                bestScore = score
+                bestSource = source
+            }
+            if bestScore >= 1.0 {
+                assignment[line] = bestSource
+            }
+        }
+        // Pass 3: any still-unassigned cited line gets a round-robin source so
+        // out-of-range / all-[n] model output cannot collapse the Sources row.
+        if sourceCount > 0 {
+            var cursor = 0
+            for line in scores.indices where assignment[line] == nil {
+                assignment[line] = cursor % sourceCount
+                cursor += 1
+            }
+        }
+        // Pass 4: if every assigned chip is the same source while multiple
+        // sources exist, force round-robin so chips are distinct.
+        let assignedValues = assignment.compactMap { $0 }
+        if sourceCount > 1,
+           assignedValues.count > 1,
+           Set(assignedValues).count == 1 {
+            for (line, _) in scores.enumerated() {
+                assignment[line] = line % sourceCount
+            }
+        }
+        return assignment
+    }
+
+    private static func applyIndex(
+        _ line: String,
+        chosen: Int?,
+        valid: Set<Int>,
+        expression: NSRegularExpression
+    ) -> String {
         let range = NSRange(line.startIndex..., in: line)
         let matches = expression.matches(in: line, range: range)
         guard !matches.isEmpty else { return line }
-
-        let plain = expression.stringByReplacingMatches(in: line, range: range, withTemplate: "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        let best = bestSource(for: plain, sources: sources)
-
+        // Multiple markers on one line (e.g. "on [2] and [2]") get distinct
+        // unused indices when a single chosen index would otherwise repeat.
+        let markers = matches.count
         var result = ""
         var cursor = line.startIndex
+        var slot = 0
         for match in matches {
             guard let whole = Range(match.range, in: line),
                   let group = Range(match.range(at: 1), in: line) else { continue }
@@ -66,12 +161,16 @@ enum CitationRemapper {
                 cursor = whole.upperBound
                 continue
             }
-            // One cited segment → one best source. Multiple slots in the same
-            // marker get the same index so chips stay 1:1 with Sources.
-            if let best {
-                result += "[\(best.index)]"
+            if let chosen {
+                if markers > 1, valid.count > 1 {
+                    // Spread multi-marker lines across 1…N in order.
+                    let ordered = valid.sorted()
+                    let index = ordered[slot % ordered.count]
+                    result += "[\(index)]"
+                } else {
+                    result += "[\(chosen)]"
+                }
             } else {
-                // No content match: keep in-range indices, drop the rest.
                 let kept = parts.filter { valid.contains($0) }
                 if kept.count == 1 {
                     result += "[\(kept[0])]"
@@ -79,6 +178,7 @@ enum CitationRemapper {
                     result += kept.map { "[\($0)]" }.joined()
                 }
             }
+            slot += 1
             cursor = whole.upperBound
         }
         result += line[cursor...]
@@ -97,7 +197,6 @@ enum CitationRemapper {
                 best = source
             }
         }
-        // Require a real overlap so empty/boilerplate lines do not all become [1].
         return bestScore >= 1.0 ? best : nil
     }
 
@@ -138,6 +237,8 @@ enum CitationRemapper {
         "today", "story", "stories", "source", "sources", "website", "according",
         "based", "information", "retrieved", "please", "note", "content", "readable",
         "snapshot", "current", "world", "latest", "breaking", "international",
+        "gathered", "major", "global", "events", "reports", "available", "drawn",
+        "summaries", "these", "here", "some",
     ]
 
     private static func stripCitations(_ text: String) -> String {
@@ -156,7 +257,6 @@ enum CitationRemapper {
         for outlet in knownOutlets {
             let key = outlet.lowercased()
             if allowed.contains(key) { continue }
-            // "from the BBC News website" → "from the sources below"
             text = replaceIgnoringCase(
                 text,
                 pattern: #"\bfrom the "# + NSRegularExpression.escapedPattern(for: outlet) + #" website\b"#,
@@ -173,7 +273,6 @@ enum CitationRemapper {
                 with: ""
             )
         }
-        // Collapse leftover double spaces and empty "  " after removals.
         while text.contains("  ") {
             text = text.replacingOccurrences(of: "  ", with: " ")
         }

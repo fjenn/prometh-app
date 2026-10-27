@@ -1228,19 +1228,36 @@ except Exception as error:
                     )
                     // After streaming finishes, remap every [n] chip to the source
                     // whose fetched text best matches that sentence (deterministic).
-                    if !message.isStreaming,
-                       let hits = PromethWebPrefetch.storedHits(before: message.id, in: messages),
-                       !hits.isEmpty {
-                        let sources = hits.map {
-                            CitationRemapper.Source(
-                                index: $0.index,
-                                title: $0.title,
-                                url: $0.url,
-                                body: $0.body,
-                                snippet: $0.snippet
-                            )
+                    if !message.isStreaming {
+                        let sources: [CitationRemapper.Source]
+                        if let hits = PromethWebPrefetch.storedHits(before: message.id, in: messages),
+                           !hits.isEmpty {
+                            sources = hits.map {
+                                CitationRemapper.Source(
+                                    index: $0.index,
+                                    title: $0.title,
+                                    url: $0.url,
+                                    body: $0.body,
+                                    snippet: $0.snippet
+                                )
+                            }
+                        } else if let links = item.sourceLinks, !links.isEmpty {
+                            sources = links.compactMap { link in
+                                guard let index = link.index else { return nil }
+                                return CitationRemapper.Source(
+                                    index: index,
+                                    title: link.title,
+                                    url: link.url,
+                                    body: "",
+                                    snippet: ""
+                                )
+                            }
+                        } else {
+                            sources = []
                         }
-                        item.text = CitationRemapper.rewrite(item.text, sources: sources)
+                        if !sources.isEmpty {
+                            item.text = CitationRemapper.rewrite(item.text, sources: sources)
+                        }
                     }
                 }
                 if message.toolName == PromethGenerateVideoTool.toolName {
