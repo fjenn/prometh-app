@@ -3,6 +3,7 @@ import Foundation
 import WebKit
 
 /// Off-screen page load for JavaScript-rendered articles. No shared cookies.
+/// Reads are serialized: a shared continuation cannot be overwritten mid-flight.
 @MainActor
 final class ReadabilityWebViewReader: NSObject, WKNavigationDelegate {
     static let shared = ReadabilityWebViewReader()
@@ -11,9 +12,25 @@ final class ReadabilityWebViewReader: NSObject, WKNavigationDelegate {
     private var window: NSWindow?
     private var continuation: CheckedContinuation<ReadabilityPage, Error>?
     private var timeout: Task<Void, Never>?
+    private var chain: Task<Void, Never> = Task {}
 
     func read(url: URL) async throws -> ReadabilityPage {
+        let prior = chain
+        let gate = Task<ReadabilityPage, Error> {
+            _ = await prior.result
+            return try await self.readExclusive(url: url)
+        }
+        chain = Task { _ = try? await gate.value }
+        return try await gate.value
+    }
+
+    private func readExclusive(url: URL) async throws -> ReadabilityPage {
         try await withCheckedThrowingContinuation { continuation in
+            // Drop any stale waiter before taking this slot.
+            if let stale = self.continuation {
+                self.continuation = nil
+                stale.resume(throwing: ReadabilityReaderError.timedOut)
+            }
             self.continuation = continuation
             let configuration = WKWebViewConfiguration()
             configuration.websiteDataStore = .nonPersistent()
@@ -33,10 +50,12 @@ final class ReadabilityWebViewReader: NSObject, WKNavigationDelegate {
             window.contentView = view
             self.window = window
             self.timeout = Task { [weak self] in
-                try? await Task.sleep(nanoseconds: 25_000_000_000)
-                self?.finish(.failure(ReadabilityReaderError.timedOut))
+                try? await Task.sleep(nanoseconds: 12_000_000_000)
+                await MainActor.run {
+                    self?.finish(.failure(ReadabilityReaderError.timedOut))
+                }
             }
-            view.load(URLRequest(url: url))
+            view.load(URLRequest(url: url, timeoutInterval: 12))
         }
     }
 

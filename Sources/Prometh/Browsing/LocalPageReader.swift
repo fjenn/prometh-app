@@ -23,8 +23,10 @@ enum LocalPageReader {
         var published = sidecar?.published
         var extractor = sidecar?.extractor ?? "none"
         var status = sidecar?.status ?? 0
+        // WKWebView fallback is serialized and time-bounded inside the reader.
         if text.count < 500 || looksLikeShell(text), let url = URL(string: finalURL) {
-            if let page = try? await ReadabilityWebViewReader.shared.read(url: url), page.text.count > text.count {
+            if let page = try? await ReadabilityWebViewReader.shared.read(url: url),
+               page.text.count > text.count {
                 text = page.text
                 title = page.title ?? title
                 if let date = page.published, !date.isEmpty { published = date }

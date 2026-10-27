@@ -197,9 +197,34 @@ enum PromethWebPrefetch {
 
     private static func readPages(_ urls: [String], focus: String) async -> [WebReadPage] {
         guard !urls.isEmpty else { return [] }
-        // Cap wait so a slow page does not starve the chat turn / UITests.
-        return await withTimeout(seconds: 18) {
-            (try? await WebBrowsingRuntime().read(urls: urls, focus: focus)) ?? []
+        // Sidecar only (trafilatura chain). Skip WKWebView here so a JS shell
+        // cannot stall the prefetch ahead of the model turn.
+        await ReaderSupervisor.shared.start()
+        return await withTimeout(seconds: 16) {
+            await withTaskGroup(of: WebReadPage?.self, returning: [WebReadPage].self) { group in
+                for url in urls {
+                    group.addTask {
+                        guard let page = await ReaderSupervisor.shared.extract(url: url),
+                              !page.text.isEmpty else { return nil }
+                        var body = page.text
+                        if let published = page.published, !published.isEmpty {
+                            body = "Published: \(published)\n\n" + body
+                        }
+                        return WebReadPage(
+                            url: page.url,
+                            title: page.title,
+                            content: PromethSearchContext.excerpt(body, limit: 3_500),
+                            truncated: page.text.count > 3_500,
+                            error: nil
+                        )
+                    }
+                }
+                var pages: [WebReadPage] = []
+                for await page in group {
+                    if let page { pages.append(page) }
+                }
+                return pages
+            }
         } ?? []
     }
 

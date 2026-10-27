@@ -16,7 +16,7 @@ enum PromethPrompts {
         let offline = ProcessInfo.processInfo.environment["PROMETH_OFFLINE"] == "1"
         let offlineRule = offline
             ? "The web is unreachable from Prometh in this session. Say \"Cannot reach the web.\" Do not invent citations or sources."
-            : "For news, current events, or facts that may have changed, call web_search, then web_read on the best results, before you answer. When page text is already in the prompt, use it; do not ask the user to visit the sites instead."
+            : "For news, current events, or facts that may have changed, call web_search, then web_read on the best results, before you answer — unless the prompt already includes a search_results block and Page text. In that case answer from that material and do not call web_search or web_read again."
         return """
         When you use web search results, follow these citation rules. Today's date is \(today).
         \(offlineRule)
