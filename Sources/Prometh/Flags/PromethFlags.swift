@@ -8,6 +8,7 @@ import Foundation
 /// A comma list forces those names on and leaves the rest to defaults.
 enum PromethFlags {
     enum Name: String, CaseIterable {
+        case webUI
         case promethShell
         case nativControlPanel
         case menuBarExtra
@@ -34,6 +35,7 @@ enum PromethFlags {
     }
 
     private static let compiledDefaults: [Name: Bool] = [
+        .webUI: true,
         .promethShell: true,
         .nativControlPanel: false,
         .menuBarExtra: false,
@@ -83,6 +85,7 @@ enum PromethFlags {
         return compiledDefaults[name] ?? false
     }
 
+    static var webUI: Bool { isOn(.webUI) }
     static var promethShell: Bool { isOn(.promethShell) }
     static var nativControlPanel: Bool { isOn(.nativControlPanel) }
     static var menuBarExtra: Bool { isOn(.menuBarExtra) }

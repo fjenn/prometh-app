@@ -17,7 +17,7 @@ struct NativApplicationCommands: Commands {
                 Button("New chat") {
                     NotificationCenter.default.post(name: .promethNewChat, object: nil)
                 }
-                .keyboardShortcut("n")
+                .keyboardShortcut(PromethFlags.webUI ? "o" : "n", modifiers: PromethFlags.webUI ? [.command, .shift] : [.command])
             } else {
                 Button("New Chat") {
                     perform(.newChat)

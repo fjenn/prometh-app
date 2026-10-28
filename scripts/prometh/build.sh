@@ -5,6 +5,10 @@ set -euo pipefail
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$root"
 
+if command -v node >/dev/null 2>&1; then
+  "$root/scripts/prometh/build-webui.sh"
+fi
+
 make xcode-build NATIV_PRODUCT_NAME=Prometh
 
 app="$root/build/NativDevelopmentDerivedData/Build/Products/Debug/Prometh.app"

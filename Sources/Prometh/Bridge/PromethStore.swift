@@ -1915,3 +1915,41 @@ struct PendingTool: Identifiable, Equatable {
     var name: String
     var arguments: String
 }
+
+extension PromethStore {
+    /// Web reset uses the same session deletion path as the native chat library.
+    func resetWebData() async throws {
+        chat.cancel()
+        for session in chat.sessions {
+            guard try await chat.deleteSession(session.id) else {
+                throw NSError(domain: "PromethBridge", code: 1, userInfo: [NSLocalizedDescriptionKey: "A chat has work that must be kept. Export it before clearing data."])
+            }
+        }
+        revealed = []
+        persistence.saveRevealed(revealed)
+        resetData()
+    }
+
+    func pauseWebEvilPreparation() { preparation.pauseModel(key: "Evil") }
+    func cancelWebEvilPreparation() { preparation.cancelModel(key: "Evil") }
+
+    func stopWebTurn(_ id: UUID) {
+        waitingToSend = false
+        pendingSend[id.uuidString] = nil
+        stop(id)
+    }
+
+    func webDecodeTokensPerSecond() -> Double? { chat.messages.last(where: { $0.role == .assistant })?.responseMetrics?.decodeTokensPerSecond }
+
+    func attachWebFiles(_ urls: [URL]) -> Bool { chat.attachFiles(fromURLs: urls) }
+
+    func deleteWebModelDownloads() async throws {
+        chat.cancel()
+        for capability in Capability.allCases { cancelPreparation(capability) }
+        preparation.cancelModel(key: "Evil")
+        await PromethMediaGate.unloadChatEngines(reason: "delete downloads")
+        let root = CatalogPaths.modelsRoot(support: persistence.directory)
+        if FileManager.default.fileExists(atPath: root.path) { try FileManager.default.removeItem(at: root) }
+        state.preparations = [:]
+    }
+}

@@ -130,8 +130,13 @@ targets:
         excludes:
           - "Resources/**"
       - path: Sources/Prometh/Resources
+        excludes:
+          - WebUI
         buildPhase: resources
         optional: true
+      - path: Sources/Prometh/Resources/WebUI
+        type: folder
+        buildPhase: resources
       - path: Sources/Nativ/ModelProviderIcons
         type: folder
         buildPhase: resources
@@ -426,6 +431,7 @@ targets:
     type: bundle.unit-test
     platform: macOS
     sources:
+      - path: Sources/Prometh/UI/WebShell/PromethWebMapping.swift
       - path: Tests/PromethTests
       - path: Sources/Prometh/Identity/PromethIdentity.swift
       - path: Sources/Prometh/Flags/PromethFlags.swift

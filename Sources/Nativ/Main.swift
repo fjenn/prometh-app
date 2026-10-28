@@ -129,7 +129,11 @@ private struct NativApplication: App {
         // PROMETH-SEAM: S4 — Prometh shell instead of the Control Panel when the flag is on.
         WindowGroup(PromethFlags.promethShell ? PromethIdentity.productName : "Nativ", id: "main") {
             if PromethFlags.promethShell {
-                PromethRootView(model: appDelegate.model)
+                if PromethFlags.webUI {
+                    PromethWebRootView(model: appDelegate.model)
+                } else {
+                    PromethRootView(model: appDelegate.model)
+                }
             } else {
                 NativWindowRoot(appDelegate: appDelegate)
             }
