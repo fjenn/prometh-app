@@ -49,3 +49,37 @@ enum PromethVideoResult {
         )
     }
 }
+
+/// Stage progress from the actual job's stdout, forwarded by media_worker.py.
+/// Values are stage estimates, not an elapsed-time estimate; repeated/out-of-order logs cannot regress.
+struct PromethVideoProgress {
+    private(set) var value: Double = 0
+
+    mutating func consume(_ line: String) -> Double? {
+        var text = line
+        var candidate: Double?
+        if let json = (try? JSONSerialization.jsonObject(with: Data(line.utf8))) as? [String: Any] {
+            switch json["event"] as? String {
+            case "progress": candidate = json["fraction"] as? Double
+            case "log": text = json["line"] as? String ?? ""
+            case "done" where json["ok"] as? Bool == true: candidate = 1
+            default: return nil
+            }
+        }
+        if candidate == nil {
+            if let range = text.range(of: #"(?i)\bdenoise step\s+([0-9]+)\s*/\s*([0-9]+)\s+complete\b"#, options: .regularExpression) {
+                let numbers = text[range].split(whereSeparator: { !$0.isNumber }).compactMap { Double($0) }
+                if numbers.count == 2, numbers[1] > 0, numbers[0] > 0, numbers[0] <= numbers[1] {
+                    candidate = 0.15 + 0.65 * numbers[0] / numbers[1]
+                }
+            } else if text.contains("[Prometh] Wan VAE fp16") || text.contains("[Prometh] TAEHV ") {
+                candidate = 0.85
+            } else if text.contains("Output written to:") {
+                candidate = 1
+            }
+        }
+        guard let candidate, candidate.isFinite, (0...1).contains(candidate), candidate > value else { return nil }
+        value = candidate
+        return candidate
+    }
+}

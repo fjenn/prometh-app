@@ -23,7 +23,10 @@ def main():
     # Model diagnostics belong on stderr; the app never displays model internals.
     with contextlib.redirect_stdout(sys.stderr):
         model = load_model(Path(sys.argv[1]))
-        chunks = list(model.generate(text, voice='af_heart', lang_code='a'))
+        voice = sys.argv[3] if len(sys.argv) > 3 else 'af_heart'
+        if voice not in {'af_heart', 'af_bella', 'af_nicole', 'bf_emma', 'am_michael', 'bm_george'}:
+            raise ValueError('Unknown voice')
+        chunks = list(model.generate(text, voice=voice, lang_code=voice[0]))
     if not chunks:
         raise ValueError('Kokoro generated no audio')
     audio = np.concatenate([np.array(c.audio).reshape(-1) for c in chunks])

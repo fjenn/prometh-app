@@ -49,14 +49,14 @@ enum PromethPocketSpeech {
 
 /// Default speech engine. Pocket TTS remains available in the codebase.
 enum PromethKokoroSpeech {
-    static func synthesize(_ text: String) async throws -> URL {
+    static func synthesize(_ text: String, voice: String = "af_heart") async throws -> URL {
         guard let script = PromethRuntimeLocator.url(relative: "voice/kokoro_speak.py"),
               let python = PromethVoiceRuntime.python else { throw PromethPocketSpeechError.unavailable }
         let folder = try PromethVoiceRuntime.folder("kokoro")
         let output = FileManager.default.temporaryDirectory.appendingPathComponent("kokoro-\(UUID().uuidString).wav")
         let child = Process()
         child.executableURL = python
-        child.arguments = [script.path, folder.path, output.path]
+        child.arguments = [script.path, folder.path, output.path, voice]
         var environment = ProcessInfo.processInfo.environment
         environment["HF_HUB_OFFLINE"] = "1"
         environment["PYTHONNOUSERSITE"] = "1"

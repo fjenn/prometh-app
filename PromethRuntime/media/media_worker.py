@@ -305,14 +305,25 @@ class Worker:
                 command,
                 cwd=str(cwd) if cwd else None,
                 env=env,
-                stdout=handle,
+                stdout=subprocess.PIPE if log is not None else handle,
                 stderr=subprocess.STDOUT if log is not None else subprocess.DEVNULL,
                 start_new_session=True,
             )
             process = self._process
-        code = process.wait()
-        if log is not None:
-            handle.close()
+        try:
+            if log is not None and process.stdout is not None:
+                # Preserve the exact job log and forward the same real worker lines to Swift.
+                # The inference process is unbuffered; no elapsed-time progress is invented.
+                for line in process.stdout:
+                    handle.write(line)
+                    handle.flush()
+                    emit({"event": "log", "line": line.decode("utf-8", errors="replace").rstrip("\r\n")})
+            code = process.wait()
+        finally:
+            if log is not None:
+                handle.close()
+                if process.stdout is not None:
+                    process.stdout.close()
         with self._lock:
             self._process = None
         return code

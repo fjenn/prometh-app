@@ -58,3 +58,31 @@ final class PromethMediaTests: XCTestCase {
         XCTAssertTrue(scrubbed.contains("ok"))
     }
 }
+
+extension PromethMediaTests {
+    func testRealVideoLogStagesAdvanceThroughDenoisingDecodeAndOutput() throws {
+        var progress = PromethVideoProgress()
+        XCTAssertEqual(progress.consume(#"{"event":"progress","fraction":0.1}"#), 0.1)
+        for step in 1...3 {
+            let log = try JSONSerialization.data(withJSONObject: ["event": "log", "line": "denoise step \(step)/3 complete"])
+            XCTAssertEqual(try XCTUnwrap(progress.consume(String(decoding: log, as: UTF8.self))), 0.15 + 0.65 * Double(step) / 3, accuracy: 0.0001)
+        }
+        XCTAssertEqual(progress.consume("[Prometh] Wan VAE fp16: 256px tiles / 192px stride / 1 latent frame"), 0.85)
+        XCTAssertEqual(progress.consume("Output written to: /tmp/clip.mp4"), 1)
+        XCTAssertNil(progress.consume(#"{"ok":true,"event":"done","plan":{}}"#))
+    }
+
+    func testVideoProgressNeverRegressesAndIgnoresMalformedOrFailedStages() {
+        var progress = PromethVideoProgress()
+        XCTAssertNil(progress.consume("loading tensor weights"))
+        for line in ["denoise step 0/3 complete", "denoise step 4/3 complete", "denoise step 1/0 complete", #"{"event":"progress","fraction":2}"#, #"{"event":"done","ok":false}"#] {
+            XCTAssertNil(progress.consume(line), line)
+        }
+        XCTAssertEqual(progress.consume("denoise step 3/3 complete") ?? 0, 0.8, accuracy: 0.0001)
+        XCTAssertNil(progress.consume("denoise step 1/3 complete"))
+        XCTAssertNil(progress.consume(#"{"event":"progress","fraction":0.1}"#))
+        XCTAssertEqual(progress.consume("[Prometh] TAEHV bf16: tile decode"), 0.85)
+        XCTAssertNil(progress.consume("denoise step 3/3 complete"))
+        XCTAssertEqual(progress.consume(#"{"event":"done","ok":true}"#), 1)
+    }
+}

@@ -37,7 +37,7 @@ enum PromethMediaRegistry {
 }
 
 enum PromethMediaWorker {
-    static func generate(argumentsJSON: String) async throws -> String {
+    static func generate(argumentsJSON: String, onProgress: (@Sendable (Double) -> Void)? = nil) async throws -> String {
         guard let script = PromethRuntimeLocator.url(relative: "media/media_worker.py") else {
             return #"{"ok":false,"error":"Video is not ready yet."}"#
         }
@@ -58,7 +58,7 @@ enum PromethMediaWorker {
             "output": output.path,
             "poster": poster.path,
         ]
-        let response = try await run(script: script, request: request)
+        let response = try await run(script: script, request: request, onProgress: onProgress)
         if let artifact = PromethVideoResult.artifact(from: response, prompt: prompt) {
             PromethMediaRegistry.remember(
                 directory.appendingPathComponent(artifact.filename)
@@ -165,7 +165,7 @@ enum PromethMediaWorker {
         return json[key] as? Bool
     }
 
-    private static func run(script: URL, request: [String: Any]) async throws -> String {
+    private static func run(script: URL, request: [String: Any], onProgress: (@Sendable (Double) -> Void)? = nil) async throws -> String {
         let python = ProcessInfo.processInfo.environment["PROMETH_READER_PYTHON"] ?? "/usr/bin/python3"
         let child = Process()
         child.executableURL = URL(fileURLWithPath: python)
@@ -201,7 +201,22 @@ enum PromethMediaWorker {
         writer.write(Data("\n".utf8))
         let job = MediaJob(process: child, writer: writer)
         let data = await withTaskCancellationHandler {
-            await Task.detached { output.fileHandleForReading.readDataToEndOfFile() }.value
+            await Task.detached {
+                var result = Data(), pending = Data()
+                var progress = PromethVideoProgress()
+                while true {
+                    let chunk = output.fileHandleForReading.availableData
+                    if chunk.isEmpty { break }
+                    result.append(chunk); pending.append(chunk)
+                    while let newline = pending.firstIndex(of: 10) {
+                        let line = pending[..<newline]
+                        if let fraction = progress.consume(String(decoding: line, as: UTF8.self)) { onProgress?(fraction) }
+                        pending.removeSubrange(...newline)
+                    }
+                }
+                if !pending.isEmpty, let fraction = progress.consume(String(decoding: pending, as: UTF8.self)) { onProgress?(fraction) }
+                return result
+            }.value
         } onCancel: {
             job.cancel()
         }

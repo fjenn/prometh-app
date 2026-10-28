@@ -44,11 +44,18 @@ final class PreparationCoordinator {
         store?.notePaused(capability)
     }
 
-    func cancel(_ capability: Capability) {
-        controls[capability.rawValue]?.cancel()
-        tasks[capability.rawValue]?.cancel()
-        tasks[capability.rawValue] = nil
-        store?.applyPreparation(capability.rawValue, Preparation(progress: 0, status: .cancelled), detail: "Cancelled")
+    func cancel(_ capability: Capability) { cancelModel(key: capability.rawValue) }
+
+    func cancelModel(key: String) {
+        controls[key]?.cancel()
+        tasks[key]?.cancel()
+        tasks[key] = nil
+        store?.applyPreparation(key, Preparation(progress: 0, status: .cancelled), detail: "Cancelled")
+    }
+
+    func pauseModel(key: String) {
+        controls[key]?.pause()
+        store?.notePaused(nil, key: key)
     }
 
     func verify(_ capability: Capability) {
