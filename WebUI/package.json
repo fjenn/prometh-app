@@ -1,0 +1,36 @@
+{
+  "name": "prometh-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b --noEmit",
+    "preview": "vite preview",
+    "postinstall": "patch-package",
+    "test": "node --experimental-strip-types --no-warnings --test test/*.test.ts"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "4.3.1",
+    "@mlc-ai/web-llm": "0.2.84",
+    "kokoro-js": "1.2.1",
+    "onnxruntime-web": "1.31.0-dev.20260914-8d85527a0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "@webgpu/types": "^0.1.74",
+    "patch-package": "^8.0.1",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.5"
+  },
+  "overrides": {
+    "kokoro-js": {
+      "@huggingface/transformers": "$@huggingface/transformers"
+    }
+  }
+}
