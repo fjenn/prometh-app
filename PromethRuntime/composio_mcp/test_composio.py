@@ -252,6 +252,54 @@ def status_mapping_checks() -> None:
         composio_server.composio_request = original
 
 
+def hint_persistence_checks() -> None:
+    """Metadata/cache tests use only a temporary directory and mocked responses."""
+    import tempfile
+    from unittest.mock import patch
+    import server as composio_server
+
+    with tempfile.TemporaryDirectory() as temporary:
+        approval = Path(temporary) / "connectors" / "approval-token"
+        cache = approval.parent / "tool-hints.json"
+        secret = "test-never-cache-this-key"
+        ordinary = {"slug": "GMAIL_SEND_EMAIL", "tags": ["createHint", 42],
+                    "name": "Send email", "toolkit": {"slug": "gmail"}, "api_key": secret}
+        pinned = {"slug": "GITHUB_LIST_REPOSITORIES_FOR_THE_AUTHENTICATED_USER",
+                  "name": "List repositories", "tags": ["readOnlyHint"], "toolkit": {"slug": "github"}}
+        with patch.object(composio_server, "composio_request", side_effect=[
+            {"items": [ordinary]}, {"items": [pinned]},
+        ]) as request:
+            result = composio_server.composio_search("list my github repos", "user", secret,
+                                                       approval_file=approval)
+            assert request.call_count == 2
+        assert result["items"][0]["name"] == "List repositories"
+        assert result["items"][1]["tags"] == ["createHint"]
+        hints = json.loads(cache.read_text())
+        assert hints[pinned["slug"]] == {"tags": ["readOnlyHint"], "name": "List repositories", "toolkit": "github"}
+        assert hints[ordinary["slug"]]["toolkit"] == "gmail"
+        assert secret not in cache.read_text()
+        assert cache.stat().st_mode & 0o777 == 0o600
+        # Merge, update, cap, and allow only the three whitelisted fields.
+        composio_server.persist_tool_hints(approval, [{"slug": "OTHER_GET_DATA", "name": "Get data"}])
+        assert len(json.loads(cache.read_text())) == 3
+        composio_server.persist_tool_hints(approval, [{**ordinary, "name": "Send a message"}])
+        assert json.loads(cache.read_text())[ordinary["slug"]]["name"] == "Send a message"
+        composio_server.persist_tool_hints(approval, [{"slug": f"APP_GET_{i}"} for i in range(2010)])
+        hints = json.loads(cache.read_text())
+        assert len(hints) == 2000
+        assert "APP_GET_2009" in hints and "APP_GET_0" not in hints
+        assert not list(cache.parent.glob(".tool-hints-*"))
+        cache.write_text("broken")
+        composio_server.persist_tool_hints(approval, [ordinary], secret)
+        assert list(json.loads(cache.read_text())) == [ordinary["slug"]]
+        # A failed replacement leaves the previous cache intact and removes its temp file.
+        before = cache.read_bytes()
+        with patch.object(composio_server.os, "replace", side_effect=OSError("read only")):
+            composio_server.persist_tool_hints(approval, [pinned])
+        assert cache.read_bytes() == before
+        assert not list(cache.parent.glob(".tool-hints-*"))
+
+
 def main() -> None:
     key = "test-key-" + uuid.uuid4().hex
     tmp = Path("/tmp/prometh-composio-test")
@@ -260,6 +308,7 @@ def main() -> None:
         shutil.rmtree(tmp)
     tmp.mkdir()
     status_mapping_checks()
+    hint_persistence_checks()
     broker = Broker()
     broker.expected_key = key
     port = broker.serve()
@@ -270,7 +319,7 @@ def main() -> None:
     direct_tmp = tmp / "direct"
     direct_tmp.mkdir()
     anyio.run(direct_checks, direct_tmp, direct, direct_port, key)
-    print(json.dumps({"passed": True, "tests": 3, "mcp": "2.3.0", "executeWithoutApproval": 0}))
+    print(json.dumps({"passed": True, "tests": 4, "mcp": "2.3.0", "executeWithoutApproval": 0}))
 
 
 if __name__ == "__main__":

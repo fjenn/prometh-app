@@ -118,6 +118,7 @@
 		25A5064ED5552EA7DC8A562F /* SafeLocalFileWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E56BA346D88CC58DE21D448 /* SafeLocalFileWriter.swift */; };
 		262B103D41BA05765170C21A /* ChatTranscriptPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0BAEA101D7ED907CE4A2FCF /* ChatTranscriptPresentation.swift */; };
 		276CD3A0BBC5127714E407CA /* ControlPanelDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90494E1AE30EF515482DDBE7 /* ControlPanelDependencies.swift */; };
+		27B612489E9205DF5C34A613 /* ConnectorApprovalCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28F6436853D83CCC5EF7DEC3 /* ConnectorApprovalCard.swift */; };
 		28197A70541BE1F1F482BCF4 /* PDFDocumentTextExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCB2C50E190D5DBA2E237FB2 /* PDFDocumentTextExtractor.swift */; };
 		28FA870CA6BE85C4BC41F77B /* FirecrawlBrowsingProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 195075F70CCB0E7DE02934DF /* FirecrawlBrowsingProvider.swift */; };
 		290E09A7AB40D3D4755EAE40 /* ControlPanelDependencyOwnershipTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18D567A929D30844940A94F4 /* ControlPanelDependencyOwnershipTests.swift */; };
@@ -891,6 +892,7 @@
 		27D63523BA62CC95FDD8D51E /* FnControlShortcutMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FnControlShortcutMonitor.swift; sourceTree = "<group>"; };
 		27F42CEC1B39477AC13352E3 /* NativExtensionStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativExtensionStateStore.swift; sourceTree = "<group>"; };
 		28E03D8A56F9599760BFA6E2 /* ChatGitHubPullRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatGitHubPullRequest.swift; sourceTree = "<group>"; };
+		28F6436853D83CCC5EF7DEC3 /* ConnectorApprovalCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectorApprovalCard.swift; sourceTree = "<group>"; };
 		2A1B515ECDF21B3616E5A3D1 /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
 		2A1E6ED5DB03C63851E6AAE2 /* ChatSearchFilesToolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSearchFilesToolTests.swift; sourceTree = "<group>"; };
 		2A876C6D832E392C40F6154E /* HuggingFaceDownloadCapacity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuggingFaceDownloadCapacity.swift; sourceTree = "<group>"; };
@@ -1547,6 +1549,7 @@
 			isa = PBXGroup;
 			children = (
 				A7588AD2D8B8F87838C9CA73 /* ComposerEditor.swift */,
+				28F6436853D83CCC5EF7DEC3 /* ConnectorApprovalCard.swift */,
 				35CF19ED2FAA4F3662AB2072 /* ConnectorConsentCard.swift */,
 				2D195873B91E1AFFC797188F /* Design.swift */,
 				791971081814E7E2C6AE6943 /* Domain.swift */,
@@ -2785,6 +2788,7 @@
 				FD18166B4B3FAEB77E0D8C69 /* CodexCLIProfile.swift in Sources */,
 				3B72A00498574595EB2539F2 /* ComposerDraftSync.swift in Sources */,
 				F9BDEE50A3A79D2E69B5E3B3 /* ComposerEditor.swift in Sources */,
+				27B612489E9205DF5C34A613 /* ConnectorApprovalCard.swift in Sources */,
 				D39076C40BCFAC2043DEC523 /* ConnectorConsentCard.swift in Sources */,
 				5196EA3B5CC4CE166899FE19 /* ControlPanelActions.swift in Sources */,
 				276CD3A0BBC5127714E407CA /* ControlPanelDependencies.swift in Sources */,

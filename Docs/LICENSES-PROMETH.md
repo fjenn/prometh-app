@@ -14,6 +14,8 @@ Weights are downloaded by the user at the catalog revision. They are not in git.
 | Readability.js (Mozilla) | Apache-2.0 | `Sources/Prometh/Resources/Readability.js` |
 | llama.cpp `b11669` | MIT | not vendored; `PromethRuntime/llama/SOURCE.md` |
 | FastVideo `8db2d71ef217e84bec7dbb6e4ab65c92b144df4f` | Apache-2.0 | not vendored; `PromethRuntime/media/SOURCE.md` |
+| Goose approval layout, `8a16788` (block/goose) | Apache-2.0 | `Docs/licenses/Goose-Apache-2.0.txt`; adapted in `ConnectorApprovalCard.swift` |
+| LibreChat approval layout, `8d3da9b` | MIT, © 2026 LibreChat | `Docs/licenses/LibreChat-MIT.txt`; adapted in `ConnectorApprovalCard.swift` |
 | MCP Python SDK 2.3.0 | MIT | `PromethRuntime/composio_mcp/requirements.lock` |
 | mflux, MLX, mlx-vlm, mlx-audio | MIT | Nativ already ships these notices |
 | Gemma 4 E4B | Gemma Terms of Use | catalog download |

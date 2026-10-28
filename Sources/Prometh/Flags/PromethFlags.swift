@@ -25,6 +25,7 @@ enum PromethFlags {
         case artifactsLibrary
         case keyedSearchProviders
         case composio
+        case legacyConnectorApprovalSheet
         case evilMode
         case video
         case voice
@@ -50,6 +51,7 @@ enum PromethFlags {
         .artifactsLibrary: false,
         .keyedSearchProviders: true,
         .composio: false,
+        .legacyConnectorApprovalSheet: false,
         .evilMode: true,
         .video: true,
         .voice: true,
@@ -97,6 +99,7 @@ enum PromethFlags {
     static var meetingRecorder: Bool { isOn(.meetingRecorder) }
     static var artifactsLibrary: Bool { isOn(.artifactsLibrary) }
     static var keyedSearchProviders: Bool { isOn(.keyedSearchProviders) }
+    static var legacyConnectorApprovalSheet: Bool { isOn(.legacyConnectorApprovalSheet) }
     static var composio: Bool { isOn(.composio) }
     static var evilMode: Bool { isOn(.evilMode) }
     static var video: Bool { isOn(.video) }

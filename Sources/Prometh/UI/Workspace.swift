@@ -21,7 +21,7 @@ struct WorkspaceView: View {
             .confirmationDialog("Delete this conversation?",isPresented:Binding(get:{deleting != nil},set:{if !$0{deleting=nil}})){Button("Delete conversation",role:.destructive){if let id=deleting{store.delete(id)};deleting=nil};Button("Cancel",role:.cancel){deleting=nil}}message:{Text("This removes it from your history.")}
             .sheet(isPresented:$sourcePreview){VStack(alignment:.leading,spacing:20){Text("Connected apps").font(.title2);ConnectorsList(store:store);Button("Done"){sourcePreview=false}}.padding(32).frame(width:460)}
             // Legacy modal kept compiled; usesModalSheet is false so the binding stays nil.
-            .sheet(item:Binding(get:{PromethConnectorApproval.usesModalSheet ? store.pendingConnectorApproval : nil},set:{if $0 == nil {store.connectorSheetDismissed()}})){_ in VStack(alignment:.leading,spacing:20){Text("Approve connected-app action").font(.title2);Text("This action is sent only after you approve it.").foregroundStyle(.secondary);HStack{Button("Deny"){store.denyConnector()}.keyboardShortcut(.cancelAction);Spacer();Button("Approve"){store.approveConnector()}.keyboardShortcut(.defaultAction).buttonStyle(PrimaryButton())}}.padding(28).frame(width:460).accessibilityIdentifier("prometh.connector.approval")}
+            .sheet(item:Binding(get:{PromethFlags.legacyConnectorApprovalSheet ? store.pendingConnectorApproval : nil},set:{if $0 == nil {store.connectorSheetDismissed()}})){_ in VStack(alignment:.leading,spacing:20){Text("Approve connected-app action").font(.title2);Text("This action is sent only after you approve it.").foregroundStyle(.secondary);HStack{Button("Deny"){store.denyConnector()}.keyboardShortcut(.cancelAction);Spacer();Button("Approve"){store.approveConnector()}.keyboardShortcut(.defaultAction).buttonStyle(PrimaryButton())}}.padding(28).frame(width:460).accessibilityIdentifier("prometh.connector.approval")}
     }
     func commitRename(){if let id=renaming{store.rename(id,renameText)};renaming=nil}
     var sidebarView:some View {
@@ -126,7 +126,7 @@ struct WorkspaceView: View {
                 }.opacity(hoveredMessage==m.id || copiedMessage==m.id ? 1:0.25)
             }
         } else if let card = m.connectorCard {
-                ConnectorConsentCard(store:store,messageID:m.id,card:card)
+                ConnectorApprovalCard(store:store,messageID:m.id,card:card)
             } else {
                 HStack(spacing:8){Text(Product.name).font(.system(size:11,weight:.semibold));if m.status=="streaming"{Text("· Writing").font(.system(size:10)).foregroundStyle(.secondary)}}
                 formattedText(m)

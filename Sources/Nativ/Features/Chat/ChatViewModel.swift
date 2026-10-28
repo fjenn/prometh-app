@@ -3005,35 +3005,27 @@ final class ChatViewModel: ObservableObject {
                 var operation = ChatToolOperation.classify(
                     toolName: toolName, customKind: customTool?.kind, workAction: workRequest?.action,
                     isMCP: isMCP, usesNativeFilesystem: usesNativeFilesystem, protectedWrite: protectedWrite)
-                // PROMETH-SEAM: S15 — connector writes need consent in every access mode
-                // (inline card). Reads and always-allowed writes skip the prompt; the
-                // approval token is still stamped before execute below.
-                let connectorSlug = PromethConnectorApproval.isExecute(toolName)
-                    ? PromethConnectorApproval.actionSlug(from: toolCall.function?.arguments)
-                    : nil
-                if let connectorSlug {
-                    let prior = (sessionMessages(for: queuedRequest.sessionID) ?? []).map {
-                        (toolName: $0.toolName, content: $0.content)
-                    }
-                    let tags = PromethConnectorApproval.tags(for: connectorSlug, in: prior)
-                    if !PromethConnectorActionPolicy.skipsConsent(
-                        slug: connectorSlug,
-                        tags: tags,
-                        alwaysAllowed: PromethConnectorApproval.alwaysAllowed
+                // PROMETH-SEAM: S15 — reads and remembered writes bypass consent entirely.
+                // Other connector actions use the existing gate in every access mode.
+                let isConnector = PromethConnectorApproval.isExecute(toolName)
+                let connectorSlug = PromethConnectorApproval.actionSlug(from: toolCall.function?.arguments) ?? "UNKNOWN"
+                let connectorHint = isConnector ? PromethConnectorApproval.hint(for: connectorSlug) : nil
+                let connectorDecision = isConnector ? PromethConnectorActionPolicy.decision(
+                    slug: connectorSlug, hint: connectorHint,
+                    alwaysAllowed: PromethConnectorApproval.alwaysAllowed
+                ) : nil
+                if connectorDecision == .needsCard { operation = .command }
+                let consent: ChatToolConsentOutcome
+                if connectorDecision == .run {
+                    consent = .approved
+                } else {
+                    consent = await toolConsentGate.authorize(
+                        operation, mode: queuedRequest.accessMode, id: toolMessageID, sessionID: queuedRequest.sessionID
                     ) {
-                        operation = .command
-                    } else {
-                        operation = .routine
+                        updateToolMessage(toolMessageID, in: queuedRequest.sessionID, status: .awaitingConsent,
+                                          content: workConsentContent(for: toolCall, in: queuedRequest.sessionID,
+                                                                      resolved: workRequest), attachments: [])
                     }
-                } else if PromethConnectorApproval.isExecute(toolName) {
-                    operation = .command
-                }
-                let consent = await toolConsentGate.authorize(
-                    operation, mode: queuedRequest.accessMode, id: toolMessageID, sessionID: queuedRequest.sessionID
-                ) {
-                    updateToolMessage(toolMessageID, in: queuedRequest.sessionID, status: .awaitingConsent,
-                                      content: workConsentContent(for: toolCall, in: queuedRequest.sessionID,
-                                                                  resolved: workRequest), attachments: [])
                 }
                 switch consent {
                 case .cancelled:
@@ -3050,7 +3042,13 @@ final class ChatViewModel: ObservableObject {
                     } else if toolName == ChatSwitchModelToolRegistry.toolName {
                         content = ChatSwitchModelToolExecutor().declinedPayload()
                     } else if PromethConnectorApproval.isExecute(toolName) {
-                        content = PromethConnectorApproval.declinedPayload
+                        // PROMETH-SEAM: S15 — give the model a specific, truthful decline result.
+                        content = PromethConnectorActionPolicy.declinedPayload(
+                            actionName: PromethConnectorDescription.actionName(slug: connectorSlug, hint: connectorHint),
+                            appName: PromethConnectorDescription.appName(
+                                PromethConnectorActionPolicy.toolkit(from: connectorSlug, metadata: connectorHint?.toolkit)
+                            )
+                        )
                     } else {
                         content = #"{"ok":false,"error":"The user declined to run this tool."}"#
                     }
@@ -3058,7 +3056,7 @@ final class ChatViewModel: ObservableObject {
                                       content: content, attachments: [])
                     continue
                 case .approved:
-                    if queuedRequest.accessMode.requiresApproval(for: operation) {
+                    if connectorDecision == .needsCard || (connectorDecision == nil && queuedRequest.accessMode.requiresApproval(for: operation)) {
                         updateToolMessage(toolMessageID, in: queuedRequest.sessionID, status: .running,
                                           content: "", attachments: [])
                     }
@@ -3220,7 +3218,7 @@ final class ChatViewModel: ObservableObject {
                         host.handlesTool(named: toolName)
                     {
                         var argumentsJSON = toolCall.function?.arguments
-                        // PROMETH-SEAM: S15 — stamp the approval token only after consent.
+                        // PROMETH-SEAM: S15 — stamp after policy permits execution or consent is granted.
                         // A value supplied by the model is overwritten. The token is not logged.
                         if PromethConnectorApproval.isExecute(toolName) {
                             argumentsJSON = PromethConnectorApproval.stamp(

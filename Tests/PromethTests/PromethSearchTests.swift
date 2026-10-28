@@ -88,6 +88,14 @@ final class PromethSearchTests: XCTestCase {
         XCTAssertTrue(
             PromethVisibleReply.turnInFlight(after: assistantID, in: snapshots, requestActive: false)
         )
+        // Inline connector approval can remain pending while the request is suspended.
+        let connectorPending = PromethVisibleReply.row(
+            content: "", streaming: false, hasToolCalls: true, laterAnswer: false,
+            turnInFlight: PromethVisibleReply.turnInFlight(after: assistantID, in: snapshots, requestActive: false)
+        )
+        XCTAssertTrue(connectorPending.omit)
+        XCTAssertNotEqual(connectorPending.status, "failed")
+
         XCTAssertTrue(
             PromethVisibleReply.turnInFlight(after: assistantID, in: snapshots, requestActive: true)
         )

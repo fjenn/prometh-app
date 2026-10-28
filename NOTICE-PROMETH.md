@@ -19,3 +19,5 @@ Pocket TTS uses Kyutai weights under CC-BY-4.0 and Kyutai code under MIT. Whispe
 ffmpeg is used only when it is already installed on the machine. Prometh does not bundle it.
 
 Component details are in `Docs/LICENSES-PROMETH.md`.
+
+The inline connector approval layout is adapted from block/goose ToolApprovalButtons (Apache-2.0, revision 8a16788) and LibreChat ToolApproval (MIT, revision 8d3da9b; © 2026 LibreChat). See `Docs/LICENSES-PROMETH.md` and `Docs/licenses/` for license texts.

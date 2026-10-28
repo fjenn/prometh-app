@@ -1,235 +1,161 @@
 import Foundation
 
-/// Whether a Composio action is a read or a mutating write.
-enum PromethConnectorKind: String, Equatable, Sendable {
-    case read
-    case write
-}
-
-/// Classifies `connectors_execute` action slugs using Composio tags when present,
-/// otherwise a write-verb heuristic on the slug words.
+/// Pure policy: metadata wins; otherwise the first known action verb decides.
 enum PromethConnectorActionPolicy {
-    /// Composio / MCP hint tags. Either form is accepted.
-    /// Composio tags seen live: readOnlyHint (LIST/FETCH), createHint (CREATE_AN_ISSUE,
-    /// SEND_EMAIL), updateHint (STAR_A_REPOSITORY), destructiveHint (DELETE_*).
-    static let destructiveHints: Set<String> = [
-        "destructiveHint", "destructive_hint", "DestructiveHint",
-        "createHint", "updateHint", "deleteHint",
-    ]
-    static let readOnlyHints: Set<String> = [
-        "readOnlyHint", "read_only_hint", "ReadOnlyHint", "readonly",
-    ]
+    enum Effect: String, Equatable, Sendable { case read, write }
+    enum Decision: Equatable { case run, needsCard }
 
-    /// Verbs that mark a write. A write verb wins over any read word in the same slug.
-    static let writeVerbs: Set<String> = [
-        "CREATE", "UPDATE", "DELETE", "REMOVE", "SEND", "POST", "REPLY", "FORWARD",
-        "MERGE", "CLOSE", "REOPEN", "TRANSFER", "PAY", "PAYMENT", "CHARGE", "REFUND",
-        "INVITE", "SHARE", "ADD", "EDIT", "MODIFY", "PATCH", "PUT", "MOVE", "RENAME",
-        "ARCHIVE", "TRASH", "STAR", "APPROVE", "DISMISS", "ASSIGN", "UNASSIGN",
-        "LOCK", "UNLOCK", "FORK", "PUBLISH", "UPLOAD", "REVOKE", "CANCEL", "ACCEPT",
-        "DECLINE", "SUBMIT", "DISPATCH", "RERUN", "TRIGGER", "ENABLE", "DISABLE",
-        "SET", "BLOCK", "UNBLOCK", "FOLLOW", "UNFOLLOW", "MARK", "IMPORT", "REPLACE",
-        "INSERT", "EXECUTE", "RUN", "DEPLOY", "WRITE", "COMMENT", "REACT", "VOTE",
-        "SUBSCRIBE", "UNSUBSCRIBE", "MUTE", "SCHEDULE", "CLEAR", "RESET", "PURGE",
-        "EMPTY", "DESTROY", "BATCH_MODIFY",
-    ]
-
-    /// Lowercase toolkit prefix before the first `_` (e.g. `github`).
-    static func toolkit(from slug: String) -> String {
-        let trimmed = slug.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let index = trimmed.firstIndex(of: "_") else {
-            return trimmed.lowercased()
-        }
-        return String(trimmed[..<index]).lowercased()
+    struct Hint: Codable, Equatable {
+        var tags: [String]?
+        var name: String?
+        var toolkit: String?
     }
 
-    /// Persisted always-allow key: `toolkit:ACTION_SLUG`.
+    struct Action {
+        let slug: String
+        let arguments: [String: Any]
+    }
+
+    static let readVerbs: Set<String> = [
+        "LIST", "GET", "SEARCH", "FETCH", "FIND", "READ", "RETRIEVE", "QUERY", "CHECK",
+        "COUNT", "DESCRIBE", "VIEW", "LOOKUP", "SHOW", "DOWNLOAD",
+    ]
+    static let writeVerbs: Set<String> = [
+        "CREATE", "UPDATE", "DELETE", "REMOVE", "SEND", "SENDS", "POST", "PUT", "PATCH",
+        "MERGE", "TRANSFER", "INVITE", "SHARE", "ADD", "EDIT", "MODIFY", "REPLY",
+        "FORWARD", "MOVE", "ARCHIVE", "TRASH", "UPLOAD", "PUBLISH", "CLOSE", "REOPEN",
+        "LOCK", "UNLOCK", "REVOKE", "APPROVE", "DISMISS", "CANCEL", "EXECUTE", "RUN",
+        "TRIGGER", "DISPATCH", "SET", "ENABLE", "DISABLE", "FOLLOW", "UNFOLLOW", "STAR",
+        "UNSTAR", "ACCEPT", "DECLINE", "MARK", "ASSIGN", "UNASSIGN", "RENAME", "COPY",
+        "IMPORT", "SUBMIT", "PAY", "SCHEDULE", "INSERT", "REPLACE", "RESTORE", "CLEAR",
+        "BLOCK", "UNBLOCK", "WATCH", "SUBSCRIBE", "UNSUBSCRIBE", "LABEL", "PIN", "UNPIN",
+        "REACT", "COMMENT", "DRAFT", "FORK",
+    ]
+
+    static func parse(argumentsJSON: String?) -> Action? {
+        guard let argumentsJSON, let data = argumentsJSON.data(using: .utf8),
+              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let raw = root["tool"] as? String else { return nil }
+        let slug = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !slug.isEmpty else { return nil }
+        var arguments: [String: Any] = [:]
+        if let nested = root["arguments_json"] as? String,
+           let data = nested.data(using: .utf8),
+           let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            arguments = object
+        } else if let object = root["arguments_json"] as? [String: Any] {
+            arguments = object
+        }
+        return Action(slug: slug, arguments: arguments)
+    }
+
+    static func classify(slug: String, tags: [String]? = nil) -> Effect {
+        let hints = Set((tags ?? []).map { $0.lowercased() })
+        if !hints.isDisjoint(with: ["destructivehint", "createhint", "updatehint", "deletehint"]) {
+            return .write
+        }
+        if hints.contains("readonlyhint") { return .read }
+        for token in tokens(slug).dropFirst() {
+            if readVerbs.contains(token) { return .read }
+            if writeVerbs.contains(token) { return .write }
+        }
+        // Unknown actions (including EXPORT) fail safe: show the approval card.
+        return .write
+    }
+
+    static func toolkit(from slug: String, metadata: String? = nil) -> String {
+        if let metadata, !metadata.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return metadata.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        }
+        let words = tokens(slug)
+        let verb = words.indices.dropFirst().first { readVerbs.contains(words[$0]) || writeVerbs.contains(words[$0]) }
+        return words.prefix(verb ?? min(1, words.count)).joined().lowercased()
+    }
+
+    static func decision(slug: String, hint: Hint? = nil, alwaysAllowed: Set<String> = []) -> Decision {
+        if classify(slug: slug, tags: hint?.tags) == .read { return .run }
+        let key = alwaysAllowKey(toolkit: toolkit(from: slug, metadata: hint?.toolkit), action: slug)
+        return alwaysAllowed.contains { $0.lowercased() == key.lowercased() } ? .run : .needsCard
+    }
+
+    static func skipsConsent(slug: String, tags: [String]? = nil, alwaysAllowed: Set<String> = []) -> Bool {
+        decision(slug: slug, hint: Hint(tags: tags), alwaysAllowed: alwaysAllowed) == .run
+    }
+
     static func alwaysAllowKey(toolkit: String, action: String) -> String {
         "\(toolkit.lowercased()):\(action.uppercased())"
     }
-
     static func alwaysAllowKey(for slug: String) -> String {
         alwaysAllowKey(toolkit: toolkit(from: slug), action: slug)
     }
-
-    static func classify(slug: String, tags: [String]? = nil) -> PromethConnectorKind {
-        if let tags, !tags.isEmpty {
-            let normalized = Set(tags.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) })
-            if !normalized.isDisjoint(with: destructiveHints) {
-                return .write
-            }
-            if !normalized.isDisjoint(with: readOnlyHints) {
-                return .read
-            }
-        }
-        return classifyByName(slug)
+    private static func tokens(_ slug: String) -> [String] {
+        slug.trimmingCharacters(in: .whitespacesAndNewlines).uppercased().split(separator: "_").map(String.init)
     }
-
-    /// Unknown names default to read: only clear write verbs or write hints ask first.
-    /// True when the action should run without a consent prompt.
-    static func skipsConsent(
-        slug: String,
-        tags: [String]? = nil,
-        alwaysAllowed: Set<String> = []
-    ) -> Bool {
-        let kind = classify(slug: slug, tags: tags)
-        if kind == .read { return true }
-        let key = alwaysAllowKey(for: slug).lowercased()
-        return alwaysAllowed.contains { $0.lowercased() == key }
-    }
-
-    private static func classifyByName(_ slug: String) -> PromethConnectorKind {
-        let words = actionWords(slug)
-        if words.contains(where: { writeVerbs.contains($0) }) {
-            return .write
-        }
-        return .read
-    }
-
-    /// Words after the toolkit prefix, split on `_`.
     static func actionWords(_ slug: String) -> [String] {
-        let trimmed = slug.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-        guard let index = trimmed.firstIndex(of: "_") else { return [trimmed].filter { !$0.isEmpty } }
-        let rest = trimmed[trimmed.index(after: index)...]
-        return rest.split(separator: "_").map(String.init).filter { !$0.isEmpty }
+        let words = tokens(slug)
+        let index = words.indices.dropFirst().first { readVerbs.contains(words[$0]) || writeVerbs.contains(words[$0]) }
+        return Array(words.dropFirst(index ?? min(1, words.count)))
+    }
+
+    static func declinedPayload(actionName: String, appName: String) -> String {
+        let object: [String: Any] = [
+            "ok": false, "executed": false, "declined": true,
+            "error": "The user chose not to allow \(actionName) in \(appName). Nothing was sent. Briefly tell them it was not done.",
+        ]
+        return String(decoding: try! JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]), as: UTF8.self)
     }
 }
 
-/// One-line plain description for the inline connector consent card.
 enum PromethConnectorDescription {
-    private static let preferredArgumentKeys = [
-        "owner", "repo", "repository", "title", "to", "recipient", "subject",
-        "name", "path", "channel", "channel_id", "issue_number", "pull_number",
-        "query", "body",
-    ]
-
-    static func line(
-        slug: String,
-        argumentsJSON: String?,
-        toolkitDisplayName: String? = nil
-    ) -> String {
-        let toolkit = PromethConnectorActionPolicy.toolkit(from: slug)
-        let app = toolkitDisplayName ?? Self.defaultToolkitName(toolkit)
-        let action = humanizeAction(slug, appName: app)
-        let detail = argumentSummary(from: argumentsJSON)
-        if detail.isEmpty {
-            return action
+    static func actionName(slug: String, hint: PromethConnectorActionPolicy.Hint? = nil) -> String {
+        if let name = hint?.name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
+            return oneLine(name)
         }
-        return "\(action) \(detail)"
+        return humanizeAction(slug)
     }
 
-    /// e.g. GITHUB_CREATE_AN_ISSUE → "Create a GitHub issue"
     static func humanizeAction(_ slug: String, appName: String? = nil) -> String {
         var words = PromethConnectorActionPolicy.actionWords(slug).map { $0.lowercased() }
-        guard !words.isEmpty else { return "Run connected-app action" }
-        // Drop trailing "for the authenticated user" noise.
         let noise = ["for", "the", "authenticated", "user"]
-        while words.count >= noise.count,
-              Array(words.suffix(noise.count)) == noise {
-            words.removeLast(noise.count)
-        }
-        let app = appName ?? defaultToolkitName(PromethConnectorActionPolicy.toolkit(from: slug))
-        // Insert the app name after the first article (or after the verb).
-        if let articleIndex = words.firstIndex(where: { $0 == "a" || $0 == "an" || $0 == "the" }),
-           articleIndex + 1 < words.count {
-            if words[articleIndex] != "the" {
-                let vowel = app.lowercased().first.map { "aeiou".contains($0) } ?? false
-                words[articleIndex] = vowel ? "an" : "a"
-            }
-            words.insert(app, at: articleIndex + 1)
-        } else if words.count >= 1 {
-            words.insert(app, at: min(1, words.count))
-        }
-        return words.enumerated().map { index, word -> String in
-            if index == 0 {
-                return word.prefix(1).uppercased() + word.dropFirst()
-            }
-            switch word {
-            case "a", "an", "the", "for", "of", "in", "to", "on", "by", "with":
-                return word
-            default:
-                if word == app { return app }
-                return word
-            }
-        }.joined(separator: " ")
+        if words.suffix(noise.count) == noise[...] { words.removeLast(noise.count) }
+        let text = words.joined(separator: " ")
+        return text.isEmpty ? "Run connected-app action" : text.prefix(1).uppercased() + text.dropFirst()
     }
 
-    private static func defaultToolkitName(_ toolkit: String) -> String {
+    static func appName(_ toolkit: String) -> String {
         switch toolkit {
-        case "github": return "GitHub"
-        case "gmail": return "Gmail"
-        case "slack": return "Slack"
-        case "linear": return "Linear"
-        case "notion": return "Notion"
-        case "googledrive", "google_drive": return "Google Drive"
-        default:
-            guard !toolkit.isEmpty else { return "connected app" }
-            return toolkit.prefix(1).uppercased() + toolkit.dropFirst()
+        case "github": "GitHub"
+        case "gmail": "Gmail"
+        case "googledrive": "Google Drive"
+        default: toolkit.isEmpty ? "connected app" : toolkit.prefix(1).uppercased() + toolkit.dropFirst()
         }
     }
 
-    private static func argumentSummary(from argumentsJSON: String?) -> String {
-        guard let object = nestedArguments(from: argumentsJSON) else { return "" }
-        let owner = stringValue(object["owner"])
-        let repo = stringValue(object["repo"]) ?? stringValue(object["repository"])
-        var pieces: [String] = []
-        if let owner, let repo, !owner.isEmpty, !repo.isEmpty {
-            pieces.append("in \(owner)/\(repo)")
-        } else if let repo, !repo.isEmpty {
-            pieces.append("in \(repo)")
+    static func detail(arguments: [String: Any]) -> String {
+        func value(_ key: String) -> String? {
+            if let text = arguments[key] as? String { return oneLine(text) }
+            if let list = arguments[key] as? [String] { return oneLine(list.joined(separator: ", ")) }
+            return nil
         }
-        if let title = stringValue(object["title"]), !title.isEmpty {
-            pieces.append("titled “\(truncate(title))”")
+        var parts: [String] = []
+        if let repo = value("owner_repo") { parts.append(repo) }
+        else if let repo = value("repo") ?? value("repository") {
+            parts.append(value("owner").map { "\($0)/\(repo)" } ?? repo)
         }
-        if let to = stringValue(object["to"]) ?? stringValue(object["recipient"]), !to.isEmpty {
-            pieces.append("to \(truncate(to))")
+        for key in ["title", "to", "subject", "channel"] {
+            if let text = value(key), !text.isEmpty { parts.append(text) }
         }
-        if let subject = stringValue(object["subject"]), !subject.isEmpty {
-            pieces.append("subject “\(truncate(subject))”")
-        }
-        if pieces.isEmpty {
-            for key in preferredArgumentKeys {
-                guard let value = stringValue(object[key]), !value.isEmpty else { continue }
-                if key == "owner" || key == "repo" || key == "repository"
-                    || key == "title" || key == "to" || key == "recipient" || key == "subject" {
-                    continue
-                }
-                pieces.append("\(key.replacingOccurrences(of: "_", with: " ")) \(truncate(value))")
-                break
-            }
-        }
-        return pieces.joined(separator: " ")
+        return oneLine(parts.joined(separator: " · "), limit: 160)
     }
 
-    /// Parses execute args; unwraps nested `arguments_json` string when present.
-    static func nestedArguments(from argumentsJSON: String?) -> [String: Any]? {
-        guard let argumentsJSON,
-              let data = argumentsJSON.data(using: .utf8),
-              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else { return nil }
-        if let nested = root["arguments_json"] as? String,
-           let nestedData = nested.data(using: .utf8),
-           let object = try? JSONSerialization.jsonObject(with: nestedData) as? [String: Any] {
-            return object
-        }
-        if let nested = root["arguments"] as? [String: Any] {
-            return nested
-        }
-        return root
+    static func line(slug: String, argumentsJSON: String?, toolkitDisplayName: String? = nil) -> String {
+        let detail = detail(arguments: PromethConnectorActionPolicy.parse(argumentsJSON: argumentsJSON)?.arguments ?? [:])
+        return [humanizeAction(slug), detail].filter { !$0.isEmpty }.joined(separator: " · ")
     }
 
-    private static func stringValue(_ raw: Any?) -> String? {
-        switch raw {
-        case let value as String: return value
-        case let value as NSNumber: return value.stringValue
-        default: return nil
-        }
-    }
-
-    private static func truncate(_ value: String, limit: Int = 48) -> String {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.count > limit else { return trimmed }
-        return String(trimmed.prefix(limit - 1)) + "…"
+    private static func oneLine(_ value: String, limit: Int = 80) -> String {
+        let text = value.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        return text.count > limit ? String(text.prefix(limit - 1)) + "…" : text
     }
 }
 

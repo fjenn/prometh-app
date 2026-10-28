@@ -76,6 +76,9 @@ struct ConnectorCard: Codable, Equatable {
     var logoURL: String?
     /// awaitingConsent | declined | running | succeeded | failed
     var phase: String
+    var appName: String? = nil
+    var detail: String? = nil
+    var decision: String? = nil
 }
 
 struct Message: Identifiable, Codable, Equatable {

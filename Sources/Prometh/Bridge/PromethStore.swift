@@ -35,6 +35,7 @@ final class PromethStore: ObservableObject {
     @Published var modelDetails: [String: String] = [:]
     /// Tool message IDs that showed an inline connector card (keeps running/done visible).
     private var connectorCardIDs: Set<UUID> = []
+    private var connectorDecisions: [UUID: String] = [:]
 
     let macSpecs = MacSpecs.read()
     let persistence: Persistence
@@ -136,41 +137,49 @@ final class PromethStore: ObservableObject {
         connectorHost.apply(brokerURL: brokerURL)
     }
 
-    func approveConnector() {
-        let id = pendingConnectorApproval?.id ?? inlineAwaitingConnectorID()
-        guard let id else { return }
-        connectorCardIDs.insert(id)
-        chat.confirmToolConsent(id)
-    }
+    func approveConnector() { allowConnectorOnce() }
 
-    /// Persist always-allow for this action, then approve the waiting tool.
+    /// Save the exact toolkit/action scope before resuming the suspended tool.
     func alwaysAllowConnector(_ id: UUID? = nil) {
-        let toolID = id ?? pendingConnectorApproval?.id ?? inlineAwaitingConnectorID()
-        guard let toolID,
-              let message = chat.messages.first(where: { $0.id == toolID }),
-              let slug = PromethConnectorApproval.actionSlug(from: message.toolArguments)
-        else { return }
-        let key = PromethConnectorActionPolicy.alwaysAllowKey(for: slug)
-        var keys = state.connectorAlwaysAllow ?? []
-        keys = PromethConnectorAlwaysAllow.adding(key, to: keys)
-        state.connectorAlwaysAllow = keys
-        PromethConnectorApproval.syncAlwaysAllowed(keys)
-        connectorCardIDs.insert(toolID)
-        chat.confirmToolConsent(toolID)
+        guard let message = waitingConnector(id) else { return }
+        let slug = PromethConnectorApproval.actionSlug(from: message.toolArguments) ?? "UNKNOWN"
+        let hint = PromethConnectorApproval.hint(for: slug)
+        let toolkit = PromethConnectorActionPolicy.toolkit(from: slug, metadata: hint?.toolkit)
+        let key = PromethConnectorActionPolicy.alwaysAllowKey(toolkit: toolkit, action: slug)
+        var next = state
+        next.connectorAlwaysAllow = PromethConnectorAlwaysAllow.adding(key, to: state.connectorAlwaysAllow ?? [])
+        do { try persistence.save(next) }
+        catch {
+            self.error = "This approval could not be saved. \(error.localizedDescription)"
+            return
+        }
+        state = next
+        connectorCardIDs.insert(message.id)
+        connectorDecisions[message.id] = "Always allowed"
+        chat.confirmToolConsent(message.id)
     }
 
     func allowConnectorOnce(_ id: UUID? = nil) {
-        let toolID = id ?? pendingConnectorApproval?.id ?? inlineAwaitingConnectorID()
-        guard let toolID else { return }
-        connectorCardIDs.insert(toolID)
-        chat.confirmToolConsent(toolID)
+        guard let message = waitingConnector(id) else { return }
+        connectorCardIDs.insert(message.id)
+        connectorDecisions[message.id] = "Allowed once"
+        chat.confirmToolConsent(message.id)
     }
 
-    func denyConnector(_ id: UUID? = nil) {
+    func declineConnector(_ id: UUID? = nil) {
+        guard let message = waitingConnector(id) else { return }
+        connectorCardIDs.insert(message.id)
+        connectorDecisions[message.id] = "Not allowed"
+        chat.denyToolConsent(message.id)
+    }
+
+    func denyConnector(_ id: UUID? = nil) { declineConnector(id) }
+
+    private func waitingConnector(_ id: UUID?) -> ChatTranscriptMessage? {
         let toolID = id ?? pendingConnectorApproval?.id ?? inlineAwaitingConnectorID()
-        guard let toolID else { return }
-        connectorCardIDs.insert(toolID)
-        chat.denyToolConsent(toolID)
+        return chat.messages.first {
+            $0.id == toolID && $0.toolStatus == .awaitingConsent && PromethConnectorApproval.isExecute($0.toolName)
+        }
     }
 
     /// A swipe-away denies only while the tool is still waiting. An approval
@@ -183,7 +192,7 @@ final class PromethStore: ObservableObject {
         chat.denyToolConsent(id)
     }
 
-    func resetConnectorApprovals(toolkit: String) {
+    func resetConnectorAlwaysAllow(toolkit: String) {
         let keys = PromethConnectorAlwaysAllow.resetting(
             toolkit: toolkit,
             in: state.connectorAlwaysAllow ?? []
@@ -1170,9 +1179,7 @@ final class PromethStore: ObservableObject {
     }
 
     private func showsConnectorCard(_ message: ChatTranscriptMessage) -> Bool {
-        guard PromethConnectorApproval.isExecute(message.toolName),
-              PromethConnectorApproval.actionSlug(from: message.toolArguments) != nil
-        else { return false }
+        guard PromethConnectorApproval.isExecute(message.toolName) else { return false }
         // Only writes ever wait for consent, so a waiting/declined row is always a card.
         switch message.toolStatus {
         case .awaitingConsent, .declined:
@@ -1791,20 +1798,24 @@ except Exception as error:
                         return nil
                     }
                 }
-                if showsConnectorCard(message),
-                   let slug = PromethConnectorApproval.actionSlug(from: message.toolArguments) {
-                    let toolkit = PromethConnectorActionPolicy.toolkit(from: slug)
-                    let logo = ToolkitCatalog.cachedLogoURL(for: toolkit)?.absoluteString
+                if showsConnectorCard(message) {
+                    let slug = PromethConnectorApproval.actionSlug(from: message.toolArguments) ?? "UNKNOWN"
+                    let hint = PromethConnectorApproval.hint(for: slug)
+                    let toolkit = PromethConnectorActionPolicy.toolkit(from: slug, metadata: hint?.toolkit)
+                    let catalog = try? ToolkitCatalog.readCache(at: persistence.directory.appendingPathComponent("connectors/toolkits-v1.json"))
+                    let app = catalog?.items.first { $0.slug.lowercased() == toolkit }
+                    let actionName = PromethConnectorDescription.actionName(slug: slug, hint: hint)
                     let phase = message.toolStatus?.rawValue ?? "running"
                     item.connectorCard = ConnectorCard(
                         toolkit: toolkit,
                         action: slug,
-                        summary: PromethConnectorDescription.line(
-                            slug: slug,
-                            argumentsJSON: message.toolArguments
-                        ),
-                        logoURL: logo,
-                        phase: phase
+                        summary: actionName,
+                        logoURL: app?.logo?.absoluteString,
+                        phase: phase,
+                        appName: app?.name ?? PromethConnectorDescription.appName(toolkit),
+                        detail: PromethConnectorDescription.detail(arguments:
+                            PromethConnectorActionPolicy.parse(argumentsJSON: message.toolArguments)?.arguments ?? [:]),
+                        decision: connectorDecisions[message.id] ?? (phase == "declined" ? "Not allowed" : nil)
                     )
                     item.text = ""
                     item.status = phase == "awaitingConsent" ? "awaitingConsent"

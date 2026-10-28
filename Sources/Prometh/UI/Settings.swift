@@ -235,22 +235,15 @@ struct PluginsPage:View {
                                 }
                             }
                             if !allowed.isEmpty {
-                                VStack(alignment:.leading,spacing:6) {
-                                    Text("Always allowed")
-                                        .font(.system(size:11,weight:.medium))
-                                        .foregroundStyle(.secondary)
-                                    ForEach(allowed,id:\.self){key in
-                                        Text(key.split(separator:":").last.map(String.init) ?? key)
-                                            .font(.system(size:11,design:.monospaced))
-                                            .foregroundStyle(.secondary)
-                                            .lineLimit(1)
-                                    }
-                                    Button("Reset approvals"){store.resetConnectorApprovals(toolkit:toolkit.slug)}
-                                        .font(.system(size:12,weight:.medium))
-                                        .buttonStyle(.plain)
-                                        .foregroundStyle(Color.coral)
-                                        .accessibilityLabel("Reset approvals")
-                                        .accessibilityIdentifier("prometh.plugins.resetApprovals.\(toolkit.slug)")
+                                HStack(spacing:8) {
+                                    Text("Always allowed: " + allowed.map { key in
+                                        let slug=key.split(separator:":").last.map(String.init) ?? key
+                                        return PromethConnectorDescription.actionName(slug:slug,hint:PromethConnectorApproval.hint(for:slug))
+                                    }.joined(separator:", "))
+                                        .font(.system(size:11)).foregroundStyle(.secondary).lineLimit(2)
+                                    Button("Reset"){store.resetConnectorAlwaysAllow(toolkit:toolkit.slug)}
+                                        .font(.system(size:11)).buttonStyle(.plain).foregroundStyle(.secondary)
+                                        .accessibilityIdentifier("prometh.plugins.alwaysAllow.reset.\(toolkit.slug)")
                                 }
                                 .padding(.leading,57)
                             }

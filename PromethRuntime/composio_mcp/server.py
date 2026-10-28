@@ -14,6 +14,7 @@ import json
 import logging
 import os
 import sys
+import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -154,7 +155,58 @@ def toolkit_from_query(query_text: str) -> str:
     return ""
 
 
-def composio_search(query_text: str, user_id: str, api_key: str, toolkit_hint: str = "") -> dict:
+def tool_summary(item: dict) -> dict:
+    toolkit = item.get("toolkit")
+    if isinstance(toolkit, dict):
+        toolkit = toolkit.get("slug")
+    tags = item.get("tags")
+    return {
+        "slug": item["slug"],
+        "name": item.get("name") if isinstance(item.get("name"), str) else "",
+        "description": item.get("human_description") or item.get("description") or "",
+        "input_parameters": item.get("input_parameters", {}),
+        "tags": [tag for tag in tags if isinstance(tag, str)] if isinstance(tags, list) else [],
+        "toolkit": toolkit if isinstance(toolkit, str) else "",
+    }
+
+
+def persist_tool_hints(approval_file: Path, summaries: list[dict], api_key: str = "") -> None:
+    """Only non-secret display/policy metadata; atomically replace a private, bounded cache."""
+    path = approval_file.parent / "tool-hints.json"
+    temporary = None
+    try:
+        try:
+            existing = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            existing = {}
+        hints: dict[str, dict] = {}
+        entries = list(existing.items()) if isinstance(existing, dict) else []
+        entries.extend((item.get("slug"), item) for item in summaries if isinstance(item, dict))
+        for slug, item in entries:
+            if not isinstance(slug, str) or not slug or not isinstance(item, dict):
+                continue
+            summary = tool_summary({**item, "slug": slug})
+            slug = slug.upper()
+            hints.pop(slug, None)  # Most recently discovered actions survive the cap.
+            hints[slug] = {key: summary[key] for key in ("tags", "name", "toolkit")}
+        hints = dict(list(hints.items())[-2000:])
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
+                                         prefix=".tool-hints-", delete=False) as output:
+            temporary = Path(output.name)  # mkstemp creates mode 0600 before any data is written.
+            output.write(redact(json.dumps(hints), api_key))
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(temporary, path)
+    except OSError:
+        # A cache failure must not prevent searching; Swift falls back to the action name.
+        pass
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+def composio_search(query_text: str, user_id: str, api_key: str, toolkit_hint: str = "", approval_file: Path | None = None) -> dict:
     query = {"query": query_text, "limit": "8", "toolkit_versions": "latest"}
     toolkit = toolkit_slug(toolkit_hint) if toolkit_hint else toolkit_from_query(query_text)
     if toolkit:
@@ -177,17 +229,10 @@ def composio_search(query_text: str, user_id: str, api_key: str, toolkit_hint: s
         if not isinstance(slug, str) or not slug:
             continue
         tools.append(slug)
-        description = item.get("description") if isinstance(item.get("description"), str) else ""
-        tags = item.get("tags") if isinstance(item.get("tags"), list) else []
-        summaries.append(
-            {
-                "slug": slug,
-                "description": description,
-                "input_parameters": item.get("input_parameters", {}),
-                "tags": [tag for tag in tags if isinstance(tag, str)],
-            }
-        )
-    tools, summaries = pin_known_tool(query_text, toolkit, tools, summaries, api_key)
+        summaries.append(tool_summary(item))
+    tools, summaries = pin_known_tool(query_text, toolkit, tools, summaries, api_key, approval_file)
+    if approval_file is not None:
+        persist_tool_hints(approval_file, summaries, api_key)
     return {"ok": True, "tools": tools, "items": summaries, "user_id": user_id}
 
 
@@ -197,6 +242,7 @@ def pin_known_tool(
     tools: list[str],
     summaries: list[dict],
     api_key: str,
+    approval_file: Path | None = None,
 ) -> tuple[list[str], list[dict]]:
     """Surface the authenticated-user repo list when that is what was asked."""
     lowered = query_text.lower()
@@ -219,16 +265,10 @@ def pin_known_tool(
             return tools, summaries
         tools = [preferred, *tools]
         pinned_item = next(item for item in found if isinstance(item, dict) and item.get("slug") == preferred)
-        pinned_tags = pinned_item.get("tags") if isinstance(pinned_item.get("tags"), list) else []
-        summaries = [
-            {
-                "slug": preferred,
-                "description": "List repositories for the authenticated user",
-                "input_parameters": pinned_item.get("input_parameters", {}),
-                "tags": [tag for tag in pinned_tags if isinstance(tag, str)],
-            },
-            *summaries,
-        ]
+        summary = tool_summary(pinned_item)
+        summaries = [summary, *summaries]
+        if approval_file is not None:
+            persist_tool_hints(approval_file, [summary], api_key)
     else:
         tools = [preferred, *[item for item in tools if item != preferred]]
     return tools[:8], summaries[:8]
@@ -422,14 +462,16 @@ def build_server(approval_file: Path, broker: str, install_file: Path) -> MCPSer
                 api_key,
             )
         else:
-            result = composio_search(query, user_id, api_key, toolkit)
+            result = composio_search(query, user_id, api_key, toolkit, approval_file)
+        if broker:
+            persist_tool_hints(approval_file, result.get("items", []), api_key)
         return public_payload(result, api_key)
 
     @server.tool(
         name="connectors_execute",
         description=(
             "Run one connected-app action. Leave approval_token empty. "
-            "Prometh fills it only after the user approves."
+            "Prometh fills it when the action is allowed to run."
         ),
     )
     def connectors_execute(tool: str, arguments_json: str = "{}", approval_token: str = "") -> str:

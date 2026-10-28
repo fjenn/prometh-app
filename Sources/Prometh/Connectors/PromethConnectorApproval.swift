@@ -2,7 +2,7 @@ import Foundation
 
 /// Approval token and launch plan for the connectors MCP server.
 /// The token file is mode 0600. The model never learns the value: the app
-/// overwrites `approval_token` only after the user approves.
+/// overwrites `approval_token` after the app policy permits execution.
 enum PromethConnectorApproval {
     static let catalogID = "prometh.composio"
     static let keychainService = "studio.prometh.Prometh.connectors"
@@ -10,13 +10,10 @@ enum PromethConnectorApproval {
     static let searchTool = "connectors_search"
 
     /// Legacy modal sheet is kept compiled but never presented.
-    static let usesModalSheet = false
+    static var usesModalSheet: Bool { PromethFlags.legacyConnectorApprovalSheet }
 
     /// Synced from Prometh persisted state (`Snapshot.connectorAlwaysAllow`).
     nonisolated(unsafe) static var alwaysAllowed: Set<String> = []
-
-    static let declinedPayload =
-        #"{"ok":false,"executed":false,"error":"declined_by_user","detail":"The user chose Don't allow. Nothing was sent or changed."}"#
 
     static func isExecute(_ name: String?) -> Bool {
         guard let name else { return false }
@@ -30,13 +27,18 @@ enum PromethConnectorApproval {
 
     /// Action slug from a `connectors_execute` arguments JSON blob.
     static func actionSlug(from argumentsJSON: String?) -> String? {
-        guard let argumentsJSON,
-              let data = argumentsJSON.data(using: .utf8),
-              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let tool = object["tool"] as? String
+        PromethConnectorActionPolicy.parse(argumentsJSON: argumentsJSON)?.slug
+    }
+
+    static func hintsFile(in support: URL) -> URL {
+        support.appendingPathComponent("connectors/tool-hints.json", isDirectory: false)
+    }
+
+    static func hint(for slug: String, in support: URL = PromethIdentity.applicationSupportDirectory) -> PromethConnectorActionPolicy.Hint? {
+        guard let data = try? Data(contentsOf: hintsFile(in: support)),
+              let hints = try? JSONDecoder().decode([String: PromethConnectorActionPolicy.Hint].self, from: data)
         else { return nil }
-        let trimmed = tool.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
+        return hints[slug.uppercased()]
     }
 
     /// Looks back through earlier `connectors_search` tool results for tags on `slug`.
