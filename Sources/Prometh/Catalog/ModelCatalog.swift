@@ -72,11 +72,15 @@ enum ModelCatalogLoader {
         if let url = Bundle.main.url(forResource: "model-catalog", withExtension: "json") {
             return try load(from: url)
         }
+        #if DEBUG
         let source = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("Resources/model-catalog.json")
         return try load(from: source)
+        #else
+        throw CocoaError(.fileNoSuchFile)
+        #endif
     }
 }
 

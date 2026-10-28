@@ -38,7 +38,7 @@ enum ChatGitHubPullRequestDetector {
     private static let environment: [String: String] = {
         var result = ProcessInfo.processInfo.environment.filter { !$0.key.hasPrefix("GIT_") }
         let path = ShellEnvironment.resolveFromLoginShell(names: ["PATH"])["PATH"]
-        result["PATH"] = path ?? result["PATH"] ?? "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+        result["PATH"] = path ?? result["PATH"] ?? "/usr/local/bin:/usr/bin:/bin"
         result["GH_REPO"] = nil
         result["GH_HOST"] = nil
         result["GH_PROMPT_DISABLED"] = "1"

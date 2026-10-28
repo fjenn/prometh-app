@@ -66,8 +66,8 @@ enum PromethConnectorSecret {
         }
         return URL(
             fileURLWithPath: (NSHomeDirectory() as NSString)
-                .appendingPathComponent(".config/prometh/composio.env")
-        )
+                .appendingPathComponent(".config/prometh/composio")
+        ).appendingPathExtension("env")
     }
 
     /// True when a non-empty `COMPOSIO_API_KEY` is on disk (not process env).
@@ -132,7 +132,7 @@ final class PromethConnectorHost {
                 name: "Connectors",
                 command: plan.command,
                 arguments: plan.arguments,
-                environment: plan.environment,
+                environment: PromethPython.environment(runtime: "composio_mcp", inheriting: ProcessInfo.processInfo.environment.merging(plan.environment) { _, value in value }),
                 isEnabled: true
             ),
         ])

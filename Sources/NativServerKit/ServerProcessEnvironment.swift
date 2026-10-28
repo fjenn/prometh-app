@@ -11,7 +11,7 @@ enum ServerProcessEnvironment {
         ExternalToolRequirement(
             name: "FFmpeg",
             executableNames: ["ffmpeg", "ffprobe"],
-            searchDirectories: ["/opt/homebrew/bin", "/usr/local/bin"]
+            searchDirectories: ["/usr/local/bin"]
         )
     ]
 

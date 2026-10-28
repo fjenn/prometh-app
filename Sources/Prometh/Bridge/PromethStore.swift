@@ -1564,7 +1564,9 @@ final class PromethStore: ObservableObject {
 
     private func offlineProbe() -> String {
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+        guard let python = PromethPython.bundled else { return "Bundled Python unavailable" }
+        process.executableURL = python
+        process.environment = PromethPython.environment()
         process.arguments = ["-c", """
 import os, urllib.request
 os.environ['HTTPS_PROXY']='http://127.0.0.1:9'

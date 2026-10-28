@@ -50,9 +50,12 @@ final class LlamaSupervisor: @unchecked Sendable {
             .appendingPathComponent("llama", isDirectory: true)
         try FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
         let secret = UUID().uuidString.replacingOccurrences(of: "-", with: "")
-        let python = ProcessInfo.processInfo.environment["PROMETH_READER_PYTHON"] ?? "/usr/bin/python3"
+        guard let python = PromethPython.interpreter(override: "PROMETH_READER_PYTHON") else {
+            throw PromethInterruptedError.llamaUnavailable
+        }
         let child = Process()
-        child.executableURL = URL(fileURLWithPath: python)
+        child.executableURL = python
+        child.environment = PromethPython.environment()
         child.arguments = [
             script.path,
             "--parent", String(ProcessInfo.processInfo.processIdentifier),

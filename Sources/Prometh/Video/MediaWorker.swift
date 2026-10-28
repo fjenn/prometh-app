@@ -166,17 +166,19 @@ enum PromethMediaWorker {
     }
 
     private static func run(script: URL, request: [String: Any], onProgress: (@Sendable (Double) -> Void)? = nil) async throws -> String {
-        let python = ProcessInfo.processInfo.environment["PROMETH_READER_PYTHON"] ?? "/usr/bin/python3"
+        guard let python = PromethPython.interpreter(override: "PROMETH_MEDIA_PYTHON") else {
+            throw PromethInterruptedError.llamaUnavailable
+        }
         let child = Process()
-        child.executableURL = URL(fileURLWithPath: python)
+        child.executableURL = python
         child.arguments = [script.path]
-        var environment = ProcessInfo.processInfo.environment
+        var environment = PromethPython.environment(runtime: "media")
         environment["PYTHONNOUSERSITE"] = "1"
         environment["PYTHONUNBUFFERED"] = "1"
         let videoID = PromethSelectedModels.id(.video, fallback: "video")
         environment["PROMETH_VIDEO_MODEL_ID"] = videoID
         if let checkout = PromethRuntimeLocator.url(
-            relative: "media/fastvideo/examples/inference/basic/mlx_wan_prompt_to_video.py"
+            relative: "media/site-packages/examples/inference/basic/mlx_wan_prompt_to_video.py"
         ) {
             environment["PROMETH_FASTVIDEO_SRC"] = checkout
                 .deletingLastPathComponent()
@@ -185,9 +187,8 @@ enum PromethMediaWorker {
                 .deletingLastPathComponent()
                 .path
         }
-        if let python = PromethRuntimeLocator.url(relative: "media/.venv/bin/python3") {
-            environment["PROMETH_MEDIA_PYTHON"] = python.path
-        }
+        environment["PROMETH_MEDIA_PYTHON"] = python.path
+        environment["PROMETH_SUPPORT_DIR"] = PromethIdentity.applicationSupportDirectory.path
         child.environment = environment
         let input = Pipe()
         let output = Pipe()

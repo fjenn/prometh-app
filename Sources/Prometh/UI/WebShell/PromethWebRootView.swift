@@ -24,7 +24,7 @@ private struct PromethWebView: NSViewRepresentable {
     func makeNSView(context: Context) -> WKWebView {
         let dark = store.state.appearance == "Dark" || (store.state.appearance == "System" && NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua)
         let config = WKWebViewConfiguration()
-        config.websiteDataStore = .default()
+        config.websiteDataStore = Self.websiteDataStore()
         config.userContentController.addUserScript(WKUserScript(source: """
         (() => {
           const apply = () => document.documentElement.dataset.theme = '\(dark ? "dark" : "light")';
@@ -53,6 +53,22 @@ private struct PromethWebView: NSViewRepresentable {
     static func dismantleNSView(_ web: WKWebView, coordinator: PromethWebCoordinator) {
         web.configuration.userContentController.removeScriptMessageHandler(forName: "prometh")
         coordinator.detach()
+    }
+
+    /// Alternate support roots are complete profiles, including web storage.
+    /// Keep the normal profile for existing installs; never import its chats
+    /// or onboarding state into an explicitly separate support directory.
+    private static func websiteDataStore() -> WKWebsiteDataStore {
+        guard let support = PromethIdentity.supportDirectoryOverride else { return .default() }
+        let file = support.appendingPathComponent("web-profile-id")
+        if let text = try? String(contentsOf: file, encoding: .utf8),
+           let id = UUID(uuidString: text) {
+            return WKWebsiteDataStore(forIdentifier: id)
+        }
+        let id = UUID()
+        try? FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
+        try? Data(id.uuidString.utf8).write(to: file, options: .atomic)
+        return WKWebsiteDataStore(forIdentifier: id)
     }
 }
 

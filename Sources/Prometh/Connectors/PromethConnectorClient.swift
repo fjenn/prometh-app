@@ -45,7 +45,7 @@ enum PromethConnectorClient {
             let output = Pipe()
             process.standardOutput = output
             process.standardError = FileHandle.nullDevice
-            var environment = ProcessInfo.processInfo.environment
+            var environment = PromethPython.environment(runtime: "composio_mcp")
             // Prefer the on-disk key file. Only strip the process env key when that
             // file is present so env-only setups still reach the helper.
             if PromethConnectorSecret.hasKeyOnDisk() {

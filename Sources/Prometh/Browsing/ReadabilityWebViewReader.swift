@@ -118,11 +118,15 @@ final class ReadabilityWebViewReader: NSObject, WKNavigationDelegate {
            let text = try? String(contentsOf: url, encoding: .utf8) {
             return text
         }
+        #if DEBUG
         let repo = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("Resources/Readability.js")
         return (try? String(contentsOf: repo, encoding: .utf8)) ?? ""
+        #else
+        return ""
+        #endif
     }
 }
 

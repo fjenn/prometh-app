@@ -9,6 +9,7 @@ enum PromethRuntimeLocator {
             manager.fileExists(atPath: bundled.path) {
             return bundled
         }
+        #if DEBUG
         let repo = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -19,6 +20,7 @@ enum PromethRuntimeLocator {
         if manager.fileExists(atPath: repo.path) {
             return repo
         }
+        #endif
         return nil
     }
 }

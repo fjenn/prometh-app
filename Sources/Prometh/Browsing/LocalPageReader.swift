@@ -94,7 +94,7 @@ final class ReaderSupervisor: @unchecked Sendable {
         process.executableURL = python
         process.arguments = [script.path, String(port), "--parent", String(ProcessInfo.processInfo.processIdentifier)]
         var environment = [
-            "PATH": "/usr/bin:/bin:/opt/homebrew/bin:/usr/local/bin",
+            "PATH": "/usr/bin:/bin",
             "HOME": FileManager.default.homeDirectoryForCurrentUser.path,
             "LANG": "en_US.UTF-8",
             "PYTHONNOUSERSITE": "1",
@@ -105,7 +105,7 @@ final class ReaderSupervisor: @unchecked Sendable {
             environment["HTTPS_PROXY"] = "http://127.0.0.1:9"
             environment["ALL_PROXY"] = "http://127.0.0.1:9"
         }
-        process.environment = environment
+        process.environment = PromethPython.environment(runtime: "reader", inheriting: environment)
         process.standardOutput = Pipe()
         process.standardError = Pipe()
         do {

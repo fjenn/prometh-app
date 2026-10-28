@@ -1,7 +1,7 @@
 """stdio MCP server for Prometh connectors.
 
 The Composio API key is read at call time from COMPOSIO_API_KEY or
-~/.config/prometh/composio.env. It is never printed, logged, or returned.
+the per-user configuration file. It is never printed, logged, or returned.
 Execute calls are refused unless the app adds an approval token after the
 user agrees. With no broker URL, search and execute call Composio's API.
 """
@@ -42,7 +42,7 @@ def load_api_key() -> str:
     if environment:
         return environment
     override = os.environ.get("PROMETH_COMPOSIO_ENV", "").strip()
-    path = Path(override) if override else Path.home() / ".config" / "prometh" / "composio.env"
+    path = Path(override) if override else (Path.home() / ".config" / "prometh" / "composio").with_suffix(".env")
     if not path.is_file():
         return ""
     for line in path.read_text(encoding="utf-8").splitlines():

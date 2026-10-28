@@ -16,13 +16,15 @@ enum PromethPocketSpeech {
             .appendingPathComponent("prometh-speech", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let output = directory.appendingPathComponent(UUID().uuidString + ".wav")
-        let python = ProcessInfo.processInfo.environment["PROMETH_POCKET_PYTHON"]
-            ?? PromethRuntimeLocator.url(relative: "voice/.venv/bin/python3")?.path
-            ?? "/usr/bin/python3"
+        guard let python = PromethPython.interpreter(override: "PROMETH_POCKET_PYTHON"),
+              PromethRuntimeLocator.url(relative: "voice/site-packages/pocket_tts") != nil
+                || ProcessInfo.processInfo.environment["PROMETH_POCKET_PYTHON"] != nil else {
+            throw PromethPocketSpeechError.unavailable
+        }
         let child = Process()
-        child.executableURL = URL(fileURLWithPath: python)
+        child.executableURL = python
         child.arguments = [script.path, output.path]
-        var environment = ProcessInfo.processInfo.environment
+        var environment = PromethPython.environment(runtime: "voice")
         environment["PYTHONNOUSERSITE"] = "1"
         environment["PYTHONDONTWRITEBYTECODE"] = "1"
         environment["HF_HUB_OFFLINE"] = "1"
@@ -94,7 +96,7 @@ private final class PromethKokoroWorker: @unchecked Sendable {
         let child = Process(), stdin = Pipe(), stdout = Pipe()
         child.executableURL = python
         child.arguments = [script.path, model.path, "--serve"]
-        var environment = ProcessInfo.processInfo.environment
+        var environment = PromethPython.environment()
         environment["HF_HUB_OFFLINE"] = "1"
         environment["PYTHONNOUSERSITE"] = "1"
         environment["PYTHONDONTWRITEBYTECODE"] = "1"

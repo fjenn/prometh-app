@@ -613,7 +613,7 @@ struct ChatTerminalToolExecutor: Sendable {
             resolvedPath
             ?? ShellEnvironment.resolveFromLoginShell(names: ["PATH"])["PATH"]
             ?? processEnvironment["PATH"]
-            ?? "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+            ?? "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
         var environment: [String: String] = [
             "PATH": path,
             "HOME": processEnvironment["HOME"] ?? NSHomeDirectory(),

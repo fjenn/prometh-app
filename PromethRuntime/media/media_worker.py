@@ -1,4 +1,4 @@
-"""Video jobs for Prometh. FastVideo is checked out beside this file, not vendored."""
+"""Video jobs using the bundled interpreter, packages and inference entrypoints."""
 
 from __future__ import annotations
 
@@ -37,6 +37,17 @@ WAN22_HEIGHT = 448
 WAN22_FRAMES = 121
 WAN22_FPS = 24
 SECONDS = 5.0
+
+
+def support_root() -> Path:
+    return Path(os.environ.get("PROMETH_SUPPORT_DIR", str(Path.home() / "Library/Application Support/Prometh")))
+
+
+def ffmpeg() -> str:
+    # imageio-ffmpeg ships a self-contained Apple Silicon binary. Never depend
+    # on a host package manager for generation, posters or trimming.
+    import imageio_ffmpeg
+    return imageio_ffmpeg.get_ffmpeg_exe()
 
 
 def _video_ready(root: Path) -> bool:
@@ -84,7 +95,7 @@ def _video_ready(root: Path) -> bool:
 
 def _selected_video() -> tuple[str, str, str, str]:
     override = os.environ.get("PROMETH_VIDEO_MODEL_ID", "").strip()
-    models = Path.home() / "Library/Application Support/Prometh/Models"
+    models = support_root() / "Models"
     # Explicit override wins for plan/tests even before weights finish downloading.
     if override:
         for repo, revision, folder, catalog_id, pipeline in VIDEO_CANDIDATES:
@@ -132,7 +143,7 @@ def trim_duration(start: float, end: float) -> float:
 
 def standin_command(path: Path, seconds: float, width: int = WAN21_WIDTH, height: int = WAN21_HEIGHT) -> list[str]:
     return [
-        "ffmpeg",
+        ffmpeg(),
         "-y",
         "-f",
         "lavfi",
@@ -149,7 +160,7 @@ def standin_command(path: Path, seconds: float, width: int = WAN21_WIDTH, height
 
 def trim_command(source: Path, dest: Path, start: float, end: float) -> list[str]:
     return [
-        "ffmpeg",
+        ffmpeg(),
         "-y",
         "-ss",
         f"{start:.3f}",
@@ -167,13 +178,13 @@ def trim_command(source: Path, dest: Path, start: float, end: float) -> list[str
 
 
 def poster_command(source: Path, dest: Path) -> list[str]:
-    return ["ffmpeg", "-y", "-i", str(source), "-frames:v", "1", str(dest)]
+    return [ffmpeg(), "-y", "-i", str(source), "-frames:v", "1", str(dest)]
 
 
 def fastvideo_checkout() -> Path | None:
     override = os.environ.get("PROMETH_FASTVIDEO_SRC")
     candidates = [Path(override)] if override else []
-    candidates.append(Path(__file__).resolve().parent / "fastvideo")
+    candidates.append(Path(__file__).resolve().parent / "site-packages")
     for root in candidates:
         script = root / "examples/inference/basic/mlx_wan_prompt_to_video.py"
         wan22 = root / "examples/inference/basic/mlx_wan22_generate.py"
@@ -191,7 +202,7 @@ def fastmetal_root() -> Path | None:
         if _video_ready(root):
             return root
     _, _, folder, _ = _selected_video()
-    root = Path.home() / "Library/Application Support/Prometh/Models" / folder
+    root = support_root() / "Models" / folder
     if _video_ready(root):
         return root
     return None
@@ -201,9 +212,6 @@ def fastvideo_python(checkout: Path) -> str:
     override = os.environ.get("PROMETH_MEDIA_PYTHON")
     if override:
         return override
-    venv = checkout.parent / ".venv" / "bin" / "python3"
-    if venv.is_file():
-        return str(venv)
     return sys.executable
 
 
@@ -362,6 +370,7 @@ class Worker:
         env = os.environ.copy()
         env["PYTHONPATH"] = str(checkout) + os.pathsep + env.get("PYTHONPATH", "")
         env["PYTHONNOUSERSITE"] = "1"
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
         env["PYTHONUNBUFFERED"] = "1"
         env["HF_HUB_OFFLINE"] = "1"
         log = output.with_suffix(".log")

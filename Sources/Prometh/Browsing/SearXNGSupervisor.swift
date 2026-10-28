@@ -1,49 +1,6 @@
 import Foundation
 import Security
 
-enum PromethPython {
-    /// Reader packages live in a provisioned venv, never in a committed vendor tree.
-    static func reader() -> URL? {
-        executable(
-            override: "PROMETH_READER_PYTHON",
-            relatives: [
-                "reader/.venv/bin/python3",
-                "searxng/dist/runtime/python/bin/python3",
-            ]
-        )
-    }
-
-    static func composio() -> URL? {
-        executable(
-            override: "PROMETH_COMPOSIO_PYTHON",
-            relatives: ["composio_mcp/.venv/bin/python3"]
-        )
-    }
-
-    static func searxng() -> URL? {
-        executable(
-            override: "PROMETH_SEARXNG_PYTHON",
-            relatives: [
-                "searxng/.venv/bin/python3",
-                "searxng/dist/runtime/python/bin/python3",
-            ]
-        )
-    }
-
-    private static func executable(override: String, relatives: [String]) -> URL? {
-        if let path = ProcessInfo.processInfo.environment[override],
-           FileManager.default.isExecutableFile(atPath: path) {
-            return URL(fileURLWithPath: path)
-        }
-        for relative in relatives {
-            if let url = PromethRuntimeLocator.url(relative: relative) {
-                return url
-            }
-        }
-        return nil
-    }
-}
-
 /// Unmodified SearXNG, separate process, 127.0.0.1 only.
 final class SearXNGSupervisor: @unchecked Sendable {
     static let shared = SearXNGSupervisor()
@@ -133,23 +90,7 @@ final class SearXNGSupervisor: @unchecked Sendable {
         if let existing = PromethPython.searxng() {
             return existing
         }
-        guard let archive = PromethRuntimeLocator.url(
-            relative: "searxng/dist/mermaid-searxng-macos-aarch64.tar.zst"
-        ) else {
-            throw SearXNGSupervisorError.missingRuntime
-        }
-        let destination = PromethIdentity.applicationSupportDirectory
-            .appendingPathComponent("searxng/runtime", isDirectory: true)
-        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
-        let python = destination.appendingPathComponent("python/bin/python3")
-        if FileManager.default.fileExists(atPath: python.path) {
-            return python
-        }
-        try Self.unpack(archive: archive, to: destination)
-        guard FileManager.default.fileExists(atPath: python.path) else {
-            throw SearXNGSupervisorError.missingRuntime
-        }
-        return python
+        throw SearXNGSupervisorError.missingRuntime
     }
 
     private func writeSettings() throws -> URL {
@@ -263,7 +204,7 @@ final class SearXNGSupervisor: @unchecked Sendable {
 
     private static func childEnvironment(settings: URL) -> [String: String] {
         var environment = [
-            "PATH": "/usr/bin:/bin:/opt/homebrew/bin",
+            "PATH": "/usr/bin:/bin",
             "HOME": FileManager.default.homeDirectoryForCurrentUser.path,
             "TMPDIR": NSTemporaryDirectory(),
             "LANG": "en_US.UTF-8",
@@ -276,7 +217,7 @@ final class SearXNGSupervisor: @unchecked Sendable {
             environment["ALL_PROXY"] = proxy
             environment["NO_PROXY"] = "127.0.0.1,localhost,::1"
         }
-        return environment
+        return PromethPython.environment(runtime: "searxng", inheriting: environment)
     }
 
     private static func reservePort() throws -> Int {
@@ -302,19 +243,6 @@ final class SearXNGSupervisor: @unchecked Sendable {
         }
         guard named == 0 else { throw SearXNGSupervisorError.noPort }
         return Int(UInt16(bigEndian: boundAddress.sin_port))
-    }
-
-    private static func unpack(archive: URL, to destination: URL) throws {
-        let zstd = ["/opt/homebrew/bin/zstd", "/usr/bin/zstd"].first {
-            FileManager.default.isExecutableFile(atPath: $0)
-        }
-        guard let zstd else { throw SearXNGSupervisorError.missingRuntime }
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/sh")
-        process.arguments = ["-c", "\"\(zstd)\" -dc \"\(archive.path)\" | /usr/bin/tar -xf - -C \"\(destination.path)\""]
-        try process.run()
-        process.waitUntilExit()
-        guard process.terminationStatus == 0 else { throw SearXNGSupervisorError.missingRuntime }
     }
 
     private static func waitForHealth(port: Int) async -> Bool {

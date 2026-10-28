@@ -4,10 +4,7 @@ import Foundation
 /// The bundled interpreter and pinned models are used by both voice workers.
 enum PromethVoiceRuntime {
     static var python: URL? {
-        let root = Bundle.main.privateFrameworksURL?
-            .appendingPathComponent("NativServerKit.framework/Resources/mlx-vlm-server/python/bin/python3")
-        if let root, FileManager.default.isExecutableFile(atPath: root.path) { return root }
-        return nil
+        PromethPython.bundled
     }
 
     static func folder(_ id: String) throws -> URL {
@@ -46,7 +43,7 @@ final class PromethSileroVAD: @unchecked Sendable {
         let stdin = Pipe(), stdout = Pipe()
         process.executableURL = python
         process.arguments = [script.path, model.path]
-        var environment = ProcessInfo.processInfo.environment
+        var environment = PromethPython.environment()
         environment["PYTHONDONTWRITEBYTECODE"] = "1"
         process.environment = environment
         process.standardInput = stdin

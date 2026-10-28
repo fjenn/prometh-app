@@ -554,7 +554,7 @@ private enum CustomToolScriptRunner {
         let processEnvironment = ProcessInfo.processInfo.environment
         let path = ShellEnvironment.resolveFromLoginShell(names: ["PATH"])["PATH"]
             ?? processEnvironment["PATH"]
-            ?? "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+            ?? "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
         return [
             "PATH": path,
             "HOME": processEnvironment["HOME"] ?? NSHomeDirectory(),
