@@ -2081,6 +2081,7 @@ final class HuggingFaceDownloadOperation: @unchecked Sendable {
         var environment = ProcessInfo.processInfo.environment
         environment["PYTHONHOME"] = distributionURL.appendingPathComponent("python").path
         environment["PYTHONNOUSERSITE"] = "1"
+        environment["PYTHONDONTWRITEBYTECODE"] = "1"
         environment["PYTHONUNBUFFERED"] = "1"
         environment["HF_HUB_CACHE"] = cachePath
         environment["HF_HUB_DISABLE_TELEMETRY"] = "1"

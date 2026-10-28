@@ -91,6 +91,7 @@
 		1A82A76742BFEEBE881659BD /* TavilyBrowsingProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C90AC464C5C04FB14A3C789 /* TavilyBrowsingProvider.swift */; };
 		1ABD92E9E35F57FA506F58DD /* ChatFolderMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBDDB16C4594B521C15073A4 /* ChatFolderMigrationTests.swift */; };
 		1AF312AA0292E34A471F5D16 /* ChatToolConfirmationButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8272E05C13BEB152E8C7C3D4 /* ChatToolConfirmationButton.swift */; };
+		1B71367F3F223E120F6C735A /* PromethPython.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEE4FA088B265B35560F38BF /* PromethPython.swift */; };
 		1BC04270E5886ABB757CF78B /* ChatTextSearchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88A912DB7266F6655AA7BB8E /* ChatTextSearchTests.swift */; };
 		1C168036B1B226E15B29603E /* MCPFilesystemTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE5D9B49C4BDAB0EA2AC153F /* MCPFilesystemTools.swift */; };
 		1C4E47D90B9A83469EE80D5D /* MarkdownSearchText.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7FEC99DBAD937331D69E847 /* MarkdownSearchText.swift */; };
@@ -215,6 +216,7 @@
 		43450E39C6229D137A927F99 /* ArtifactProvenanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F5045481C806F7F3478679 /* ArtifactProvenanceTests.swift */; };
 		444833C6AEF5C794590B8A45 /* ChatToolRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31D10F9AFCCD57FA0625CA24 /* ChatToolRegistry.swift */; };
 		44AD8B368277A8C14E1DDB5D /* ComposerDraftSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D84364D58D7E0839FC79CB /* ComposerDraftSync.swift */; };
+		44D0204A7EBE5A37E78ECE41 /* PromethPython.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEE4FA088B265B35560F38BF /* PromethPython.swift */; };
 		44E56C2D50FED9F7F03EAD48 /* HuggingFaceDownloadPreflight.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4D6131B6961BE835918A998 /* HuggingFaceDownloadPreflight.swift */; };
 		44F8A17BDE2610C6E90CE53F /* CustomTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6D53CFF2D565C0BFE3DE65E /* CustomTool.swift */; };
 		4506A2C6826C855DF6BDDB16 /* PromethConnectorClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65A427D91334D824023FF2C0 /* PromethConnectorClient.swift */; };
@@ -664,6 +666,7 @@
 		E4C6E7954D586869706DFAAC /* PromethIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D38798170B690673597F871 /* PromethIdentity.swift */; };
 		E4D299AADEA8470C37256DDE /* SystemMonitorStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E540204DED30CFBDB0FE1AD /* SystemMonitorStore.swift */; };
 		E4F038909BA9A122B26A1466 /* ChatTerminalToolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97D987724FB28974BA95CF29 /* ChatTerminalToolTests.swift */; };
+		E5415E884C0AEC43E9354759 /* PromethPython.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEE4FA088B265B35560F38BF /* PromethPython.swift */; };
 		E57D8A60C19CC63E16A3A9BA /* ModelPickerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F390709A2C3E373C09F776E /* ModelPickerTests.swift */; };
 		E5BD7EA6ABA2CFD71F7A2338 /* ChatGitWorktree.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE367FA9B5C5C130C430C14 /* ChatGitWorktree.swift */; };
 		E5D689637F917FF2671C3797 /* ChatCompactionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3908AB983CCDD8CE378D9CF5 /* ChatCompactionState.swift */; };
@@ -731,6 +734,7 @@
 		F945C21FDDC8AE619860D222 /* cmark-gfm-extensions in Frameworks */ = {isa = PBXBuildFile; productRef = 73083760B397D149449368BB /* cmark-gfm-extensions */; };
 		F9B4AAA3C467240C00807753 /* ChatReadFileToolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D56181DA223153BACC750E96 /* ChatReadFileToolTests.swift */; };
 		F9BDEE50A3A79D2E69B5E3B3 /* ComposerEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7588AD2D8B8F87838C9CA73 /* ComposerEditor.swift */; };
+		FAA4581779B178D93CA5779C /* PromethPythonTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE617773A07C5171A2AD6970 /* PromethPythonTests.swift */; };
 		FACE9887925CF3503DDD039A /* PromethShellUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C87D1E697AFACF5482F2541 /* PromethShellUITests.swift */; };
 		FAFA56EECAB162BEDDA61DD2 /* VoiceWakeWordDetection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A28DAF80BABEE10D703D919 /* VoiceWakeWordDetection.swift */; };
 		FBD608F58527BA13C4F8CC5A /* ChatSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EB5FE1937AB157ACAEC5354 /* ChatSearch.swift */; };
@@ -1234,6 +1238,7 @@
 		BDE6470BBA56F75D1F12FE09 /* ControlPanelNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlPanelNavigation.swift; sourceTree = "<group>"; };
 		BE5D9B49C4BDAB0EA2AC153F /* MCPFilesystemTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPFilesystemTools.swift; sourceTree = "<group>"; };
 		BE5FF4A08C2B33756121EE2C /* ChatConversationBranch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatConversationBranch.swift; sourceTree = "<group>"; };
+		BE617773A07C5171A2AD6970 /* PromethPythonTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromethPythonTests.swift; sourceTree = "<group>"; };
 		BEC8347D15B2595FF7819F7C /* ParallelBrowsingProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParallelBrowsingProvider.swift; sourceTree = "<group>"; };
 		BF65681C9FD920314BECC7D3 /* Tavily.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Tavily.png; sourceTree = "<group>"; };
 		C01D6D1C8C321F16B5FD31F8 /* RealtimeAudioMeterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeAudioMeterTests.swift; sourceTree = "<group>"; };
@@ -1322,6 +1327,7 @@
 		EE151F7A36DA21A32ABCFD63 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		EE642CB0CB414A58E55C3EEE /* provider-drive.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "provider-drive.png"; sourceTree = "<group>"; };
 		EE984320AE8CCF8783DD30CE /* LocalModelDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalModelDiscovery.swift; sourceTree = "<group>"; };
+		EEE4FA088B265B35560F38BF /* PromethPython.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromethPython.swift; sourceTree = "<group>"; };
 		EEF71E7A328DFB6E2E741999 /* Firecrawl.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Firecrawl.png; sourceTree = "<group>"; };
 		EF7AE3F3DB48E640950CCDB4 /* SystemAudioMeetingRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemAudioMeetingRecorder.swift; sourceTree = "<group>"; };
 		F03198F3942633B43D00969C /* PromethRuntimeLocator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromethRuntimeLocator.swift; sourceTree = "<group>"; };
@@ -1443,6 +1449,7 @@
 				6015450D06518671826EE4B8 /* PromethFoundationTests.swift */,
 				548F5D11268F3EFDF8164936 /* PromethMediaTests.swift */,
 				ABC6B9E3CC0ACF72BA88A4E5 /* PromethModeTests.swift */,
+				BE617773A07C5171A2AD6970 /* PromethPythonTests.swift */,
 				AD7448730B0824256109F093 /* PromethSearchTests.swift */,
 				D29E32E3750515E187683859 /* PromethTranscriptTests.swift */,
 				AB66924BEE4F82C48118D867 /* PromethVoiceTests.swift */,
@@ -2079,6 +2086,7 @@
 			isa = PBXGroup;
 			children = (
 				9D38798170B690673597F871 /* PromethIdentity.swift */,
+				EEE4FA088B265B35560F38BF /* PromethPython.swift */,
 				F03198F3942633B43D00969C /* PromethRuntimeLocator.swift */,
 			);
 			path = Identity;
@@ -2694,7 +2702,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -euo pipefail\nruntime_src=\"${SRCROOT}/PromethRuntime\"\nruntime_dst=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/PromethRuntime\"\nmkdir -p \"${runtime_dst}\"\nif [[ -d \"${runtime_src}\" ]]; then\n  rsync -a \\\n    --exclude 'media/.venv/' \\\n    --exclude 'media/fastvideo/' \\\n    --exclude 'voice/.venv/' \\\n    \"${runtime_src}/\" \"${runtime_dst}/\"\nfi\n";
+			shellScript = "set -euo pipefail\nruntime_src=\"${SRCROOT}/PromethRuntime\"\nruntime_dst=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/PromethRuntime\"\nmkdir -p \"${runtime_dst}\"\nif [[ -d \"${runtime_src}\" ]]; then\n  rsync -a --delete --delete-excluded \\\n    --exclude '.venv/' \\\n    --exclude '/media/fastvideo/' \\\n    --exclude '__pycache__/' --exclude '*.pyc' \\\n    --exclude '.pytest_cache/' --exclude '.git/' \\\n    --exclude 'tests/' --include 'test_operators.py' --exclude 'test_*.py' \\\n    --exclude '/searxng/dist/' --exclude '/searxng/work/' --exclude '/searxng/src/' \\\n    \"${runtime_src}/\" \"${runtime_dst}/\"\nfi\n\"${TARGET_BUILD_DIR}/NativServerKit.framework/Resources/mlx-vlm-server/python/bin/python3\" -I -B \"${SRCROOT}/scripts/prometh/prepare-bundle.py\" \"${TARGET_BUILD_DIR}/${WRAPPER_NAME}\"\n";
 		};
 		7C3F7A4B0E9CC2F906BE7FB1 /* Install GitHub OAuth MCP server */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -3003,6 +3011,7 @@
 				243FFD7152C208B3344E5A90 /* PromethMarkdown.swift in Sources */,
 				DA11FE6AD79795D7ABA167EE /* PromethPocketSpeech.swift in Sources */,
 				FFF5E8501ACE2874770DDCF8 /* PromethPrompts.swift in Sources */,
+				E5415E884C0AEC43E9354759 /* PromethPython.swift in Sources */,
 				D731836671A2CEACD2B779A5 /* PromethRootView.swift in Sources */,
 				2EFAC1AFA74D735CAF149DD8 /* PromethRuntimeLocator.swift in Sources */,
 				248B94ABA6D4A96E139B9D37 /* PromethSearchBootstrap.swift in Sources */,
@@ -3334,6 +3343,7 @@
 				1663B085EB77ACB1E9A43E96 /* PromethFlags.swift in Sources */,
 				DBB34516E23260F81529B725 /* PromethIdentity.swift in Sources */,
 				963487D24A16358760414916 /* PromethPrompts.swift in Sources */,
+				44D0204A7EBE5A37E78ECE41 /* PromethPython.swift in Sources */,
 				7A9015A81017128E6DD542BE /* PromethRuntimeLocator.swift in Sources */,
 				EFD7F61A919F062B4060F0F9 /* PromethToolVisibility.swift in Sources */,
 				0B057892842F59EF4EB1FAFF /* PromethVoice.swift in Sources */,
@@ -3429,6 +3439,8 @@
 				F13E6EE36F293DAFBF57B7FA /* PromethMediaTests.swift in Sources */,
 				4B9EC8FD827BFE32D0B82A1D /* PromethModeTests.swift in Sources */,
 				E800F80EF950DE83D22581DD /* PromethPrompts.swift in Sources */,
+				1B71367F3F223E120F6C735A /* PromethPython.swift in Sources */,
+				FAA4581779B178D93CA5779C /* PromethPythonTests.swift in Sources */,
 				0942667CDABCFA70C77D6D3D /* PromethRuntimeLocator.swift in Sources */,
 				09669E19F933505AE131AF6B /* PromethSearchContext.swift in Sources */,
 				165D13FF5A6825F0B77C47D5 /* PromethSearchTests.swift in Sources */,
@@ -3637,9 +3649,11 @@
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
+				OTHER_CFLAGS = "$(inherited) -ffile-prefix-map=$(SRCROOT)=/src/prometh -fdebug-prefix-map=$(SRCROOT)=/src/prometh";
+				OTHER_SWIFT_FLAGS = "$(inherited) -file-prefix-map $(SRCROOT)=/src/prometh -debug-prefix-map $(SRCROOT)=/src/prometh";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
-				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_COMPILATION_MODE = incremental;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 6.3;
 			};

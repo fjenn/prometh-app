@@ -209,6 +209,7 @@ public enum Nativ {
             processEnvironment.removeValue(forKey: key)
         }
         processEnvironment["PYTHONNOUSERSITE"] = "1"
+        processEnvironment["PYTHONDONTWRITEBYTECODE"] = "1"
         processEnvironment["PYTHONUNBUFFERED"] = "1"
         process.environment = processEnvironment
         return process

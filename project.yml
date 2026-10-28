@@ -11,6 +11,11 @@ settings:
     MACOSX_DEPLOYMENT_TARGET: "26.0"
     ARCHS: arm64
     ENABLE_HARDENED_RUNTIME: YES
+  configs:
+    Release:
+      SWIFT_COMPILATION_MODE: incremental
+      OTHER_SWIFT_FLAGS: "$(inherited) -file-prefix-map $(SRCROOT)=/src/prometh -debug-prefix-map $(SRCROOT)=/src/prometh"
+      OTHER_CFLAGS: "$(inherited) -ffile-prefix-map=$(SRCROOT)=/src/prometh -fdebug-prefix-map=$(SRCROOT)=/src/prometh"
 packages:
   swift-xet:
     url: https://github.com/huggingface/swift-xet
@@ -182,12 +187,16 @@ targets:
           runtime_dst="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/PromethRuntime"
           mkdir -p "${runtime_dst}"
           if [[ -d "${runtime_src}" ]]; then
-            rsync -a \
-              --exclude 'media/.venv/' \
-              --exclude 'media/fastvideo/' \
-              --exclude 'voice/.venv/' \
+            rsync -a --delete --delete-excluded \
+              --exclude '.venv/' \
+              --exclude '/media/fastvideo/' \
+              --exclude '__pycache__/' --exclude '*.pyc' \
+              --exclude '.pytest_cache/' --exclude '.git/' \
+              --exclude 'tests/' --include 'test_operators.py' --exclude 'test_*.py' \
+              --exclude '/searxng/dist/' --exclude '/searxng/work/' --exclude '/searxng/src/' \
               "${runtime_src}/" "${runtime_dst}/"
           fi
+          "${TARGET_BUILD_DIR}/NativServerKit.framework/Resources/mlx-vlm-server/python/bin/python3" -I -B "${SRCROOT}/scripts/prometh/prepare-bundle.py" "${TARGET_BUILD_DIR}/${WRAPPER_NAME}"
     settings:
       base:
         ARCHS: arm64
@@ -237,6 +246,7 @@ targets:
       - path: Tests/NativTests
       - path: Sources/Prometh/Bridge/PromethVoice.swift
       - path: Sources/Prometh/Browsing/PromethPrompts.swift
+      - path: Sources/Prometh/Identity/PromethPython.swift
       - path: Sources/Prometh/Identity/PromethRuntimeLocator.swift
       - path: Sources/Prometh/Identity/PromethIdentity.swift
       - path: Sources/Prometh/Flags/PromethFlags.swift
@@ -436,6 +446,7 @@ targets:
     sources:
       - path: Sources/Prometh/UI/WebShell/PromethWebMapping.swift
       - path: Tests/PromethTests
+      - path: Sources/Prometh/Identity/PromethPython.swift
       - path: Sources/Prometh/Identity/PromethRuntimeLocator.swift
       - path: Sources/Prometh/Identity/PromethIdentity.swift
       - path: Sources/Prometh/Flags/PromethFlags.swift

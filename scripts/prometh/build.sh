@@ -17,5 +17,6 @@ if [[ ! -d "$app" ]]; then
   exit 1
 fi
 
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/prometh/sign-bundle.py "$app"
 codesign -s - --force --deep --entitlements Configuration/Prometh-AdHoc.entitlements "$app"
 echo "Built and ad-hoc signed $app"
