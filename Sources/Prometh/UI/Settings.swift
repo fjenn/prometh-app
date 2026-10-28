@@ -259,7 +259,7 @@ struct ToolkitLogo:View {
             if let image {Image(nsImage:image).resizable().scaledToFit()}
             else {Text(String(toolkit.name.prefix(1))).font(.system(size:19,weight:.medium)).foregroundStyle(.secondary)}
         }.frame(width:30,height:30).padding(7)
-            .background(.background.opacity(0.8),in:RoundedRectangle(cornerRadius:11))
+            .background(Color.white,in:RoundedRectangle(cornerRadius:11))
             .accessibilityHidden(true)
             .task(id:toolkit.logo) {
                 image=nil
