@@ -27,16 +27,19 @@ extension PromethWebCoordinator {
         case "audio.start":
             PromethVoiceLatency.note("audio_start")
             let auth = AVCaptureDevice.authorizationStatus(for: .audio)
+            PromethVoiceLatency.note("audio_auth_\(auth.rawValue)")
             if auth == .notDetermined {
                 guard await AVCaptureDevice.requestAccess(for: .audio) else { throw bridgeError("Allow Prometh to use your microphone in System Settings.") }
             } else if auth != .authorized { throw bridgeError("Allow Prometh to use your microphone in System Settings.") }
             microphone.discard()
+            PromethVoiceLatency.note("audio_discarded")
             microphoneToken = params["token"] as? String ?? UUID().uuidString
             let token = microphoneToken
             try webSilero.start(onFrame: { [weak self] probability, rms, elapsed in
                 guard let self, self.microphoneToken == token else { return }
                 self.emit("audio.frame", ["token": token, "probability": probability, "rms": rms, "elapsed": elapsed])
             }, onFailure: { [weak self] error in self?.emit("audio.error", ["token": token, "error": error]) })
+            PromethVoiceLatency.note("audio_vad_started")
             microphone.onAudioBuffer = { [webSilero] buffer in webSilero.append(buffer) }
             microphone.onMeterUpdate = { [weak self] level, _ in
                 guard let self, self.microphoneToken == token else { return }
