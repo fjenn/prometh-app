@@ -1,0 +1,35 @@
+{
+  "code_commits": [
+    "a6768f7e",
+    "adaa3e2f"
+  ],
+  "gates": {
+    "build": "passed",
+    "make_verify": "passed",
+    "PromethTests": {
+      "passed": 82,
+      "failed": 0
+    },
+    "python_catalog_tests": 5,
+    "mcp_scenarios": 3
+  },
+  "credential_leak_check": "No live API key value in the text evidence or gate logs. Key contents never emitted.",
+  "screenshots": {
+    "after-plugins-dark.png": "aecef7eb70c359b381b8544355aa5982a8a2c1a995be8d220c9f23bce5aac24c",
+    "after-plugins-github-connected.png": "1ff4178eb8ed00660046a8b52563e7138265bd004fd43d0ed6081a1a8801969b",
+    "after-inline-growing.png": "82e5c5572d9fe4ee1e8f2e012b897f8f2df7fef4761686936b0efb9dab03999c",
+    "after-plugins-slack-oauth.png": "8d40a454154f85aca8b0a3f490e34826903f3783149c8508293f10d8630439b9",
+    "after-github-live-chat.png": "19a72ef2235d7bc7953735bda01f77c015847bdc3aba2862fffe5e194f9f9d33",
+    "after-user-hover-actions.png": "4d6e781e9472f5f1b7a47064ff8a08722665c62e5ab9cf324cd9d4a3541c7fa0",
+    "before-inline-edit.png": "4ced89666e002b66a1a4d6e249a194e533d878951ad07f0c02f3256980797f2d",
+    "github-tool-approval.png": "21f07a0312b648ab14fc652c98d1d49d420b0228d6cc10e34dcc714faa4a2854",
+    "before-messages.png": "dd94edacf513c4c27148ae53f95594295e0776ed69614b22c31474a6afd5d220",
+    "after-messages.png": "e9d4a243a1b63e9342d6356d01237f2e025f36fdb33724ca296948913df19fbe",
+    "after-inline-edit.png": "f96d5c739f0f6ffbcbcb96d9a5fc1d353fa136209a3ee177fd873fe8a6393b32",
+    "after-assistant-copied.png": "dedca7e8a0f4b316c9e1b2f6c4f777ad3942dcc4b7f1da7eb95706b5bd6ea590",
+    "after-plugins-category-email.png": "82c47d4c41f9f566e9d1270d0764e356c21019164c87093336b2eac529e29bff",
+    "after-plugins-catalog.png": "24e2a0a7b4bfc0c4b7ffd89bf91c732fc227c9089f1e03d70c09d13f2acb2cd4"
+  },
+  "release_archive_sha256": "72d09f3d8bd46485b7dafe0071adcb7f3e49a7a22693e55f21b01cbe19129dd4",
+  "release_pid": 84935
+}

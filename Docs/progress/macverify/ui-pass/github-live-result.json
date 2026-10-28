@@ -1,0 +1,50 @@
+{
+  "recorded_at": "2026-10-28T00:50:05.825434+00:00",
+  "source": "Actual persisted Prometh chat MCP tool result after UI approval; repository metadata only",
+  "session_id": "4DA2B667-41C3-4FD2-BB81-FCC0E19BD70A",
+  "prompt": "Please list my five most recently updated GitHub repositories using my connected account. Include their names and URLs.",
+  "tool": "GITHUB_LIST_REPOSITORIES_FOR_THE_AUTHENTICATED_USER",
+  "arguments": {
+    "sort": "updated",
+    "direction": "desc",
+    "per_page": 5,
+    "type": "owner"
+  },
+  "ok": true,
+  "successful": true,
+  "executed": true,
+  "log_id": "log_8Z-x-X7HRFC5",
+  "repository_count": 5,
+  "repositories": [
+    {
+      "full_name": "fjenn/the-source",
+      "html_url": "https://github.com/fjenn/the-source",
+      "private": true,
+      "updated_at": "2026-10-27T21:16:32Z"
+    },
+    {
+      "full_name": "fjenn/open-blocker-website",
+      "html_url": "https://github.com/fjenn/open-blocker-website",
+      "private": true,
+      "updated_at": "2026-10-27T04:07:21Z"
+    },
+    {
+      "full_name": "fjenn/open-blocker",
+      "html_url": "https://github.com/fjenn/open-blocker",
+      "private": false,
+      "updated_at": "2026-10-27T03:55:52Z"
+    },
+    {
+      "full_name": "fjenn/wispr-bro",
+      "html_url": "https://github.com/fjenn/wispr-bro",
+      "private": true,
+      "updated_at": "2026-10-27T01:13:02Z"
+    },
+    {
+      "full_name": "fjenn/prometh-app",
+      "html_url": "https://github.com/fjenn/prometh-app",
+      "private": false,
+      "updated_at": "2026-10-26T17:29:27Z"
+    }
+  ]
+}

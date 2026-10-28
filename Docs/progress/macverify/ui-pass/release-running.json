@@ -1,0 +1,23 @@
+{
+  "recorded_at": "2026-10-28T01:07:55.166337+00:00",
+  "code_commits": [
+    "a6768f7e",
+    "adaa3e2f"
+  ],
+  "release_app": "/Users/armando/Projects/Coding/prometh-app/build/NativDevelopmentDerivedData/Build/Products/Release/Prometh.app",
+  "pid": 84935,
+  "port_8080_listener_pids": [
+    84953
+  ],
+  "listeners_are_release_descendants": true,
+  "health_status": 200,
+  "original_nativ_running": false,
+  "archive": "/Users/armando/Desktop/Prometh-judges/Prometh.zip",
+  "archive_bytes": 940000047,
+  "archive_sha256": "72d09f3d8bd46485b7dafe0071adcb7f3e49a7a22693e55f21b01cbe19129dd4",
+  "archive_crc_valid": true,
+  "packaged_binary_matches_running_app": true,
+  "packaged_connector_matches_source": true,
+  "binary_sha256": "938b008e37e549eb10b387d517b89cc606ba686c6a1376ab9701115013a6bc3d",
+  "codesign_verify_deep": "passed"
+}

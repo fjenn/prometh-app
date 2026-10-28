@@ -1,0 +1,16 @@
+{
+  "session_id": "4DA2B667-41C3-4FD2-BB81-FCC0E19BD70A",
+  "prompt": "Use my connected GitHub account to list my 5 most recently updated repositories. Include each repository name and URL.",
+  "tool": "GITHUB_LIST_ACCESSIBLE_REPOSITORIES",
+  "result": {
+    "data": {
+      "message": "Invalid request data provided\n- Following fields are missing: {'installation_id'}",
+      "status_code": 400
+    },
+    "successful": false,
+    "error": "Invalid request data provided\n- Following fields are missing: {'installation_id'}",
+    "log_id": "log_krn4Cz8cTCY1",
+    "ok": false,
+    "executed": true
+  }
+}

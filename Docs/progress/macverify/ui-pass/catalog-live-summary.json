@@ -1,0 +1,25 @@
+{
+  "recorded_at": "2026-10-28T01:07:55.166337+00:00",
+  "api": "GET https://backend.composio.dev/api/v3.1/toolkits",
+  "query": {
+    "type": "all",
+    "limit": 1000,
+    "sort_by": "alphabetically",
+    "user_id": "existing Prometh install identity"
+  },
+  "pagination": "followed next_cursor to exhaustion",
+  "toolkit_count": 1689,
+  "unique_slugs": 1689,
+  "category_count": 98,
+  "email_category_count": 61,
+  "toolkits_with_logo_urls": 1689,
+  "cache_path": "~/Library/Application Support/Prometh/connectors/toolkits-v1.json",
+  "cache_sha256": "fd2d6ec7d1c7e1c4a41c3819a575128ebbc1f78f9a448f7a4968e7fda3d5b1aa",
+  "cache_lifetime_hours": 24,
+  "live_connected_statuses": {
+    "github": "connected",
+    "gmail": "connected"
+  },
+  "additional_connect_flow": "Slack: real Composio hosted authorization opened; waiting for sign-in; no new grant completed",
+  "explicit_refresh_verified_in_release": true
+}
