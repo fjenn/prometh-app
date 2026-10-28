@@ -81,8 +81,7 @@ final class PromethUISchemeHandler: NSObject, WKURLSchemeHandler {
                 file = try PromethWebFiles.file(url.host == "blob" ? PromethWebFiles.blobs : PromethWebFiles.media, String(url.path.dropFirst()))
             } else if url.host == "app", let root = Bundle.main.resourceURL?.appendingPathComponent("WebUI", isDirectory: true) {
                 let path = url.path == "/" || url.path.isEmpty ? "index.html" : String(url.path.dropFirst())
-                file = root.appendingPathComponent(path).standardizedFileURL
-                guard file.path.hasPrefix(root.path + "/") else { throw URLError(.noPermissionsToReadFile) }
+                file = try PromethWebFiles.resource(root, relative: path)
             } else { throw URLError(.badURL) }
             let data = try Data(contentsOf: file)
         var mime = ["html": "text/html", "js": "text/javascript", "css": "text/css", "json": "application/json", "png": "image/png", "jpg": "image/jpeg", "svg": "image/svg+xml", "woff2": "font/woff2", "webp": "image/webp", "mp4": "video/mp4", "wav": "audio/wav", "jpeg": "image/jpeg"][file.pathExtension] ?? "application/octet-stream"

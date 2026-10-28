@@ -39,6 +39,18 @@ enum PromethWebMapping {
 enum PromethWebFiles {
     static var blobs: URL { PromethIdentity.applicationSupportDirectory.appendingPathComponent("WebBlobs", isDirectory: true) }
     static var media: URL { PromethIdentity.applicationSupportDirectory.appendingPathComponent("Media", isDirectory: true) }
+    static func resource(_ root: URL, relative: String) throws -> URL {
+        // Foundation normalizes /private/tmp to /tmp. Apply the same
+        // canonicalization to both sides of the containment check, including
+        // symlinks, so a relocated app can serve its own nested web assets.
+        let directory = root.standardizedFileURL.resolvingSymlinksInPath()
+        let file = directory.appendingPathComponent(relative)
+            .standardizedFileURL.resolvingSymlinksInPath()
+        guard file.path.hasPrefix(directory.path + "/") else {
+            throw URLError(.noPermissionsToReadFile)
+        }
+        return file
+    }
     static func file(_ root: URL, _ name: String) throws -> URL {
         guard !name.isEmpty, name != ".", name != "..", !name.contains("/"), !name.contains("\\"), !name.contains("\0") else { throw URLError(.badURL) }
         let result = root.appendingPathComponent(name).resolvingSymlinksInPath()

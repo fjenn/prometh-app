@@ -76,3 +76,31 @@ extension WebMappingTests {
         }
     }
 }
+
+extension WebMappingTests {
+    func testResourcesHandlePrivateTmpAliasAndSpaces() throws {
+        let name = "prometh web resources \(UUID().uuidString)"
+        let root = URL(fileURLWithPath: "/tmp").appendingPathComponent(name)
+        try FileManager.default.createDirectory(at: root.appendingPathComponent("assets"), withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let bytes = Data("bundled resource".utf8)
+        try bytes.write(to: root.appendingPathComponent("assets/app.js"))
+        let alias = URL(fileURLWithPath: "/private/tmp").appendingPathComponent(name)
+        for directory in [root, alias] {
+            let file = try PromethWebFiles.resource(directory, relative: "assets/app.js")
+            XCTAssertEqual(try Data(contentsOf: file), bytes)
+        }
+    }
+
+    func testResourceContainmentRejectsTraversalAndSymlinkEscapes() throws {
+        let base = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let root = base.appendingPathComponent("WebUI")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: base) }
+        let outside = base.appendingPathComponent("outside.txt")
+        try Data("outside".utf8).write(to: outside)
+        try FileManager.default.createSymbolicLink(at: root.appendingPathComponent("escape.txt"), withDestinationURL: outside)
+        XCTAssertThrowsError(try PromethWebFiles.resource(root, relative: "../outside.txt"))
+        XCTAssertThrowsError(try PromethWebFiles.resource(root, relative: "escape.txt"))
+    }
+}
