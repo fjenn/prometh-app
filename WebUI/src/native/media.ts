@@ -7,7 +7,15 @@ type ImageEngine = 'sd15' | 'zimage'
 const base = 'http://127.0.0.1:8080'
 export async function prepareVoice(progress: (p: number) => void, _signal: AbortSignal) { progress(1) }
 let voiceWarm: Promise<void> = Promise.resolve()
-export async function warmListening(progress: (p: number) => void) { progress(0); await voiceWarm; progress(1) }
+/** Warm-up is best effort: listening starts once it finishes or after VOICE_WARM_WAIT_MS, whichever is first. */
+export const VOICE_WARM_WAIT_MS = 6000
+export async function warmListening(progress: (p: number) => void) {
+  progress(0)
+  let timer: ReturnType<typeof setTimeout> | undefined
+  await Promise.race([voiceWarm, new Promise<void>(resolve => { timer = setTimeout(resolve, VOICE_WARM_WAIT_MS) })])
+  clearTimeout(timer)
+  progress(1)
+}
 export function warmSpeech() { const chat = currentChat(); voiceWarm = request('audio.warm', { chatId: chat?.id, mode: chat?.mode }).catch(() => {}) }
 function wav(audio: Float32Array) {
   const buf = new ArrayBuffer(44 + audio.length * 2), v = new DataView(buf)

@@ -25,6 +25,7 @@ extension PromethWebCoordinator {
             if panel.runModal() == .OK, let destination = panel.url { try Data(contentsOf: source).write(to: destination, options: .atomic) }
             return NSNull()
         case "audio.start":
+            PromethVoiceLatency.note("audio_start")
             let auth = AVCaptureDevice.authorizationStatus(for: .audio)
             if auth == .notDetermined {
                 guard await AVCaptureDevice.requestAccess(for: .audio) else { throw bridgeError("Allow Prometh to use your microphone in System Settings.") }
@@ -43,6 +44,7 @@ extension PromethWebCoordinator {
             }
             microphone.onRecordingFailure = { [weak self] error, _ in self?.emit("audio.error", ["token": token, "error": error.localizedDescription]) }
             _ = try await microphone.start()
+            PromethVoiceLatency.note("audio_started")
             return NSNull()
         case "audio.stop":
             guard params["token"] as? String == microphoneToken else { return "" }
@@ -63,9 +65,15 @@ extension PromethWebCoordinator {
         case "audio.warm":
             let sessionID = (params["chatId"] as? String).flatMap { nativeID($0) }
             let mode = params["mode"] as? String ?? "safe"
-            async let speech: Void = PromethKokoroSpeech.warm()
+            // Warm-up is best effort: a failed or slow stage is logged and never blocks listening.
+            let started = ProcessInfo.processInfo.systemUptime
+            PromethVoiceLatency.note("warm_begin")
+            async let speech: Bool = (try? await PromethKokoroSpeech.warm()) != nil
             async let prefix: Void = store.warmWebVoice(sessionID: sessionID, mode: mode)
-            _ = try await (speech, prefix)
+            let spoke = await speech
+            PromethVoiceLatency.note(spoke ? "warm_kokoro_ok" : "warm_kokoro_failed", since: started)
+            await prefix
+            PromethVoiceLatency.note("warm_prefix_done", since: started)
             return NSNull()
         case "audio.speech":
             guard let text = params["text"] as? String, !text.isEmpty else { return "" }

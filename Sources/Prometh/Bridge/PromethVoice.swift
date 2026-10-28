@@ -214,6 +214,26 @@ enum PromethVoiceLatency {
         guard let id else { return }
         queue.async { write(id, status: status) }
     }
+    /// Voice warm-up/startup stage marks (no content), one JSON line each, in voice-warm.jsonl.
+    static func note(_ event: String, since start: TimeInterval? = nil) {
+        let now = ProcessInfo.processInfo.systemUptime
+        var record: [String: Any] = ["event": event, "uptime_ms": now * 1000]
+        if let start { record["elapsed_ms"] = (now - start) * 1000 }
+        queue.async { append(record, to: "voice-warm.jsonl") }
+    }
+    private static func append(_ record: [String: Any], to name: String) {
+        let directory = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/Prometh")
+        let url = directory.appendingPathComponent(name)
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            if !FileManager.default.fileExists(atPath: url.path) { FileManager.default.createFile(atPath: url.path, contents: nil) }
+            let file = try FileHandle(forWritingTo: url)
+            defer { try? file.close() }
+            try file.seekToEnd()
+            var data = try JSONSerialization.data(withJSONObject: record, options: [.sortedKeys]); data.append(10)
+            try file.write(contentsOf: data)
+        } catch { /* Diagnostics must never block a voice turn. */ }
+    }
     private static func write(_ id: String, status: String) {
         guard var record = turns.removeValue(forKey: id) else { return }
         record["status"] = status
