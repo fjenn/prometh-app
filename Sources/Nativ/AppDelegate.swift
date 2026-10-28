@@ -347,9 +347,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @MainActor UNUserNotif
                 button.image = image
                 button.imagePosition = .imageOnly
             } else {
-                button.title = "Nativ"
+                button.title = Product.name
             }
-            button.toolTip = "Nativ Server"
+            button.toolTip = "\(Product.name) Server"
         }
 
         statusItem.menu = statusMenuController.menu
@@ -370,7 +370,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, @MainActor UNUserNotif
             button.image?.isTemplate = true
             button.image?.size = NSSize(width: 18, height: 18)
             button.imagePosition = .imageOnly
-            button.toolTip = "Nativ Server"
+            button.toolTip = "\(Product.name) Server"
             return
         }
 

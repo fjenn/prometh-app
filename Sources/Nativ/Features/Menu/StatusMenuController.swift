@@ -534,7 +534,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         } else {
             let statusMenuItem = NSMenuItem(
                 title: model.isRunning
-                    ? model.unavailableMetricsText : "Nativ Server is Not Running",
+                    ? model.unavailableMetricsText : "\(Product.name) Server is Not Running",
                 action: nil,
                 keyEquivalent: ""
             )
@@ -1308,8 +1308,8 @@ private struct SessionStatsMenuView: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel(
             section == .header
-                ? "Nativ Server status"
-                : "Nativ Server session statistics")
+                ? "\(Product.name) Server status"
+                : "\(Product.name) Server session statistics")
     }
 
     private var statsBody: some View {
@@ -1342,7 +1342,7 @@ private struct SessionStatsMenuView: View {
     private var header: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 1) {
-                Text("Nativ Server")
+                Text("\(Product.name) Server")
                     .font(.headline)
                 if let displayModelSubtitle {
                     HStack(spacing: 5) {
@@ -1564,8 +1564,8 @@ private struct SessionStatsLoadingMenuView: View {
         .accessibilityLabel(
             section == .header
                 ? failure == nil
-                    ? "Nativ Server is loading \(modelName)"
-                    : "Nativ Server could not load \(modelName)"
+                    ? "\(Product.name) Server is loading \(modelName)"
+                    : "\(Product.name) Server could not load \(modelName)"
                 : failure == nil
                     ? "Waiting for session statistics"
                     : failure?.message ?? "Model loading failed")
@@ -1574,7 +1574,7 @@ private struct SessionStatsLoadingMenuView: View {
     private var header: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 1) {
-                Text("Nativ Server")
+                Text("\(Product.name) Server")
                     .font(.headline)
                 if let modelSubtitle {
                     HStack(spacing: 5) {

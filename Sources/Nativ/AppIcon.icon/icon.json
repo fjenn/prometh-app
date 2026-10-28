@@ -1,8 +1,8 @@
 {
   "fill" : {
     "linear-gradient" : [
-      "display-p3:0.12549,0.12549,0.12549,1.00000",
-      "display-p3:0.03137,0.03137,0.03137,1.00000"
+      "display-p3:0.95479,0.94549,0.91680,1.00000",
+      "display-p3:0.95479,0.94549,0.91680,1.00000"
     ]
   },
   "groups" : [
@@ -10,7 +10,7 @@
       "layers" : [
         {
           "image-name" : "Front.png",
-          "name" : "Nativ Mark"
+          "name" : "Prometh Mark"
         }
       ],
       "shadow" : {
