@@ -174,6 +174,8 @@ final class ChatViewModel: ObservableObject {
         let imageGenerationModelID: String?
         let languageModelSupportsTools: Bool
         let languageModelSupportsVision: Bool
+        let voiceTurn: Bool
+        let voiceLatencyID: String?
     }
 
     private struct ComposerSnapshot {
@@ -2003,7 +2005,9 @@ final class ChatViewModel: ObservableObject {
     func send(
         using appModel: NativModel,
         languageModelSupportsTools: Bool,
-        languageModelSupportsVision: Bool
+        languageModelSupportsVision: Bool,
+        voiceTurn: Bool = false,
+        voiceLatencyID: String? = nil
     ) {
         guard let settings = try? submissionSettings(using: appModel),
             canSend(isRunning: appModel.isRunning, selectedModelID: settings.languageModelID),
@@ -2063,7 +2067,8 @@ final class ChatViewModel: ObservableObject {
             settings: settings,
             languageModelSupportsTools: languageModelSupportsTools,
             languageModelSupportsVision: languageModelSupportsVision,
-            appModel: appModel
+            appModel: appModel,
+            voiceTurn: voiceTurn, voiceLatencyID: voiceLatencyID
         )
     }
 
@@ -2073,7 +2078,9 @@ final class ChatViewModel: ObservableObject {
         settings: NativSettings,
         languageModelSupportsTools: Bool,
         languageModelSupportsVision: Bool,
-        appModel: NativModel
+        appModel: NativModel,
+        voiceTurn: Bool = false,
+        voiceLatencyID: String? = nil
     ) {
         // A send (including prompt regeneration) releases previously attached
         // history. Streaming revisions must not repeatedly reset the reader.
@@ -2098,7 +2105,8 @@ final class ChatViewModel: ObservableObject {
                 imageGenerationModelID: imageGenerationModelID(for: sessionID)
                     ?? settings.imageGenerationModelID,
                 languageModelSupportsTools: languageModelSupportsTools,
-                languageModelSupportsVision: languageModelSupportsVision
+                languageModelSupportsVision: languageModelSupportsVision,
+                voiceTurn: voiceTurn, voiceLatencyID: voiceLatencyID
             ))
         bumpScroll()
         startNextRequestIfNeeded()
@@ -2857,6 +2865,14 @@ final class ChatViewModel: ObservableObject {
                 )
             }
             let eventRelay = ChatStreamEventRelay(delivery: appendEvent)
+            let latencyID = queuedRequest.voiceLatencyID
+            PromethVoiceLatency.mark(latencyID, "llm_request")
+            let relay: @Sendable (MLXChatStreamDelta) -> Void = { event in
+                if event.content?.isEmpty == false || event.reasoningContent?.isEmpty == false {
+                    PromethVoiceLatency.mark(latencyID, "llm_first_token")
+                }
+                eventRelay.submit(event)
+            }
             let completion: MLXChatCompletion
             do {
                 if queuedRequest.settings.compactionEnabled {
@@ -2883,7 +2899,7 @@ final class ChatViewModel: ObservableObject {
                         onCompaction: { [weak self] _ in
                             await self?.markCompacting(streamingMessageID, in: streamingSessionID)
                         },
-                        onEvent: { event in eventRelay.submit(event) }
+                        onEvent: { event in relay(event) }
                     )
                     try Task.checkCancellation()
                     if let item = result.compaction {
@@ -2906,7 +2922,7 @@ final class ChatViewModel: ObservableObject {
                 } else {
                     completion = try await client.streamChat(
                         request,
-                        onEvent: { event in eventRelay.submit(event) }
+                        onEvent: { event in relay(event) }
                     )
                 }
                 eventRelay.finish()
@@ -3411,19 +3427,33 @@ final class ChatViewModel: ObservableObject {
         before assistantMessageID: UUID,
         advertisesTools: Bool,
         settings: NativSettings,
-        documentContexts: [UUID: String]
+        documentContexts: [UUID: String],
+        promptSectionsOverride: [String]? = nil,
+        toolDefinitionsOverride: [MLXChatToolDefinition]? = nil,
+        legacyWorkPrompt: Bool = false
     ) -> MLXChatCompletionRequest? {
-        guard let modelID = settings.languageModelID,
-            let sessionMessages = sessionMessages(for: queuedRequest.sessionID),
+        guard let sessionMessages = sessionMessages(for: queuedRequest.sessionID),
             let assistantIndex = sessionMessages.firstIndex(where: { $0.id == assistantMessageID })
         else {
             return nil
         }
 
-        let precedingMessages = sessionMessages[..<assistantIndex]
+        return completionRequest(for: queuedRequest, precedingMessages: sessionMessages[..<assistantIndex],
+            advertisesTools: advertisesTools, settings: settings, documentContexts: documentContexts,
+            promptSectionsOverride: promptSectionsOverride, toolDefinitionsOverride: toolDefinitionsOverride,
+            legacyWorkPrompt: legacyWorkPrompt)
+    }
 
+    private func completionRequest(
+        for queuedRequest: QueuedChatRequest,
+        precedingMessages: ArraySlice<ChatTranscriptMessage>,
+        advertisesTools: Bool, settings: NativSettings, documentContexts: [UUID: String],
+        promptSectionsOverride: [String]? = nil, toolDefinitionsOverride: [MLXChatToolDefinition]? = nil,
+        legacyWorkPrompt: Bool = false
+    ) -> MLXChatCompletionRequest? {
+        guard let modelID = settings.languageModelID else { return nil }
         let advertisesToolsForModel = advertisesTools && queuedRequest.languageModelSupportsTools
-        let toolDefinitions = advertisesToolsForModel
+        let toolDefinitions = toolDefinitionsOverride ?? (advertisesToolsForModel
             ? availableToolDefinitions(
                 canEditImage: precedingMessages.contains { message in
                     message.imageAttachments.contains { $0.chatAttachmentKind == .image }
@@ -3431,7 +3461,7 @@ final class ChatViewModel: ObservableObject {
                 settings: settings,
                 scope: queuedRequest.toolScope
             )
-            : []
+            : [])
         let tools = toolDefinitions.isEmpty ? nil : toolDefinitions
 
         let includesWorkContext = toolDefinitions.contains { $0.function.name == ChatWorkToolRegistry.toolName }
@@ -3440,9 +3470,11 @@ final class ChatViewModel: ObservableObject {
                 sessionPrompt: settings.systemPrompt,
                 personalizationPrompt: queuedRequest.personalizationSnapshot,
                 projectPrompt: queuedRequest.toolScope.systemPrompt,
-                includesChatWork: queuedRequest.languageModelSupportsTools,
+                includesChatWork: legacyWorkPrompt || includesWorkContext,
                 includesToolGuide: !toolDefinitions.isEmpty,
-                skills: settings.skills.filter(\.isEnabled)
+                skills: settings.skills.filter(\.isEnabled),
+                promptSectionsOverride: promptSectionsOverride,
+                voiceTurn: queuedRequest.voiceTurn
             ),
             transcript: precedingMessages,
             includesImages: queuedRequest.languageModelSupportsVision
@@ -3469,6 +3501,7 @@ final class ChatViewModel: ObservableObject {
             toolChoice: tools == nil ? nil : "auto",
             stream: true
         )
+        if queuedRequest.voiceTurn { PromethVoiceTurnPolicy.apply(&request) }
         let items = includesWorkContext
             ? (try? workState(for: queuedRequest.sessionID)?.itemListJSON()) ?? "[]" : nil
         request.transientContext = Self.completionContext(
@@ -3476,6 +3509,59 @@ final class ChatViewModel: ObservableObject {
         )
         return request
     }
+
+    /// Prefill the actual voice system/tool prefix while the user begins talking. No messages are saved,
+    /// no generated token is displayed, and tool calls from this one-token warm-up are never executed.
+    func warmVoice(using appModel: NativModel, sessionID: UUID?, mode: String) async {
+        guard !hasPendingRequests, mode != "evil", let settings = try? submissionSettings(using: appModel) else { return }
+        let id = sessionID ?? UUID()
+        let personalization = id == currentSessionID ? currentSession?.personalizationSnapshot
+            : storedSessions.first(where: { $0.id == id })?.personalizationSnapshot
+        let queued = QueuedChatRequest(id: UUID(), sessionID: id, userMessageID: UUID(), assistantMessageID: UUID(),
+            settings: settings, accessMode: .standard,
+            personalizationSnapshot: personalization ?? settings.personalization.systemPrompt,
+            toolScope: toolScope(for: id, settings: settings), imageGenerationModelID: settings.imageGenerationModelID,
+            languageModelSupportsTools: true, languageModelSupportsVision: true, voiceTurn: true, voiceLatencyID: nil)
+        // Use explicit mode/sections for a new web chat that has not yet created its native session.
+        let sections = [PromethPrompts.persona(mode: "Safe Mode"), PromethPrompts.voiceCitationRules()]
+        guard let completion = completionRequest(for: queued, precedingMessages: [], advertisesTools: true,
+            settings: settings, documentContexts: [:], promptSectionsOverride: sections) else { return }
+        let request = PromethVoiceTurnPolicy.prefill(completion)
+        let client = NativChatClient(baseURL: settings.serverBaseURL, apiKey: settings.serverAPIKey,
+            idleTimeout: 3, resourceTimeout: 3)
+        _ = try? await client.streamChat(request, onEvent: { _ in })
+    }
+
+    #if DEBUG
+    /// Offline benchmark export uses the real harness builder, tools and policy, with an isolated test session.
+    func voiceLatencyBenchmarkRequest(settings: NativSettings, voiceTurn: Bool) -> MLXChatCompletionRequest? {
+        guard let sessionID = currentSessionID else { return nil }
+        let previous = messages
+        defer { messages = previous }
+        let user = ChatTranscriptMessage(role: .user, content: "What is the capital of France?")
+        let assistant = ChatTranscriptMessage(role: .assistant, content: "")
+        messages = [user, assistant]
+        let queued = QueuedChatRequest(id: UUID(), sessionID: sessionID, userMessageID: user.id,
+            assistantMessageID: assistant.id, settings: settings, accessMode: .standard,
+            personalizationSnapshot: "", toolScope: toolScope(for: sessionID, settings: settings),
+            imageGenerationModelID: nil, languageModelSupportsTools: true, languageModelSupportsVision: true,
+            voiceTurn: voiceTurn, voiceLatencyID: nil)
+        // XCTest normally exposes all Nativ tools. Match the prepared Prometh shell instead,
+        // without changing test-global flags, starting sidecars or reading connector credentials.
+        var tools = availableToolDefinitions(canEditImage: false, settings: settings, scope: queued.toolScope)
+            .filter { PromethToolVisibility.allows($0.function.name, shellOn: true,
+                terminalTools: PromethFlags.terminalTools, fileWriteTools: PromethFlags.fileWriteTools,
+                chatWork: PromethFlags.chatWork, modelsBrowser: PromethFlags.modelsBrowser,
+                systemMonitorUI: PromethFlags.systemMonitorUI, developer: PromethFlags.developer) }
+        if PromethFlags.video { tools += [PromethGenerateVideoTool.definition, PromethTrimVideoTool.definition] }
+        tools += [ChatWebSearchToolRegistry.definition, ChatWebReadToolRegistry.definition]
+        tools.sort { $0.function.name < $1.function.name }
+        return makeCompletionRequest(for: queued, before: assistant.id, advertisesTools: true,
+            settings: settings, documentContexts: [:],
+            promptSectionsOverride: [PromethPrompts.persona(mode: "Safe Mode"), voiceTurn ? PromethPrompts.voiceCitationRules() : PromethPrompts.citationRules()],
+            toolDefinitionsOverride: tools, legacyWorkPrompt: !voiceTurn)
+    }
+    #endif
 
     // PROMETH-SEAM: S7 — installed by Prometh at launch. Nil keeps Nativ's endpoint.
     enum ChatEndpointResolver {
@@ -3487,7 +3573,7 @@ final class ChatViewModel: ObservableObject {
 
     // PROMETH-SEAM: S9 — Prometh registers citation and persona text at launch.
     enum PromethPromptAdditions {
-        nonisolated(unsafe) static var sections: (@Sendable () -> [String])?
+        nonisolated(unsafe) static var sections: (@Sendable (Bool) -> [String])?
         nonisolated(unsafe) static var prefetch: (@Sendable (UUID, String) async -> Void)?
         /// Scrubs tool JSON before it is sent back to the model (attachment IDs, paths).
         nonisolated(unsafe) static var sanitizeToolContent: (@Sendable (String?, String) -> String)?
@@ -3504,13 +3590,15 @@ final class ChatViewModel: ObservableObject {
         projectPrompt: String?,
         includesChatWork: Bool,
         includesToolGuide: Bool,
-        skills: [NativSkill]
+        skills: [NativSkill],
+        promptSectionsOverride: [String]? = nil,
+        voiceTurn: Bool = false
     ) -> String {
         // PROMETH-SEAM: S9 — citation rules stay out of the XCTest host so the
         // assembled-prompt fixture stays exact. The app process appends them.
-        let promethSections = PromethFlags.isRunningUnitTests
+        let promethSections = promptSectionsOverride ?? (PromethFlags.isRunningUnitTests
             ? []
-            : (PromethPromptAdditions.sections?() ?? [])
+            : (PromethPromptAdditions.sections?(voiceTurn) ?? []))
         let sections: [String?] = [
             corePrompt,
             includesChatWork ? ChatWorkToolRegistry.sessionPrompt : nil,

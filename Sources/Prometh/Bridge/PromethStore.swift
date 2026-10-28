@@ -458,7 +458,11 @@ final class PromethStore: ObservableObject {
         persist()
     }
 
-    func send(_ typed: String? = nil) {
+    func warmWebVoice(sessionID: UUID?, mode: String) async {
+        await chat.warmVoice(using: model, sessionID: sessionID, mode: mode)
+    }
+
+    func send(_ typed: String? = nil, voiceTurn: Bool = false, voiceLatencyID: String? = nil) {
         if current == nil { newChat() }
         PromethPromptAdditionsMode.current = current?.mode.rawValue ?? BehaviorMode.safe.rawValue
         guard let id = state.selectedChatID else { return }
@@ -488,6 +492,7 @@ final class PromethStore: ObservableObject {
         // Keep the prompt on ChatViewModel only. Clearing the UI draft first stops
         // ComposerEditor from being re-filled by the intermediate binding write.
         pendingSend[id.uuidString] = text
+        pendingVoice[id.uuidString] = (voiceTurn || voice.isOpen, voiceLatencyID)
         clearUIDraft(id)
         chat.draft = text
         guard readyToSend() else {
@@ -507,6 +512,7 @@ final class PromethStore: ObservableObject {
     private var waitingToSend = false
     /// Prompt held while the UI draft is cleared ahead of deliver / retry.
     private var pendingSend: [String: String] = [:]
+    private var pendingVoice: [String: (Bool, String?)] = [:]
 
     private func readyToSend() -> Bool {
         (current?.mode == .evil || chatReady) && !model.isModelLoading && chat.canSend(
@@ -591,13 +597,16 @@ final class PromethStore: ObservableObject {
         chat.send(
             using: model,
             languageModelSupportsTools: true,
-            languageModelSupportsVision: languageModelSupportsVision(for: id)
+            languageModelSupportsVision: languageModelSupportsVision(for: id),
+            voiceTurn: pendingVoice[id.uuidString]?.0 ?? false,
+            voiceLatencyID: pendingVoice[id.uuidString]?.1
         )
         let saved = chat.messages.contains {
             $0.role == .user && $0.content.trimmingCharacters(in: .whitespacesAndNewlines) == text
         }
         guard saved else { return false }
         pendingSend[id.uuidString] = nil
+        pendingVoice[id.uuidString] = nil
         clearUIDraft(id)
         composerAttachments[id.uuidString] = []
         waitingToSend = false
@@ -619,7 +628,7 @@ final class PromethStore: ObservableObject {
     func isRunning(_ id: UUID) -> Bool { chat.activeRequestSessionID == id }
 
     @discardableResult
-    func editMessage(_ message: Message, text: String) -> Bool {
+    func editMessage(_ message: Message, text: String, voiceTurn: Bool = false, voiceLatencyID: String? = nil) -> Bool {
         guard let id = state.selectedChatID else { return false }
         if PromethBlocklist.isBlocked(text) {
             error = PromethBlocklist.message
@@ -635,7 +644,8 @@ final class PromethStore: ObservableObject {
         chat.send(
             using: model,
             languageModelSupportsTools: true,
-            languageModelSupportsVision: languageModelSupportsVision(for: id)
+            languageModelSupportsVision: languageModelSupportsVision(for: id),
+            voiceTurn: voiceTurn, voiceLatencyID: voiceLatencyID
         )
         guard chat.messages.contains(where: { $0.id == message.id && $0.content == text }) else {
             error = "The edited message could not be sent. Try again."

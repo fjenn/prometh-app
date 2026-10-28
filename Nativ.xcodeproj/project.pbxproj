@@ -36,6 +36,7 @@
 		08ED57DC3609DD5F20F2C0CE /* MarkdownSearchText.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7FEC99DBAD937331D69E847 /* MarkdownSearchText.swift */; };
 		0935A0AC0D6A6298D551EEAE /* ArtifactSemanticSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46BCF5F68C499E27A789A91F /* ArtifactSemanticSearch.swift */; };
 		0940E69FB438245641377D01 /* NativKitLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBE65855FB48CA89F7A0DDA8 /* NativKitLibrary.swift */; };
+		0942667CDABCFA70C77D6D3D /* PromethRuntimeLocator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F03198F3942633B43D00969C /* PromethRuntimeLocator.swift */; };
 		09669E19F933505AE131AF6B /* PromethSearchContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACF8EA1BE72D6F9F7C86422B /* PromethSearchContext.swift */; };
 		0983FB9012B312100379CF26 /* VoiceWakeWordDetection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A28DAF80BABEE10D703D919 /* VoiceWakeWordDetection.swift */; };
 		09AFBDCFDE11D1048329E070 /* WebBrowsingRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = 254FDFBF7C5F7C8019E9E03F /* WebBrowsingRuntime.swift */; };
@@ -43,6 +44,7 @@
 		0A4161819BB1E0D5B6A8ADE4 /* AudioCaptureSleepMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E03F44A59784052F3095DFE /* AudioCaptureSleepMonitor.swift */; };
 		0AB78A4BB9F2D08433653C7C /* HuggingFaceCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A832F692EF1E810D78BD6B6C /* HuggingFaceCacheTests.swift */; };
 		0ABFB3808D7F6496E17DC889 /* ChatGitWorktreeRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11C93EA21443CFCDE79FBFC0 /* ChatGitWorktreeRecovery.swift */; };
+		0B057892842F59EF4EB1FAFF /* PromethVoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1964B3EA2B6118B0492B19F8 /* PromethVoice.swift */; };
 		0B11412D6A9FB77B9A204E7C /* Formatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B3D808CCA7AE53C7245C3D7 /* Formatting.swift */; };
 		0B5170A046C3C587DE077072 /* PDFDocumentTextExtractorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8513AE482EB6C3113080826A /* PDFDocumentTextExtractorTests.swift */; };
 		0BE40CBDC8E2F00EDED01E21 /* ArtifactCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2763077B30E27C9B7BB3E47F /* ArtifactCatalogTests.swift */; };
@@ -143,6 +145,7 @@
 		2D46D3C8E8590C214FE9CCF5 /* VoiceWakeWordModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F32A9EBB9E3F2BC02F58C7DF /* VoiceWakeWordModel.swift */; };
 		2E0E4A017514E59E2308132F /* ArtifactIndexFingerprintTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFE1E0447C34082130CC4E2D /* ArtifactIndexFingerprintTests.swift */; };
 		2E732395142F22D4CDCA2227 /* IntegrationServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83A221B9B5CCE60A43CC46AC /* IntegrationServices.swift */; };
+		2EFAC1AFA74D735CAF149DD8 /* PromethRuntimeLocator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F03198F3942633B43D00969C /* PromethRuntimeLocator.swift */; };
 		2F0882CE4C27E77454B20EF7 /* HuggingFaceDownloadCapacityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C7FAAC665AB7A2867987CDF /* HuggingFaceDownloadCapacityTests.swift */; };
 		2F3AA5B938A46F095DFF4079 /* VoiceDictationTranscript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EB79F69D94B105052D065ED /* VoiceDictationTranscript.swift */; };
 		2FCBB8B3FC3A9E1CD7A058C7 /* Onboarding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EDA925EB48DB9BF652962D7 /* Onboarding.swift */; };
@@ -317,6 +320,7 @@
 		686A83AD1E07A381F56F6D05 /* ChatDocumentContextBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A176708720937F2AEF36812 /* ChatDocumentContextBuilder.swift */; };
 		6880D0653441F5027A3970D6 /* AudioRecordExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C97046F779D87DD123DC9E4 /* AudioRecordExport.swift */; };
 		68995C4C1B69977794E288DE /* PromethWebChat.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9474379E0DCCED1CD585AB0 /* PromethWebChat.swift */; };
+		68CC3713FC61D1A05F1D4090 /* NativServerKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 5FC09C3EB40E94FB3D4AA4D6 /* NativServerKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		690202C6E092ABA0A086955F /* NativKitRuntimeResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F14184E993AE756775A648F /* NativKitRuntimeResolver.swift */; };
 		692EA024371CB249BE53DB86 /* NativAnalyticsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C30476FCFDB8FC736643EEB /* NativAnalyticsStore.swift */; };
 		6A8C556589E5B48965C0F5DB /* LocalPageReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DFDB6E74D7FFCB21EBF179B /* LocalPageReader.swift */; };
@@ -367,8 +371,10 @@
 		77B9284EE48D020C2B5A2DF3 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = DE77E6246A3E3A186C3E8F54 /* AppIcon.icon */; };
 		78C43B7B0A82ADE447B56D0B /* NativWindowState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D228AE1FDCC09FF03F3C0607 /* NativWindowState.swift */; };
 		7936A52CFFF5AB09FC9CDDCD /* HuggingFaceCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9D1F1A2CDDD531089F289C9 /* HuggingFaceCache.swift */; };
+		79CA4A7D491D9F288D552B73 /* VoiceLatencyBenchmarkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5E5CD505A6AF1E554AE54C /* VoiceLatencyBenchmarkTests.swift */; };
 		7A048032C24D04DFA07AC461 /* ChatConversationBranch.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE5FF4A08C2B33756121EE2C /* ChatConversationBranch.swift */; };
 		7A86AD9E2E640430F47B94D5 /* FileTypeIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 677258B04E9BB7CA8B89E11E /* FileTypeIcon.swift */; };
+		7A9015A81017128E6DD542BE /* PromethRuntimeLocator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F03198F3942633B43D00969C /* PromethRuntimeLocator.swift */; };
 		7AB89D8EA9CD6A5B08612BB2 /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A1B515ECDF21B3616E5A3D1 /* ChatViewModel.swift */; };
 		7ACEF87EDC19CB862FCF8840 /* ChatAttachmentKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DEE7582DCB286B9D878E28E /* ChatAttachmentKind.swift */; };
 		7AF5260E8044A3AED5B705A6 /* NimbleBrowsingProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32ECE279A81609EFF928C0D5 /* NimbleBrowsingProvider.swift */; };
@@ -440,6 +446,7 @@
 		9593586AAFCA2B97C6A7438B /* ChatFileWriteTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14F98763452E5A3BED006155 /* ChatFileWriteTools.swift */; };
 		95BB08DDD07C02F4E3976931 /* FileWriteConfigurationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 740FC3907FB149A3D184EBF9 /* FileWriteConfigurationView.swift */; };
 		9619E33DBABD478108A4D36D /* ChatSelectionEventRouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BB432A30E8C51EB12CE66E9 /* ChatSelectionEventRouterTests.swift */; };
+		963487D24A16358760414916 /* PromethPrompts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27AED3270E675F8C9F6526D9 /* PromethPrompts.swift */; };
 		96A319074CB28B885E031213 /* ChatMarkdownRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 432F8E84739652B2546DC7B7 /* ChatMarkdownRenderer.swift */; };
 		96AE764D2F938395E9B76C9E /* ChatServerStatsTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068ED8143814678E688A3A62 /* ChatServerStatsTool.swift */; };
 		978E977BB9C1D3CB2A05D0F6 /* ChatWorktreeRecoveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2D1D147A11D7A662971314E /* ChatWorktreeRecoveryView.swift */; };
@@ -647,6 +654,7 @@
 		E1BDFAE3C0690F3B2F51E70F /* PromethVoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1964B3EA2B6118B0492B19F8 /* PromethVoice.swift */; };
 		E266948298079B76F46989D8 /* ChatWorkBrowser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 157AFC6B1A2168A488C67ABB /* ChatWorkBrowser.swift */; };
 		E29423382F4F584AE5AB1BE4 /* SystemAudioMeetingRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF7AE3F3DB48E640950CCDB4 /* SystemAudioMeetingRecorder.swift */; };
+		E2DD2A7E5FEAB53303DBF708 /* NativServerKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5FC09C3EB40E94FB3D4AA4D6 /* NativServerKit.framework */; };
 		E2EE3BA750E7EC439F6258CA /* PromethConnectorApproval.swift in Sources */ = {isa = PBXBuildFile; fileRef = 583C8F14F944FDEDFDDB1F50 /* PromethConnectorApproval.swift */; };
 		E30FD12D491FF35A89A52754 /* WebSearchSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E295CCB27C6CBD1025E62D11 /* WebSearchSettingsView.swift */; };
 		E36D43D088EF55D617BCDDBB /* HuggingFaceModelReadme.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD670E29FC7EBFD886ED2DB8 /* HuggingFaceModelReadme.swift */; };
@@ -755,6 +763,13 @@
 			remoteGlobalIDString = 1622B274F4DF5A85C2FDB081;
 			remoteInfo = NativServerKit;
 		};
+		201348385DDB9AB0276BCC0A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A30563972FBD2EB1154D2853 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 1622B274F4DF5A85C2FDB081;
+			remoteInfo = NativServerKit;
+		};
 		3237BC669BB5EB5217ED8BE3 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A30563972FBD2EB1154D2853 /* Project object */;
@@ -817,6 +832,17 @@
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		98CFDA1AA10A4DFD3DF0E306 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				68CC3713FC61D1A05F1D4090 /* NativServerKit.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B04ED7EA3ABDAD9AD3FF3CD1 /* Embed ExtensionKit Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -848,6 +874,7 @@
 		097745295EC4589267FD3796 /* PromethWorkspaceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromethWorkspaceUITests.swift; sourceTree = "<group>"; };
 		0990D460FC714AC74F1565B3 /* SearXNG.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = SearXNG.png; sourceTree = "<group>"; };
 		09AB8D039C4CF399216CCA31 /* NativPrefillProgress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativPrefillProgress.swift; sourceTree = "<group>"; };
+		0A5E5CD505A6AF1E554AE54C /* VoiceLatencyBenchmarkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceLatencyBenchmarkTests.swift; sourceTree = "<group>"; };
 		0DBC23C0369758C056A8182D /* ScheduledTaskChatLinkerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduledTaskChatLinkerTests.swift; sourceTree = "<group>"; };
 		0F5BF52CED5DE873DD6BF02B /* CodexCLIProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexCLIProfile.swift; sourceTree = "<group>"; };
 		1002F02C6B7CDEDF638AC293 /* ChatWorkAnnotation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatWorkAnnotation.swift; sourceTree = "<group>"; };
@@ -1297,6 +1324,7 @@
 		EE984320AE8CCF8783DD30CE /* LocalModelDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalModelDiscovery.swift; sourceTree = "<group>"; };
 		EEF71E7A328DFB6E2E741999 /* Firecrawl.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Firecrawl.png; sourceTree = "<group>"; };
 		EF7AE3F3DB48E640950CCDB4 /* SystemAudioMeetingRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemAudioMeetingRecorder.swift; sourceTree = "<group>"; };
+		F03198F3942633B43D00969C /* PromethRuntimeLocator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromethRuntimeLocator.swift; sourceTree = "<group>"; };
 		F0CD53CDD71732DE956F55DC /* LocalModelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalModelProvider.swift; sourceTree = "<group>"; };
 		F299F04205B8F438A9A9FF12 /* ChatArchiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatArchiveTests.swift; sourceTree = "<group>"; };
 		F32A9EBB9E3F2BC02F58C7DF /* VoiceWakeWordModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceWakeWordModel.swift; sourceTree = "<group>"; };
@@ -1363,6 +1391,14 @@
 				B8025D46E56B130B785F7EBE /* ZIPFoundation in Frameworks */,
 				F118E505C0B99F19BFAEC8C2 /* SwiftTerm in Frameworks */,
 				A26B18B8AFF2DED3C98512E7 /* Xet in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A87B0AA9D0CA634EB90AAA0F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E2DD2A7E5FEAB53303DBF708 /* NativServerKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2043,6 +2079,7 @@
 			isa = PBXGroup;
 			children = (
 				9D38798170B690673597F871 /* PromethIdentity.swift */,
+				F03198F3942633B43D00969C /* PromethRuntimeLocator.swift */,
 			);
 			path = Identity;
 			sourceTree = "<group>";
@@ -2346,6 +2383,7 @@
 				DE94F230299FF8E794099BB4 /* SystemMonitorObservationPolicyTests.swift */,
 				6CAC5DAA8601759771B470A1 /* SystemTelemetryTests.swift */,
 				B6B4F745A6B4910276482015 /* VoiceDictationTranscriptTests.swift */,
+				0A5E5CD505A6AF1E554AE54C /* VoiceLatencyBenchmarkTests.swift */,
 				8585857DBE0EAEDC96619084 /* VoiceWakeWordPowerPolicyTests.swift */,
 				22E7036A82D9F6E366860CB6 /* VoiceWakeWordTests.swift */,
 				A7D47DD0BF553DB26BA498D0 /* WindowCommandRoutingTests.swift */,
@@ -2483,10 +2521,13 @@
 			buildConfigurationList = BE3C5899A38C507A556FDF67 /* Build configuration list for PBXNativeTarget "PromethTests" */;
 			buildPhases = (
 				9BE8E4E8877987CB2368F6CE /* Sources */,
+				A87B0AA9D0CA634EB90AAA0F /* Frameworks */,
+				98CFDA1AA10A4DFD3DF0E306 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				1BBECFA2CDB9B2737E359625 /* PBXTargetDependency */,
 			);
 			name = PromethTests;
 			packageProductDependencies = (
@@ -2963,6 +3004,7 @@
 				DA11FE6AD79795D7ABA167EE /* PromethPocketSpeech.swift in Sources */,
 				FFF5E8501ACE2874770DDCF8 /* PromethPrompts.swift in Sources */,
 				D731836671A2CEACD2B779A5 /* PromethRootView.swift in Sources */,
+				2EFAC1AFA74D735CAF149DD8 /* PromethRuntimeLocator.swift in Sources */,
 				248B94ABA6D4A96E139B9D37 /* PromethSearchBootstrap.swift in Sources */,
 				86024396D37CE2CF3F4AD2FB /* PromethSearchContext.swift in Sources */,
 				983F2C2085718292C8CFF178 /* PromethSileroVAD.swift in Sources */,
@@ -3291,7 +3333,10 @@
 				D63C81BA2B80B89251E51B80 /* PromethConnectorApproval.swift in Sources */,
 				1663B085EB77ACB1E9A43E96 /* PromethFlags.swift in Sources */,
 				DBB34516E23260F81529B725 /* PromethIdentity.swift in Sources */,
+				963487D24A16358760414916 /* PromethPrompts.swift in Sources */,
+				7A9015A81017128E6DD542BE /* PromethRuntimeLocator.swift in Sources */,
 				EFD7F61A919F062B4060F0F9 /* PromethToolVisibility.swift in Sources */,
+				0B057892842F59EF4EB1FAFF /* PromethVoice.swift in Sources */,
 				2CA1076EA0874C55E7BB14B2 /* RealtimeAudioMeter.swift in Sources */,
 				D2D5168B1A4243EB55EB1D68 /* RealtimeAudioMeterTests.swift in Sources */,
 				B986E17A8D75D859BFF14BBF /* ReleaseVersion.swift in Sources */,
@@ -3326,6 +3371,7 @@
 				A6E043CD0C3AD882D0D0AE66 /* VoiceAudioRecorder.swift in Sources */,
 				D4B92BF58E94813A16200153 /* VoiceDictationTranscript.swift in Sources */,
 				DCE3BC508CE2CAD3059580F7 /* VoiceDictationTranscriptTests.swift in Sources */,
+				79CA4A7D491D9F288D552B73 /* VoiceLatencyBenchmarkTests.swift in Sources */,
 				3A4D3E1F9313D9896173130D /* VoiceShortcut.swift in Sources */,
 				0983FB9012B312100379CF26 /* VoiceWakeWordDetection.swift in Sources */,
 				1181C20DFAAA23A4F8899D98 /* VoiceWakeWordFeatures.swift in Sources */,
@@ -3383,6 +3429,7 @@
 				F13E6EE36F293DAFBF57B7FA /* PromethMediaTests.swift in Sources */,
 				4B9EC8FD827BFE32D0B82A1D /* PromethModeTests.swift in Sources */,
 				E800F80EF950DE83D22581DD /* PromethPrompts.swift in Sources */,
+				0942667CDABCFA70C77D6D3D /* PromethRuntimeLocator.swift in Sources */,
 				09669E19F933505AE131AF6B /* PromethSearchContext.swift in Sources */,
 				165D13FF5A6825F0B77C47D5 /* PromethSearchTests.swift in Sources */,
 				852A909A5AF4BD616CD7DEDB /* PromethToolVisibility.swift in Sources */,
@@ -3418,6 +3465,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		1BBECFA2CDB9B2737E359625 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1622B274F4DF5A85C2FDB081 /* NativServerKit */;
+			targetProxy = 201348385DDB9AB0276BCC0A /* PBXContainerItemProxy */;
+		};
 		2D546AE3E86149E8E86CF6B2 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 465C23BB3ADA415A5004AAD9 /* Nativ */;

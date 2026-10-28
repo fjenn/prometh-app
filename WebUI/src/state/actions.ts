@@ -2,6 +2,8 @@ import { clearTurnExtras } from '../native/state'
 import { runVideo } from '../native/video'
 import { streamChat } from '../native/llm'
 import { request } from '../native/bridge'
+import { VOICE_SILENCE_MS } from '../native/vad'
+import { beginVoiceTiming, finishVoiceTiming, voiceTurnId } from '../native/voice-latency'
 import type { ChatCompletionMessageParam } from '@mlc-ai/web-llm'
 import { app, currentChat, ensureChat, freshSnapshot, newChat, showError, ui, uid, updateChat, updateMessage } from './store'
 import type { Artifact, Attachment, Capability, Conversation, Message, Mode, PrepKey, Skill } from './types'
@@ -349,7 +351,7 @@ async function runChat(chatId: string, opts: { voice?: boolean; onText?: (full: 
         opts.onText?.(vis, vis.slice(lastLen))
         lastLen = vis.length
       },
-      { maxTokens, temperature: c.mode === 'evil' ? 0.8 : 0.7, signal: ac.signal, chatId, msgId: msg.id, mode: c.mode, userIndex: c.messages.filter(m => m.role === 'user').length - 1 },
+      { maxTokens, temperature: c.mode === 'evil' ? 0.8 : 0.7, signal: ac.signal, voice: !!opts.voice, chatId, msgId: msg.id, mode: c.mode, userIndex: c.messages.filter(m => m.role === 'user').length - 1 },
     )
     const blocked = isBlocked(result.text)
     const final = blocked ? BLOCKED_MESSAGE : visibleReply(result.text, true).trim()
@@ -760,12 +762,6 @@ export function stopReading() {
 
 // ---------- voice conversation ----------
 
-/** Test-phase diagnostics: each voice turn's timings go to our server's log (no audio, no words). */
-function diag(kind: string, data: Record<string, string | number>) {
-  const q = new URLSearchParams({ k: kind, ...Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v).slice(0, 300)])) })
-  void fetch(`/diag/voice?${q}`, { keepalive: true }).catch(() => {})
-}
-
 let voiceTurn: { capture: Capture | null; speech: Speech | null; gen: number; standby: Capture | null } = { capture: null, speech: null, gen: 0, standby: null }
 
 export function openVoice() {
@@ -791,7 +787,7 @@ async function listen() {
   const live = () => voiceTurn.gen === gen && ui.get().voiceOpen
   if (!live()) return
   if (ui.get().voiceMuted) return ui.set({ voicePhase: 'Muted' })
-  ui.set({ voicePhase: 'Listening' })
+  ui.set({ voicePhase: 'Getting ready' })
   const mic = await openMic(false)
   if (!mic) return
   if (!live()) return mic.cap.cancel()
@@ -808,7 +804,7 @@ async function openMic(whileSpeaking: boolean): Promise<{ cap: Capture; take: ()
   let cap: Capture | null = null
   const opts: CaptureOptions = {
     autoStop: true,
-    silenceMs: 1000,
+    silenceMs: VOICE_SILENCE_MS,
     maxMs: whileSpeaking ? 180000 : 45000,
     minSpeechMs: whileSpeaking ? 200 : 0,
     echo: whileSpeaking ? () => player.level() : undefined,
@@ -830,7 +826,7 @@ async function openMic(whileSpeaking: boolean): Promise<{ cap: Capture; take: ()
     ui.set({ voicePhase: 'Listening' })
   }
   const bargeIn = () => {
-    diag('barge', { phase: ui.get().voicePhase })
+    finishVoiceTiming(voiceTurnId(), 'cancelled')
     const c = currentChat()
     if (c) stop(c.id)
     voiceTurn.speech?.cancel()
@@ -859,28 +855,29 @@ export async function endTurn(gen = voiceTurn.gen) {
   const live = () => voiceTurn.gen === gen && ui.get().voiceOpen
   ui.set({ voicePhase: 'Thinking', voiceLevel: 0, voiceReveal: null })
   let text = ''
-  const tEnd = performance.now()
+  const timingId = beginVoiceTiming()
   try {
     const audio = await cap.stop()
-    const secs = audio ? audio.length / 16000 : 0
     if (audio) text = heard(await transcribe(audio))
-    diag('heard', { words: text ? text.split(/\s+/).length : 0, audio_s: secs.toFixed(1), stt_ms: Math.round(performance.now() - tEnd) })
   } catch (e) {
     showError(`Couldn’t understand that: ${String((e as Error)?.message ?? e).slice(0, 100)}`)
   }
-  if (!live()) return
-  if (!text || /^[\s\p{P}\p{S}]*$/u.test(text)) return void listen()
+  if (!live()) { finishVoiceTiming(timingId, 'cancelled'); return }
+  if (!text || /^[\s\p{P}\p{S}]*$/u.test(text)) { finishVoiceTiming(timingId, 'no_speech'); return void listen() }
   const chatId = ensureChat()
   updateChat(chatId, (c) => ({ ...c, messages: [...c.messages, { id: uid(), role: 'user', text, status: 'complete', voice: true }], title: c.messages.length ? c.title : titleFrom(text), updated: Date.now() }))
   const chat = app.get().chats.find((x) => x.id === chatId)!
-  if (intent(chat, text) === 'image') return voiceImage(chatId, text, live)
+  if (intent(chat, text) === 'image') { await voiceImage(chatId, text, live); finishVoiceTiming(timingId, 'complete'); return }
   // The reply streams in token by token like in chat, but held back so its first token shows when her first
   // word plays: every update keeps its timing relative to the first token, shifted to the speech start.
   const replyId = () => app.get().chats.find((x) => x.id === chatId)?.messages.at(-1)?.id ?? ''
   // Listen while she talks, so talking over her interrupts her.
-  const standby = await openMic(true)
-  if (!live()) return void standby?.cap.cancel()
-  voiceTurn.standby = standby?.cap ?? null
+  // Open standby capture in parallel; microphone startup must not delay the LLM request.
+  const standbyState: { mic: Awaited<ReturnType<typeof openMic>> } = { mic: null }
+  const standbyReady = openMic(true).then(mic => {
+    if (!live()) { mic?.cap.cancel(); return }
+    standbyState.mic = mic; voiceTurn.standby = mic?.cap ?? null
+  })
   const updates: { at: number; text: string }[] = []
   let speechAt: number | null = null
   const reveal = (u: { at: number; text: string }) =>
@@ -892,7 +889,6 @@ export async function endTurn(gen = voiceTurn.gen) {
     if (speechAt === null) {
       speechAt = performance.now() + startsIn
       updates.forEach(reveal)
-      diag('speaks', { after_ms: Math.round(speechAt - tEnd), first_token_ms: updates.length ? Math.round(updates[0].at - tEnd) : -1 })
     }
   })
   voiceTurn.speech = speech
@@ -914,9 +910,12 @@ export async function endTurn(gen = voiceTurn.gen) {
     /* speech errors just end the turn */
   }
   await player.drained()
+  await standbyReady
+  finishVoiceTiming(timingId, 'complete')
   ui.set({ voiceReveal: null })
   // Not live: she was talked over (the standby mic is already the next turn) or voice was closed.
   if (!live()) return
+  const standby = standbyState.mic
   if (standby && voiceTurn.standby === standby.cap) standby.take()
   else void listen()
 }
@@ -976,6 +975,7 @@ const dropStandby = () => {
 }
 
 export function interruptVoice() {
+  finishVoiceTiming(voiceTurnId(), 'cancelled')
   dropStandby()
   const c = currentChat()
   if (c) stop(c.id)
@@ -989,6 +989,7 @@ export function toggleVoiceMute() {
   const muted = !ui.get().voiceMuted
   ui.set({ voiceMuted: muted })
   if (muted) {
+    finishVoiceTiming(voiceTurnId(), 'cancelled')
     dropStandby()
     voiceTurn.gen++
     voiceTurn.capture?.cancel()
@@ -1000,6 +1001,7 @@ export function toggleVoiceMute() {
 }
 export function endVoice() {
   if (!ui.get().voiceOpen) return
+  finishVoiceTiming(voiceTurnId(), 'cancelled')
   dropStandby()
   voiceTurn.gen++
   voiceTurn.capture?.cancel()

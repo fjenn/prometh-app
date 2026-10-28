@@ -57,7 +57,16 @@ extension PromethWebCoordinator {
             guard let encoded = params["data"] as? String, let data = Data(base64Encoded: encoded) else { throw bridgeError("No recording was captured.") }
             let settings = store.model.settings.normalized()
             let client = NativAudioClient(baseURL: settings.serverBaseURL, apiKey: settings.serverAPIKey, timeout: 120)
-            return try await client.transcribe(audioData: data, fileName: "voice.wav", model: PromethVoiceDefaults.speechModel(current: settings.speechToTextModelID)).text
+            let text = try await client.transcribe(audioData: data, fileName: "voice.wav", model: PromethVoiceDefaults.speechModel(current: settings.speechToTextModelID)).text
+            PromethVoiceLatency.mark(params["turnId"] as? String, "whisper_final", chars: text.count)
+            return text
+        case "audio.warm":
+            let sessionID = (params["chatId"] as? String).flatMap { nativeID($0) }
+            let mode = params["mode"] as? String ?? "safe"
+            async let speech: Void = PromethKokoroSpeech.warm()
+            async let prefix: Void = store.warmWebVoice(sessionID: sessionID, mode: mode)
+            _ = try await (speech, prefix)
+            return NSNull()
         case "audio.speech":
             guard let text = params["text"] as? String, !text.isEmpty else { return "" }
             let url = try await PromethKokoroSpeech.synthesize(text, voice: params["voice"] as? String ?? "af_heart")

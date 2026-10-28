@@ -1,0 +1,13 @@
+{
+  "hint": "This is a spoken conversation: reply in one to three short, natural sentences, without Markdown, lists or emoji.",
+  "silence_ms": 550,
+  "request": {
+    "max_tokens": 300,
+    "temperature": 0,
+    "top_k": 0,
+    "top_p": 1,
+    "min_p": 0,
+    "enable_thinking": false,
+    "chat_template_kwargs": { "enable_thinking": false }
+  }
+}

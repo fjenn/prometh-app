@@ -1,8 +1,9 @@
 import { request, on } from './bridge'
 import { unbase64 } from './encoding'
+import { noteVADPause, voiceTurnId, voiceMark } from './voice-latency'
 // Microphone capture with a simple voice-activity detector, and gapless playback.
 // Main thread only: AudioContext doesn't exist inside workers.
-import { VoiceDetector, type VadOptions } from '../engine/vad'
+import { VoiceDetector, captureEnded, type VadOptions } from './vad'
 
 export class MicBlockedError extends Error {}
 
@@ -34,21 +35,54 @@ export interface CaptureOptions extends VadOptions {
 }
 
 export async function capture(opts: CaptureOptions): Promise<Capture> {
+  noteVADPause(0)
   const token = crypto.randomUUID(), started = performance.now(), detector = new VoiceDetector(opts, started)
-  let stopped = false, failure: Error | null = null
+  let stopped = false, failure: Error | null = null, ready = false, pendingStop = false
+  let lastFrameAt = performance.now(), watchdog: ReturnType<typeof setInterval> | undefined
+  const autoStop = () => {
+    if (stopped) return
+    if (!ready) { pendingStop = true; return }
+    stopped = true; clearInterval(watchdog); opts.onAutoStop?.()
+  }
   const offMeter = on<{ token: string; level: number }>('audio.meter', e => { if (e.token === token && !stopped) opts.onLevel?.(e.level) })
-  const offError = on<{ token: string; error: string }>('audio.error', e => { if (e.token === token && !stopped) { failure = new Error(e.error); opts.onAutoStop?.() } })
-  const offFrame = on<{ token: string; probability: number; rms: number; elapsed: number }>('audio.frame', e => {
+  const offError = on<{ token: string; error: string }>('audio.error', e => { if (e.token === token && !stopped) { failure = new Error(e.error); autoStop() } })
+  type Frame = { token: string; probability: number; rms: number; elapsed: number }
+  const queued: Frame[] = []
+  const frame = (e: Frame) => {
     if (e.token !== token || stopped) return
+    lastFrameAt = performance.now()
     const now = started + e.elapsed * 1000
     for (const event of detector.step(e.probability, e.rms, opts.echo?.() ?? 0, now)) {
       if (event === 'candidate' || event === 'candidate-end') opts.onCandidate?.(event === 'candidate')
       else opts.onSpeech?.(event === 'speech')
     }
-    if (opts.autoStop && ((detector.heard && now - detector.lastLoud > (opts.silenceMs ?? 1000)) || e.elapsed * 1000 >= (opts.maxMs ?? 60000))) { stopped = true; opts.onAutoStop?.() }
+    if (opts.autoStop && captureEnded(detector, now, e.elapsed * 1000, opts.silenceMs, opts.maxMs)) {
+      if (detector.heard) noteVADPause(now - detector.lastLoud)
+      autoStop()
+    }
+  }
+  const offFrame = on<Frame>('audio.frame', e => {
+    if (e.token !== token || stopped) return
+    if (!ready) queued.push(e)
+    else frame(e)
   })
-  const off = () => { offMeter(); offFrame(); offError() }
+  const off = () => { clearInterval(watchdog); queued.length = 0; offMeter(); offFrame(); offError() }
   try { await request('audio.start', { token }) } catch (e) { off(); throw new MicBlockedError((e as Error).message) }
+  lastFrameAt = performance.now()
+  watchdog = setInterval(() => {
+    if (!stopped && performance.now() - lastFrameAt > 5000) {
+      failure = new Error('The microphone or speech detector stopped delivering audio. Check the selected input device.')
+      autoStop()
+    }
+  }, 1000)
+  // A cold native detector can deliver queued frames before audio.start resolves.
+  // Let the caller install capture/take before reporting an already detected pause/error.
+  setTimeout(() => {
+    ready = true
+    if (stopped) return
+    if (pendingStop) autoStop()
+    else for (const event of queued.splice(0)) frame(event)
+  }, 0)
   return { cancel: () => { stopped = true; off(); void request('audio.cancel', { token }) }, stop: async () => {
     stopped = true; off()
     const encoded = await request<string>('audio.stop', { token }); if (failure) throw failure
@@ -64,6 +98,7 @@ export class Player {
   private gain: GainNode | null = null
   private meterBuf = new Float32Array(512)
   private t = 0
+  private audibleTurn: string | undefined
   private sources = new Set<AudioBufferSourceNode>()
   private idle: (() => void)[] = []
   onLevel?: (l: number) => void
@@ -102,11 +137,22 @@ export class Player {
     s.buffer = b
     s.connect(this.gain!)
     this.t = Math.max(this.t, ctx.currentTime + 0.02)
-    s.start(this.t)
+    const startsAt = this.t
+    s.start(startsAt)
     const startsIn = (this.t - ctx.currentTime) * 1000
     this.t += b.duration
     this.sources.add(s)
+    const turnId = voiceTurnId()
+    const observeStart = () => {
+      if (!turnId || this.audibleTurn === turnId || !this.sources.has(s)) return
+      if (ctx.state === 'running' && ctx.currentTime >= startsAt) {
+        this.audibleTurn = turnId
+        voiceMark(turnId, 'audio_played')
+      } else setTimeout(observeStart, ctx.state === 'running' ? Math.max(10, (startsAt - ctx.currentTime) * 1000) : 50)
+    }
+    if (turnId) setTimeout(observeStart, startsIn)
     s.onended = () => {
+      observeStart()
       this.sources.delete(s)
       if (!this.sources.size) this.idle.splice(0).forEach((f) => f())
     }

@@ -5,6 +5,7 @@ import { setTurnExtras } from './state'
 import { app, updateChat } from '../state/store'
 import { ui } from '../state/store'
 import { visibleText } from './reasoning'
+import { voiceTurnId } from './voice-latency'
 let loaded: string | null = null
 const base = 'http://127.0.0.1:8080'
 async function health(signal?: AbortSignal) {
@@ -51,7 +52,7 @@ export async function streamDirectChat(m: LLMSpec, messages: ChatCompletionMessa
   } catch (e) { if (opts.signal.aborted) return { text: visibleText(raw), stopped: true }; throw e }
 }
 
-export async function streamChat(m: LLMSpec, messages: ChatCompletionMessageParam[], onText: (text: string) => void, opts: { maxTokens?: number; temperature?: number; signal: AbortSignal; chatId?: string; msgId?: string; mode?: string; userIndex?: number }): Promise<{ text: string; tps?: number; stopped: boolean }> {
+export async function streamChat(m: LLMSpec, messages: ChatCompletionMessageParam[], onText: (text: string) => void, opts: { maxTokens?: number; temperature?: number; signal: AbortSignal; chatId?: string; msgId?: string; mode?: string; userIndex?: number; voice?: boolean }): Promise<{ text: string; tps?: number; stopped: boolean }> {
   if (!opts.chatId) return streamDirectChat(m, messages, onText, opts)
   const chatId = opts.chatId
   let visible = ''
@@ -66,7 +67,7 @@ export async function streamChat(m: LLMSpec, messages: ChatCompletionMessagePara
   opts.signal.addEventListener('abort', stop)
   try {
     const last = [...messages].reverse().find(m => m.role === 'user')
-    const result = await request<{ text: string; stopped: boolean; tps?: number }>('chat.send', { chatId, text: String(last?.content ?? ''), mode: opts.mode, userIndex: opts.userIndex, attachments: app.get().chats.find(c => c.id === chatId)?.messages.filter(m => m.role === 'user').at(-1)?.attachments?.filter(a => a.kind === 'image') })
+    const result = await request<{ text: string; stopped: boolean; tps?: number }>('chat.send', { chatId, voice: !!opts.voice, turnId: opts.voice ? voiceTurnId() : undefined, text: String(last?.content ?? ''), mode: opts.mode, userIndex: opts.userIndex, attachments: app.get().chats.find(c => c.id === chatId)?.messages.filter(m => m.role === 'user').at(-1)?.attachments?.filter(a => a.kind === 'image') })
     return { text: visibleText(result.text || visible), stopped: opts.signal.aborted || result.stopped, tps: result.tps ?? undefined }
   } finally { off(); opts.signal.removeEventListener('abort', stop) }
 }

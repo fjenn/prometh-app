@@ -1,10 +1,14 @@
 import { request } from './bridge'
 import { base64, unbase64 } from './encoding'
+import { sentences } from './sentences'
+import { voiceTurnId, voiceMark } from './voice-latency'
+import { currentChat } from '../state/store'
 type ImageEngine = 'sd15' | 'zimage'
 const base = 'http://127.0.0.1:8080'
 export async function prepareVoice(progress: (p: number) => void, _signal: AbortSignal) { progress(1) }
-export async function warmListening(progress: (p: number) => void) { progress(1) }
-export function warmSpeech() {}
+let voiceWarm: Promise<void> = Promise.resolve()
+export async function warmListening(progress: (p: number) => void) { progress(0); await voiceWarm; progress(1) }
+export function warmSpeech() { const chat = currentChat(); voiceWarm = request('audio.warm', { chatId: chat?.id, mode: chat?.mode }).catch(() => {}) }
 function wav(audio: Float32Array) {
   const buf = new ArrayBuffer(44 + audio.length * 2), v = new DataView(buf)
   const str = (at: number, s: string) => [...s].forEach((c, i) => v.setUint8(at + i, c.charCodeAt(0)))
@@ -13,17 +17,42 @@ function wav(audio: Float32Array) {
   return new Blob([buf], { type: 'audio/wav' })
 }
 export async function transcribe(audio: Float32Array): Promise<string> {
-  return request<string>('audio.transcribe', { data: base64(await wav(audio).arrayBuffer()) })
+  return request<string>('audio.transcribe', { data: base64(await wav(audio).arrayBuffer()), turnId: voiceTurnId() })
 }
 export interface Speech { push: (s: string) => void; end: () => void; cancel: () => void; done: Promise<void> }
 export function speak(text: string, voice: string, onChunk: (pcm: Float32Array, sampleRate: number, text: string) => void): Speech {
-  let content = text; const ac = new AbortController(); let finish!: () => void, fail!: (e: unknown) => void
+  let content = '', ended = false, cancelled = false, busy = false, failed = false
+  const turnId = voiceTurnId(), queue: string[] = []
+  let finish!: () => void, fail!: (e: unknown) => void
   const done = new Promise<void>((resolve, reject) => { finish = resolve; fail = reject })
-  return { push: s => { content += s }, cancel: () => { ac.abort(); finish() }, done, end: () => { void (async () => {
-    if (!content.trim()) return finish()
-    const encoded = await request<string>('audio.speech', { text: content, voice })
-    const ctx = new AudioContext(); try { const audio = await ctx.decodeAudioData(unbase64(encoded)); if (!ac.signal.aborted) onChunk(audio.getChannelData(0), audio.sampleRate, content) } finally { await ctx.close() }; finish()
-  })().catch(fail) } }
+  // A synthesis error may arrive before the LLM finishes; endTurn awaits the same rejection later.
+  void done.catch(() => {})
+  const pump = async () => {
+    if (busy || cancelled || failed) return
+    busy = true
+    try {
+      while (queue.length && !cancelled) {
+        const sentence = queue.shift()!
+        voiceMark(turnId, 'tts_sentence')
+        const encoded = await request<string>('audio.speech', { text: sentence, voice })
+        if (cancelled) break
+        const ctx = new AudioContext()
+        try { const audio = await ctx.decodeAudioData(unbase64(encoded)); if (!cancelled) onChunk(audio.getChannelData(0), audio.sampleRate, sentence) }
+        finally { await ctx.close() }
+      }
+      if (ended && !queue.length) finish()
+    } catch (error) { failed = true; fail(error) }
+    finally { busy = false }
+  }
+  const push = (s: string, final = false) => {
+    if (cancelled || failed) return
+    content += s
+    const split = sentences(content, final)
+    content = split.rest; queue.push(...split.ready)
+    void pump()
+  }
+  if (text) push(text)
+  return { push: s => push(s), cancel: () => { cancelled = true; queue.length = 0; finish() }, done, end: () => { ended = true; push('', true) } }
 }
 export async function prepareImages(_engine: ImageEngine, progress: (p: number) => void, _signal: AbortSignal) { progress(1) }
 type Took = { total: number; load: number }

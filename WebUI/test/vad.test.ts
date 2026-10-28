@@ -1,7 +1,7 @@
 // Run: npm test. Turn-taking on synthetic Silero frames (32 ms each): speech probability plus mic and output levels.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { VoiceDetector, type VadEvent } from '../src/engine/vad.ts'
+import { VoiceDetector, type VadEvent } from '../src/native/vad.ts'
 
 const FRAME = 32
 let seed = 7

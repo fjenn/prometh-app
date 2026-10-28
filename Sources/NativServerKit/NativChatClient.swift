@@ -469,6 +469,7 @@ public struct MLXChatCompletionRequest: Encodable, Equatable, Sendable {
     public var minP: Double
     public var repetitionPenalty: Double?
     public var enableThinking: Bool?
+    public var chatTemplateKwargs: [String: Bool]? = nil
     public var thinkingBudget: Int?
     public var thinkingStartToken: String?
     public var thinkingEndToken: String?
@@ -530,6 +531,7 @@ public struct MLXChatCompletionRequest: Encodable, Equatable, Sendable {
         case topP = "top_p"
         case minP = "min_p"
         case repetitionPenalty = "repetition_penalty"
+        case chatTemplateKwargs = "chat_template_kwargs"
         case enableThinking = "enable_thinking"
         case thinkingBudget = "thinking_budget"
         case thinkingStartToken = "thinking_start_token"
@@ -551,6 +553,7 @@ public struct MLXChatCompletionRequest: Encodable, Equatable, Sendable {
         try container.encode(topP, forKey: .topP)
         try container.encode(minP, forKey: .minP)
         try container.encodeIfPresent(repetitionPenalty, forKey: .repetitionPenalty)
+        try container.encodeIfPresent(chatTemplateKwargs, forKey: .chatTemplateKwargs)
         try container.encodeIfPresent(enableThinking, forKey: .enableThinking)
         try container.encodeIfPresent(thinkingBudget, forKey: .thinkingBudget)
         try container.encodeIfPresent(thinkingStartToken, forKey: .thinkingStartToken)

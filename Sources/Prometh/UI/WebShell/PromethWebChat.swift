@@ -42,8 +42,8 @@ extension PromethWebCoordinator {
         let targetUserIndex = params["userIndex"] as? Int ?? Int.max
         let existingUsers = store.current?.messages.filter { $0.role == "user" } ?? []
         if targetUserIndex < existingUsers.count {
-            guard store.editMessage(existingUsers[targetUserIndex], text: text) else { throw bridgeError(store.error ?? "Couldn’t resend the message.") }
-        } else { store.send(text) }
+            guard store.editMessage(existingUsers[targetUserIndex], text: text, voiceTurn: params["voice"] as? Bool ?? false, voiceLatencyID: params["turnId"] as? String) else { throw bridgeError(store.error ?? "Couldn’t resend the message.") }
+        } else { store.send(text, voiceTurn: params["voice"] as? Bool ?? false, voiceLatencyID: params["turnId"] as? String) }
         let task = Task<PromethWebTurnResult, Error> { @MainActor [self] in
             let deadline = Date().addingTimeInterval(600)
             var lastPayload = "", sawReply = false

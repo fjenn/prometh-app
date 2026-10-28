@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import NativServerKit
 
 /// Whisper is the dictation default. Parakeet stays compiled and is not selected.
 enum PromethVoiceDefaults {
@@ -150,5 +151,83 @@ struct PromethVoiceDetector {
             noise = rms < noise ? noise * 0.7 + rms * 0.3 : noise * 0.995 + rms * 0.005
         }
         return heardSpeech && elapsed - lastLoud >= 0.7
+    }
+}
+
+
+/// Shared on-disk sampler/hint policy used by the app and the real-stage benchmark.
+enum PromethVoiceTurnPolicy {
+    static func prefill(_ source: MLXChatCompletionRequest) -> MLXChatCompletionRequest {
+        var request = source
+        request.messages = source.messages.prefix(1).filter { $0.role == "system" }
+        // The local chat template requires a user message; this warm-up is never saved or displayed.
+        request.messages.append(MLXChatMessage(role: "user", content: "Hi"))
+        request.maxTokens = 1
+        request.transientContext = nil
+        return request
+    }
+    static func apply(_ request: inout MLXChatCompletionRequest) {
+        let config = PromethRuntimeLocator.url(relative: "voice/turn_config.json")
+            .flatMap { try? Data(contentsOf: $0) }
+            .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
+        let sampler = config?["request"] as? [String: Any] ?? [:]
+        request.maxTokens = sampler["max_tokens"] as? Int ?? 300
+        request.temperature = sampler["temperature"] as? Double ?? 0
+        request.topK = sampler["top_k"] as? Int ?? 0
+        request.topP = sampler["top_p"] as? Double ?? 1
+        request.minP = sampler["min_p"] as? Double ?? 0
+        request.enableThinking = false
+        request.chatTemplateKwargs = ["enable_thinking": false]
+        request.thinkingBudget = nil; request.thinkingStartToken = nil; request.thinkingEndToken = nil
+        let hint = config?["hint"] as? String ?? PromethPrompts.voiceHint
+        if request.messages.first?.role == "system", case .text(let text) = request.messages[0].content {
+            request.messages[0].content = .text(text + "\n\n" + hint)
+        }
+    }
+}
+
+/// One privacy-preserving JSON record per completed/failed voice turn. All times use uptime, never wall time.
+enum PromethVoiceLatency {
+    private static let queue = DispatchQueue(label: "studio.prometh.voice-latency")
+    nonisolated(unsafe) private static var turns: [String: [String: Any]] = [:]
+    private static let stages: Set<String> = ["vad_end", "whisper_final", "llm_request", "llm_first_token", "tts_sentence", "audio_played"]
+    static func begin(_ id: String, agoMs: Double = 0) {
+        let now = ProcessInfo.processInfo.systemUptime * 1000
+        queue.async {
+            turns[id] = ["turn_id": id, "vad_end": now - max(0, min(agoMs, 2000)), "vad_decision": now, "clock": "system_uptime_ms", "audio_clock": "web_audio_context_started"]
+            if turns.count > 32, let oldest = turns.min(by: { ($0.value["vad_end"] as? Double ?? 0) < ($1.value["vad_end"] as? Double ?? 0) }) {
+                write(oldest.key, status: "abandoned")
+            }
+        }
+    }
+    static func mark(_ id: String?, _ stage: String, chars: Int? = nil) {
+        guard let id, stages.contains(stage) else { return }
+        let now = ProcessInfo.processInfo.systemUptime * 1000
+        queue.async {
+            guard turns[id] != nil else { return }
+            if turns[id]?[stage] == nil { turns[id]?[stage] = now }
+            if let chars { turns[id]?["transcript_chars"] = chars }
+            if stage == "audio_played" { write(id, status: "first_audio") }
+        }
+    }
+    static func finish(_ id: String?, status: String) {
+        guard let id else { return }
+        queue.async { write(id, status: status) }
+    }
+    private static func write(_ id: String, status: String) {
+        guard var record = turns.removeValue(forKey: id) else { return }
+        record["status"] = status
+        if let eos = record["vad_end"] as? Double, let audio = record["audio_played"] as? Double { record["eos_to_audio_ms"] = audio - eos }
+        let directory = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/Prometh")
+        let url = directory.appendingPathComponent("voice-latency.jsonl")
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            if !FileManager.default.fileExists(atPath: url.path) { FileManager.default.createFile(atPath: url.path, contents: nil) }
+            let file = try FileHandle(forWritingTo: url)
+            defer { try? file.close() }
+            try file.seekToEnd()
+            var data = try JSONSerialization.data(withJSONObject: record, options: [.sortedKeys]); data.append(10)
+            try file.write(contentsOf: data)
+        } catch { /* Diagnostics must never block a voice turn. */ }
     }
 }

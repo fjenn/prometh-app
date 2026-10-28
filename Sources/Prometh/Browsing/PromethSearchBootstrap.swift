@@ -46,13 +46,13 @@ enum PromethSearchBootstrap {
             (URL(string: "http://127.0.0.1:8080")!, nil)
         }
         PromethMediaGate.stopEvilServer = { LlamaSupervisor.shared.stop() }
-        ChatViewModel.PromethPromptAdditions.sections = {
+        ChatViewModel.PromethPromptAdditions.sections = { voiceTurn in
             let persona = PromethPromptAdditionsMode.voiceActive
                 ? PromethPrompts.voicePersona(mode: PromethPromptAdditionsMode.current)
                 : PromethPrompts.persona(mode: PromethPromptAdditionsMode.current)
             return [
                 persona,
-                PromethPrompts.citationRules(),
+                voiceTurn ? PromethPrompts.voiceCitationRules() : PromethPrompts.citationRules(),
                 PromethWebPrefetch.promptSection(),
             ].filter { !$0.isEmpty }
         }

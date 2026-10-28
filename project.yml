@@ -235,6 +235,9 @@ targets:
     platform: macOS
     sources:
       - path: Tests/NativTests
+      - path: Sources/Prometh/Bridge/PromethVoice.swift
+      - path: Sources/Prometh/Browsing/PromethPrompts.swift
+      - path: Sources/Prometh/Identity/PromethRuntimeLocator.swift
       - path: Sources/Prometh/Identity/PromethIdentity.swift
       - path: Sources/Prometh/Flags/PromethFlags.swift
       - path: Sources/Prometh/Flags/PromethToolVisibility.swift
@@ -433,6 +436,7 @@ targets:
     sources:
       - path: Sources/Prometh/UI/WebShell/PromethWebMapping.swift
       - path: Tests/PromethTests
+      - path: Sources/Prometh/Identity/PromethRuntimeLocator.swift
       - path: Sources/Prometh/Identity/PromethIdentity.swift
       - path: Sources/Prometh/Flags/PromethFlags.swift
       - path: Sources/Prometh/Flags/PromethToolVisibility.swift
@@ -460,6 +464,8 @@ targets:
       - path: Sources/Prometh/Catalog/ModelPicker.swift
       - path: Sources/Prometh/Catalog/CatalogDownloader.swift
       - path: Sources/Prometh/Safety/PromethBlocklist.swift
+    dependencies:
+      - target: NativServerKit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: studio.prometh.PromethTests

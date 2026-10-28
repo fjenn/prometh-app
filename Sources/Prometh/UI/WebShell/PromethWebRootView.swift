@@ -114,6 +114,9 @@ final class PromethWebCoordinator: NSObject, WKScriptMessageHandler, WKUIDelegat
     init(store: PromethStore) { self.store = store }
     func attach(_ web: WKWebView) {
         self.web = web
+        if store.state.selected.contains(.voice) {
+            Task { try? await PromethKokoroSpeech.warm() }
+        }
         store.$state.dropFirst().sink { [weak self] _ in
             Task { @MainActor in guard let self else { return }; self.emit("state", self.snapshot()) }
         }.store(in: &subscriptions)
@@ -152,6 +155,16 @@ final class PromethWebCoordinator: NSObject, WKScriptMessageHandler, WKUIDelegat
     }
     func handle(_ method: String, _ params: [String: Any]) async throws -> Any {
         switch method {
+        case "voice.begin":
+            if let id = params["id"] as? String, UUID(uuidString: id) != nil { PromethVoiceLatency.begin(id, agoMs: params["agoMs"] as? Double ?? 0) }
+            return NSNull()
+        case "voice.mark":
+            PromethVoiceLatency.mark(params["id"] as? String, params["stage"] as? String ?? "")
+            return NSNull()
+        case "voice.finish":
+            let status = params["status"] as? String ?? "ended"
+            PromethVoiceLatency.finish(params["id"] as? String, status: ["complete", "cancelled", "no_speech", "error"].contains(status) ? status : "ended")
+            return NSNull()
         case "state.get": return snapshot()
         case "settings.sync":
             if let value = params["appearance"] as? String, ["Light", "Dark", "System"].contains(value), store.state.appearance != value { store.state.appearance = value }
@@ -201,7 +214,7 @@ final class PromethWebCoordinator: NSObject, WKScriptMessageHandler, WKUIDelegat
             if let raw = params["family"] as? String, let family = PromethModelFamily(rawValue: raw), let id = params["id"] as? String { store.chooseModel(family, id: id) }
             return snapshot()
         case "data.reset": try await store.resetWebData(); nativeChats = [:]; UserDefaults.standard.removeObject(forKey: "prometh.web.chatMap"); return snapshot()
-        case "blob.put", "blob.delete", "blob.clear", "blob.save", "audio.start", "audio.stop", "audio.cancel", "audio.transcribe", "audio.speech", "media.video", "media.cancel", "media.save", "media.trim", "media.image":
+        case "blob.put", "blob.delete", "blob.clear", "blob.save", "audio.start", "audio.stop", "audio.cancel", "audio.transcribe", "audio.speech", "audio.warm", "media.video", "media.cancel", "media.save", "media.trim", "media.image":
             return try await handleMedia(method, params)
         case "chat.send": return try await runTurn(params)
         case "chat.stop":

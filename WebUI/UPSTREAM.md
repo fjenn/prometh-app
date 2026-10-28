@@ -12,10 +12,11 @@ Copied without node_modules, dist, public/models or generated public/ort. The re
 | `package.json` | Mac postinstall applies the retained patch but does not copy browser ONNX runtime binaries into public assets. |
 | `src/main.tsx` | Await native hydration before mounting React, avoiding an onboarding/theme flash on prepared Macs. |
 | `src/startup.ts` | Menu/state/title events, native settings persistence, native initialization hooks, and a non-blocking native health warm-up (Phase 3). |
-| `src/state/actions.ts` | Native harness turn context, real video dispatch, native rename/delete/export/reset/download deletion; existing exported action names/signatures retained. |
+| `src/state/actions.ts` | Native harness turn context; Phase 4 voice timing, 550ms endpoint wait and parallel standby capture; real video dispatch, native rename/delete/export/reset/download deletion; existing exported action names/signatures retained. |
 | `src/ui/Onboarding.tsx` | Mac execution/storage copy and one native performance tile hook; all onboarding layout and Evil reveal retained. |
 | `src/ui/Settings.tsx` | Native plugins/models/search/performance hooks; hide browser image quality selector on Mac; Mac privacy/storage/about copy and native storage query; omit browser logout; Phase 3 shows the actual health-reported chat model separately from the preferred model; Phase 3c adds a Settings nav entry that opens the existing Customize modal without duplicating its content. |
 | `src/ui/Workspace.tsx` | Two additive native component hooks: video job replacement and sources/connector/media extras under assistant replies; Phase 3 stretches the assistant column independently of streamed text width. |
+| `test/vad.test.ts` | Phase 4 runs the existing echo/barge-in/turn-taking regressions against the Mac VAD adapter. |
 | `vite.config.ts` | Relative asset base, native engine resolver, and bundled resource output directory. |
 
 ## Added files
@@ -62,3 +63,9 @@ Phase 3b changes only the added native video event adapter (monotonic percent gu
 ## License
 
 The web UI source comes from Finn Jennen's own repository (`fjenn/Prometh`, `web/`, commit `1962c28`). It is reused here by the same owner. The upstream repository has no LICENSE file, so it is not relicensed: it keeps the same terms as this repository. Third-party npm dependencies keep their own licenses as listed in `package-lock.json` and in `node_modules/*/LICENSE`. For example, `@mlc-ai/web-llm` is Apache-2.0, and `patches/@mlc-ai+web-llm+0.2.84.patch` is a local modification of it. No dependency source is vendored into the app bundle except what Vite compiles into `Sources/Prometh/Resources/WebUI/assets`.
+
+## Phase 4 voice latency
+
+No visual/CSS changes. `src/state/actions.ts` has additive native voice timing hooks, forwards the voice flag, uses the 550ms endpoint wait and opens standby capture concurrently with the reply. Legacy `/diag/voice` fetches were replaced by native timing records. Native adapters now split speech incrementally (`src/native/sentences.ts`), reuse the resident Kokoro worker (`media.ts`), preserve capture startup frames and watch missing frames (`audio.ts`), and use a Mac VAD copy (`src/native/vad.ts`) that does not calibrate an initial speech frame as room noise. `src/native/voice-latency.ts` handles per-turn timing IDs; native `llm.ts` carries those IDs and the voice flag. New tests: `test/native-voice.test.ts`, `test/native-speech.test.ts`, `test/fixtures/native-speech.ts`. All original upstream engine/UI/CSS files retain their previous resync status; only actions changed further.
+
+Phase 4 also extends `test/native-send.test.ts` / its existing fixture to verify that Listening waits for native warm-up and actual microphone startup. Native media waits for speech/prompt readiness before capture. Native Player records first audio only after its running context clock reaches the source start; upstream Player/VoiceLayer markup and CSS remain unchanged.
