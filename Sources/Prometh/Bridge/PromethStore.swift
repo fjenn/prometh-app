@@ -33,6 +33,8 @@ final class PromethStore: ObservableObject {
     @Published var pendingTool: PendingTool?
     @Published var pendingConnectorApproval: PromethConnectorConsent?
     @Published var modelDetails: [String: String] = [:]
+    /// Tool message IDs that showed an inline connector card (keeps running/done visible).
+    private var connectorCardIDs: Set<UUID> = []
 
     let macSpecs = MacSpecs.read()
     let persistence: Persistence
@@ -88,6 +90,7 @@ final class PromethStore: ObservableObject {
         }
         state = restored
         PromethWebPrefetch.enabled = restored.webSearch
+        PromethConnectorApproval.syncAlwaysAllowed(restored.connectorAlwaysAllow ?? [])
         drafts = restored.drafts
         modes = restored.modes
         publishModes()
@@ -134,22 +137,65 @@ final class PromethStore: ObservableObject {
     }
 
     func approveConnector() {
-        guard let id = pendingConnectorApproval?.id else { return }
+        let id = pendingConnectorApproval?.id ?? inlineAwaitingConnectorID()
+        guard let id else { return }
+        connectorCardIDs.insert(id)
         chat.confirmToolConsent(id)
     }
 
-    func denyConnector() {
-        guard let id = pendingConnectorApproval?.id else { return }
-        chat.denyToolConsent(id)
+    /// Persist always-allow for this action, then approve the waiting tool.
+    func alwaysAllowConnector(_ id: UUID? = nil) {
+        let toolID = id ?? pendingConnectorApproval?.id ?? inlineAwaitingConnectorID()
+        guard let toolID,
+              let message = chat.messages.first(where: { $0.id == toolID }),
+              let slug = PromethConnectorApproval.actionSlug(from: message.toolArguments)
+        else { return }
+        let key = PromethConnectorActionPolicy.alwaysAllowKey(for: slug)
+        var keys = state.connectorAlwaysAllow ?? []
+        keys = PromethConnectorAlwaysAllow.adding(key, to: keys)
+        state.connectorAlwaysAllow = keys
+        PromethConnectorApproval.syncAlwaysAllowed(keys)
+        connectorCardIDs.insert(toolID)
+        chat.confirmToolConsent(toolID)
+    }
+
+    func allowConnectorOnce(_ id: UUID? = nil) {
+        let toolID = id ?? pendingConnectorApproval?.id ?? inlineAwaitingConnectorID()
+        guard let toolID else { return }
+        connectorCardIDs.insert(toolID)
+        chat.confirmToolConsent(toolID)
+    }
+
+    func denyConnector(_ id: UUID? = nil) {
+        let toolID = id ?? pendingConnectorApproval?.id ?? inlineAwaitingConnectorID()
+        guard let toolID else { return }
+        connectorCardIDs.insert(toolID)
+        chat.denyToolConsent(toolID)
     }
 
     /// A swipe-away denies only while the tool is still waiting. An approval
     /// that already moved the tool to running is left alone.
     func connectorSheetDismissed() {
+        guard PromethConnectorApproval.usesModalSheet else { return }
         guard let id = pendingConnectorApproval?.id else { return }
         let stillWaiting = chat.messages.contains { $0.id == id && $0.toolStatus == .awaitingConsent }
         guard stillWaiting else { return }
         chat.denyToolConsent(id)
+    }
+
+    func resetConnectorApprovals(toolkit: String) {
+        let keys = PromethConnectorAlwaysAllow.resetting(
+            toolkit: toolkit,
+            in: state.connectorAlwaysAllow ?? []
+        )
+        state.connectorAlwaysAllow = keys.isEmpty ? nil : keys
+        PromethConnectorApproval.syncAlwaysAllowed(keys)
+    }
+
+    private func inlineAwaitingConnectorID() -> UUID? {
+        chat.messages.first {
+            $0.toolStatus == .awaitingConsent && PromethConnectorApproval.isExecute($0.toolName)
+        }?.id
     }
 
     var current: Conversation? { chats.first { $0.id == state.selectedChatID } }
@@ -1123,6 +1169,21 @@ final class PromethStore: ObservableObject {
             || name == "edit_image"
     }
 
+    private func showsConnectorCard(_ message: ChatTranscriptMessage) -> Bool {
+        guard PromethConnectorApproval.isExecute(message.toolName),
+              PromethConnectorApproval.actionSlug(from: message.toolArguments) != nil
+        else { return false }
+        // Only writes ever wait for consent, so a waiting/declined row is always a card.
+        switch message.toolStatus {
+        case .awaitingConsent, .declined:
+            return true
+        case .running, .preparing, .succeeded, .failed, .cancelled:
+            return connectorCardIDs.contains(message.id)
+        case .awaitingImageModelSelection, .none:
+            return false
+        }
+    }
+
     private static func imageArtifact(_ message: ChatTranscriptMessage, in messages: [ChatTranscriptMessage]) -> PromethArtifact? {
         guard let attachment = message.imageAttachments.first,
               let relative = attachment.asset?.relativePath,
@@ -1558,11 +1619,19 @@ except Exception as error:
         if state.selectedChatID == nil {
             state.selectedChatID = liveID
         }
+        for message in liveMessages where message.toolStatus == .awaitingConsent
+            && PromethConnectorApproval.isExecute(message.toolName) {
+            connectorCardIDs.insert(message.id)
+        }
         let waiting = liveMessages.first {
             $0.toolStatus == .awaitingConsent && PromethConnectorApproval.isExecute($0.toolName)
         }
-        if waiting?.id != pendingConnectorApproval?.id {
-            pendingConnectorApproval = waiting.map { PromethConnectorConsent(id: $0.id) }
+        if PromethConnectorApproval.usesModalSheet {
+            if waiting?.id != pendingConnectorApproval?.id {
+                pendingConnectorApproval = waiting.map { PromethConnectorConsent(id: $0.id) }
+            }
+        } else if pendingConnectorApproval != nil {
+            pendingConnectorApproval = nil
         }
     }
 
@@ -1588,7 +1657,9 @@ except Exception as error:
         let key = session.id.uuidString
         let visible = messages.filter { message in
             message.role == .user || message.role == .assistant || message.role == .error
-                || (message.role == .tool && Self.showsToolCard(message.toolName))
+                || (message.role == .tool && (
+                    Self.showsToolCard(message.toolName) || showsConnectorCard(message)
+                ))
         }
         let prompts = messages.filter { $0.role == .user }.map(\.content)
         let requestActive = isRunning(session.id)
@@ -1720,6 +1791,28 @@ except Exception as error:
                         return nil
                     }
                 }
+                if showsConnectorCard(message),
+                   let slug = PromethConnectorApproval.actionSlug(from: message.toolArguments) {
+                    let toolkit = PromethConnectorActionPolicy.toolkit(from: slug)
+                    let logo = ToolkitCatalog.cachedLogoURL(for: toolkit)?.absoluteString
+                    let phase = message.toolStatus?.rawValue ?? "running"
+                    item.connectorCard = ConnectorCard(
+                        toolkit: toolkit,
+                        action: slug,
+                        summary: PromethConnectorDescription.line(
+                            slug: slug,
+                            argumentsJSON: message.toolArguments
+                        ),
+                        logoURL: logo,
+                        phase: phase
+                    )
+                    item.text = ""
+                    item.status = phase == "awaitingConsent" ? "awaitingConsent"
+                        : phase == "declined" ? "declined"
+                        : phase == "running" || phase == "preparing" ? "preparing"
+                        : phase == "failed" || phase == "cancelled" ? "failed"
+                        : "complete"
+                }
                 return item
             } + (localMedia[session.id] ?? []),
             draft: drafts[key] ?? "",
@@ -1797,6 +1890,7 @@ except Exception as error:
         snapshot.drafts = drafts
         snapshot.modes = modes
         snapshot.stoppedMessageIDs = stopped.map(\.uuidString)
+        PromethConnectorApproval.syncAlwaysAllowed(snapshot.connectorAlwaysAllow ?? [])
         do {
             try persistence.save(snapshot)
         } catch {

@@ -51,6 +51,17 @@ struct ToolkitCatalog: Codable, Equatable, Sendable {
         guard !value.items.isEmpty, Set(value.items.map(\.slug)).count == value.items.count else { throw ToolkitCatalogError.invalid("The saved catalog is invalid.") }
         return value
     }
+
+    /// Logo URL from the on-disk catalog cache, if present.
+    static func cachedLogoURL(
+        for toolkit: String,
+        support: URL = PromethIdentity.applicationSupportDirectory
+    ) -> URL? {
+        let cache = support.appendingPathComponent("connectors/toolkits-v1.json")
+        guard let catalog = try? readCache(at: cache) else { return nil }
+        let needle = toolkit.lowercased()
+        return catalog.items.first { $0.slug.lowercased() == needle }?.logo
+    }
     func writeCache(at url: URL) throws {
         try FileManager.default.createDirectory(at:url.deletingLastPathComponent(),withIntermediateDirectories:true)
         try JSONEncoder().encode(self).write(to:url,options:.atomic)

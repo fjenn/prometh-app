@@ -208,25 +208,51 @@ struct PluginsPage:View {
                     ForEach(results){toolkit in
                         let status=model.statuses[toolkit.slug] ?? "disconnected"
                         let waiting=model.connecting.contains(toolkit.slug)
-                        HStack(spacing:13) {
-                            ToolkitLogo(toolkit:toolkit)
-                            VStack(alignment:.leading,spacing:5) {
-                                HStack(spacing:8) {
-                                    Text(toolkit.name).font(.system(size:14,weight:.medium))
-                                    if status=="connected" {Label("Connected",systemImage:"checkmark.circle.fill").font(.system(size:10,weight:.medium)).foregroundStyle(.secondary)}
+                        let allowed=PromethConnectorAlwaysAllow.keys(
+                            for:toolkit.slug,
+                            in:store.state.connectorAlwaysAllow ?? []
+                        )
+                        VStack(alignment:.leading,spacing:10) {
+                            HStack(spacing:13) {
+                                ToolkitLogo(toolkit:toolkit)
+                                VStack(alignment:.leading,spacing:5) {
+                                    HStack(spacing:8) {
+                                        Text(toolkit.name).font(.system(size:14,weight:.medium))
+                                        if status=="connected" {Label("Connected",systemImage:"checkmark.circle.fill").font(.system(size:10,weight:.medium)).foregroundStyle(.secondary)}
+                                    }
+                                    Text(toolkit.description).font(.system(size:12)).foregroundStyle(.secondary).lineLimit(2)
+                                    if !toolkit.categories.isEmpty {Text(toolkit.categories.map{$0.capitalized}.joined(separator:" · ")).font(.system(size:10)).foregroundStyle(.tertiary)}
+                                    if status=="pending" {Text("Waiting for sign-in…").font(.system(size:11)).foregroundStyle(.secondary)}
+                                    if status=="expired" {Text("Connection expired").font(.system(size:11)).foregroundStyle(.secondary)}
                                 }
-                                Text(toolkit.description).font(.system(size:12)).foregroundStyle(.secondary).lineLimit(2)
-                                if !toolkit.categories.isEmpty {Text(toolkit.categories.map{$0.capitalized}.joined(separator:" · ")).font(.system(size:10)).foregroundStyle(.tertiary)}
-                                if status=="pending" {Text("Waiting for sign-in…").font(.system(size:11)).foregroundStyle(.secondary)}
-                                if status=="expired" {Text("Connection expired").font(.system(size:11)).foregroundStyle(.secondary)}
+                                Spacer(minLength:8)
+                                if status=="connected" {
+                                    Image(systemName:"checkmark").foregroundStyle(.secondary).frame(width:76).accessibilityLabel(toolkit.name+" connected")
+                                } else {
+                                    Button(waiting ? "Waiting…":status=="expired" ? "Reconnect":"Connect"){consent=toolkit}
+                                        .buttonStyle(.bordered).controlSize(.small).disabled(waiting)
+                                        .accessibilityLabel("Connect "+toolkit.name)
+                                }
                             }
-                            Spacer(minLength:8)
-                            if status=="connected" {
-                                Image(systemName:"checkmark").foregroundStyle(.secondary).frame(width:76).accessibilityLabel(toolkit.name+" connected")
-                            } else {
-                                Button(waiting ? "Waiting…":status=="expired" ? "Reconnect":"Connect"){consent=toolkit}
-                                    .buttonStyle(.bordered).controlSize(.small).disabled(waiting)
-                                    .accessibilityLabel("Connect "+toolkit.name)
+                            if !allowed.isEmpty {
+                                VStack(alignment:.leading,spacing:6) {
+                                    Text("Always allowed")
+                                        .font(.system(size:11,weight:.medium))
+                                        .foregroundStyle(.secondary)
+                                    ForEach(allowed,id:\.self){key in
+                                        Text(key.split(separator:":").last.map(String.init) ?? key)
+                                            .font(.system(size:11,design:.monospaced))
+                                            .foregroundStyle(.secondary)
+                                            .lineLimit(1)
+                                    }
+                                    Button("Reset approvals"){store.resetConnectorApprovals(toolkit:toolkit.slug)}
+                                        .font(.system(size:12,weight:.medium))
+                                        .buttonStyle(.plain)
+                                        .foregroundStyle(Color.coral)
+                                        .accessibilityLabel("Reset approvals")
+                                        .accessibilityIdentifier("prometh.plugins.resetApprovals.\(toolkit.slug)")
+                                }
+                                .padding(.leading,57)
                             }
                         }.padding(15).frame(maxWidth:.infinity,alignment:.leading)
                             .background(.primary.opacity(0.025),in:RoundedRectangle(cornerRadius:14))

@@ -102,6 +102,7 @@
 		2042F97FFB6520AC2CF63514 /* ChatFileWriteTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14F98763452E5A3BED006155 /* ChatFileWriteTools.swift */; };
 		2043243F627AFA7A2239BB8E /* ChatCapabilitiesSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D2AACD0A419316AD0099E20 /* ChatCapabilitiesSheet.swift */; };
 		2089005AB3783FCD730B1092 /* ParakeetChunkPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9CA87168523D97119FD22A2 /* ParakeetChunkPlan.swift */; };
+		2106032C7BDF2FF949E4F5C1 /* PromethConnectorPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C16C582CF1D3BCC72314B53E /* PromethConnectorPolicyTests.swift */; };
 		214A0B828306CD9111C93802 /* PromethConnectorHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 716587BC3712DF0EB5A76BA9 /* PromethConnectorHost.swift */; };
 		225CCE6E3364D2959E242050 /* AudioRecordExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C97046F779D87DD123DC9E4 /* AudioRecordExport.swift */; };
 		237BB8D2F99FFE536CF0421B /* ImageGenerationViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 239C5B241E83468B75C43E5A /* ImageGenerationViewModel.swift */; };
@@ -196,6 +197,7 @@
 		3DCCE1715DFC22C7F510535C /* Readability.js in Resources */ = {isa = PBXBuildFile; fileRef = 364C6235AB04DF1831E5D10C /* Readability.js */; };
 		3E41F5E1F84E4E560E93C1E2 /* CatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72260563E654391CE9486A12 /* CatalogTests.swift */; };
 		3FB5FC66FB4952C993611B2B /* DeveloperView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4157CCE5D9CD6B779FF7FFCE /* DeveloperView.swift */; };
+		3FFFF0F9CC93A4E7D066916D /* PromethConnectorActionPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DDD7898EAD8172B4D8F2CA /* PromethConnectorActionPolicy.swift */; };
 		402FF67FA99A26739AA4A653 /* MCPCatalog.json in Resources */ = {isa = PBXBuildFile; fileRef = 9C57E985705899CDD8DB5996 /* MCPCatalog.json */; };
 		407F62AB71707EAE5B7757D2 /* ChatWorkBrowserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC37AD4573FA876961F1399C /* ChatWorkBrowserTests.swift */; };
 		40B9D69B537427CD54D388B8 /* InferenceActivityCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D726D6B7B3242DA22BDC8600 /* InferenceActivityCoordinatorTests.swift */; };
@@ -456,6 +458,7 @@
 		9E84703F2A0C153C1AFE94C9 /* ToolkitCatalogModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD4D637B4CBF6D0EAAB4FCCE /* ToolkitCatalogModel.swift */; };
 		9F7C095FFABABFA1281FA517 /* ChatWorkState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C85BEEDE73BA13311CC3E08 /* ChatWorkState.swift */; };
 		9FC9DFAEC00710427FDD509C /* ExaBrowsingProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 769A36AA0753AB7F4CB1E371 /* ExaBrowsingProvider.swift */; };
+		9FD824FE3E56519BF4295B41 /* PromethConnectorActionPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DDD7898EAD8172B4D8F2CA /* PromethConnectorActionPolicy.swift */; };
 		9FD9875AC726D7FE3FDB3184 /* ChatStreamEventRelay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6424934AA457AEE6B59C1227 /* ChatStreamEventRelay.swift */; };
 		A0A9DCDF5BF2D3C7DE8CA6D9 /* ModelPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6AAAD854FEF764AD10A31B3 /* ModelPicker.swift */; };
 		A0D30C905A2788C3BD2149BF /* ChatScreenCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A11D3AF5467488478CAC264 /* ChatScreenCapture.swift */; };
@@ -502,6 +505,7 @@
 		B2B154008527C6291C17AC93 /* MLXImageModelResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61126D4235AFF77D82F1F80B /* MLXImageModelResolver.swift */; };
 		B372C1D5B461E240F44DA27D /* ArtifactRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37413930F2389C2520E98117 /* ArtifactRecoveryTests.swift */; };
 		B38B5B7EFE4D34BBB26198AA /* ChatTranscriptScroller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318F0B7627C7BB80B04FF747 /* ChatTranscriptScroller.swift */; };
+		B390158A03BEDA47A3E4B7D6 /* PromethConnectorActionPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DDD7898EAD8172B4D8F2CA /* PromethConnectorActionPolicy.swift */; };
 		B3DE35DF177BB2B7A9D7690B /* BraveBrowsingProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF6D2D7280064648E0EFC847 /* BraveBrowsingProvider.swift */; };
 		B400776A9DE913FA1509FA06 /* FileMutationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FF1D2267F5230F7692BC886 /* FileMutationState.swift */; };
 		B426C6D2B2C1B7C7D2F831E2 /* ChatImageTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87EF3E0B4A9EEC293EFD5F8A /* ChatImageTool.swift */; };
@@ -585,6 +589,7 @@
 		D216AECC15E5C33F4AD2E7A9 /* ParakeetAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D62A03570B3CA428AE9833F /* ParakeetAudio.swift */; };
 		D2D5168B1A4243EB55EB1D68 /* RealtimeAudioMeterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C01D6D1C8C321F16B5FD31F8 /* RealtimeAudioMeterTests.swift */; };
 		D3685296B33A99A38484E1C1 /* VoiceWakeWordMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A32566789FAC7C0BFBDBC66D /* VoiceWakeWordMonitor.swift */; };
+		D39076C40BCFAC2043DEC523 /* ConnectorConsentCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35CF19ED2FAA4F3662AB2072 /* ConnectorConsentCard.swift */; };
 		D47008C83EF6C9B110342EA2 /* ChatStreamEventRelayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C037FCFD18E57EA3829DEEAB /* ChatStreamEventRelayTests.swift */; };
 		D4AA61C3BEF5538E3DA9A54F /* OfficeArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE82B4EBA796206F12005498 /* OfficeArchive.swift */; };
 		D4B92BF58E94813A16200153 /* VoiceDictationTranscript.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EB79F69D94B105052D065ED /* VoiceDictationTranscript.swift */; };
@@ -819,6 +824,7 @@
 
 /* Begin PBXFileReference section */
 		028A6EB95776995CFF6F82A9 /* ControlPanelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlPanelState.swift; sourceTree = "<group>"; };
+		02DDD7898EAD8172B4D8F2CA /* PromethConnectorActionPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromethConnectorActionPolicy.swift; sourceTree = "<group>"; };
 		03496D30CE58F138CA30EB0D /* ControlPanelDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlPanelDetail.swift; sourceTree = "<group>"; };
 		05586B0B909EAD6C76485D57 /* HubModelSizeResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HubModelSizeResolverTests.swift; sourceTree = "<group>"; };
 		055942EFAB585BE493AC9AD7 /* ServerProcessEnvironmentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerProcessEnvironmentTests.swift; sourceTree = "<group>"; };
@@ -910,6 +916,7 @@
 		332C54820A1273F103E68BC2 /* ChatImageModelSelectionRequestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatImageModelSelectionRequestTests.swift; sourceTree = "<group>"; };
 		33D174F906418CC994011980 /* ChatWorkTerminal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatWorkTerminal.swift; sourceTree = "<group>"; };
 		35C1220F03EC60874920E0CE /* RoutineScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutineScheduler.swift; sourceTree = "<group>"; };
+		35CF19ED2FAA4F3662AB2072 /* ConnectorConsentCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectorConsentCard.swift; sourceTree = "<group>"; };
 		364C6235AB04DF1831E5D10C /* Readability.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = Readability.js; sourceTree = "<group>"; };
 		37408935D4EAA2CA89CC0A4C /* VoiceDictationExtensionRuntime.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.extensionkit-extension"; includeInIndex = 0; path = VoiceDictationExtensionRuntime.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		37413930F2389C2520E98117 /* ArtifactRecoveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtifactRecoveryTests.swift; sourceTree = "<group>"; };
@@ -1192,6 +1199,7 @@
 		C0A37063FA3EFE9939716372 /* OpenDocumentTextExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenDocumentTextExtractor.swift; sourceTree = "<group>"; };
 		C0BAEA101D7ED907CE4A2FCF /* ChatTranscriptPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatTranscriptPresentation.swift; sourceTree = "<group>"; };
 		C11A25CB7C798C39A206FACC /* ChatProjectStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatProjectStore.swift; sourceTree = "<group>"; };
+		C16C582CF1D3BCC72314B53E /* PromethConnectorPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromethConnectorPolicyTests.swift; sourceTree = "<group>"; };
 		C2D1D147A11D7A662971314E /* ChatWorktreeRecoveryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatWorktreeRecoveryView.swift; sourceTree = "<group>"; };
 		C3F46907258A26CF631CB3BD /* ReleaseVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReleaseVersion.swift; sourceTree = "<group>"; };
 		C42683FE576BB34517A487B0 /* ChatAttachmentValidatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatAttachmentValidatorTests.swift; sourceTree = "<group>"; };
@@ -1378,6 +1386,7 @@
 				72260563E654391CE9486A12 /* CatalogTests.swift */,
 				6F390709A2C3E373C09F776E /* ModelPickerTests.swift */,
 				8770F1C571417BAFE610AE78 /* PromethBlocklistTests.swift */,
+				C16C582CF1D3BCC72314B53E /* PromethConnectorPolicyTests.swift */,
 				95253C8E6A27C34E0DCF4F22 /* PromethConnectorTests.swift */,
 				5768C0DD9FE83FF6D06CB022 /* PromethCreditsTests.swift */,
 				6015450D06518671826EE4B8 /* PromethFoundationTests.swift */,
@@ -1538,6 +1547,7 @@
 			isa = PBXGroup;
 			children = (
 				A7588AD2D8B8F87838C9CA73 /* ComposerEditor.swift */,
+				35CF19ED2FAA4F3662AB2072 /* ConnectorConsentCard.swift */,
 				2D195873B91E1AFFC797188F /* Design.swift */,
 				791971081814E7E2C6AE6943 /* Domain.swift */,
 				A2A444F0BDCF31D7C5E84A21 /* InlineMessageEditor.swift */,
@@ -1910,6 +1920,7 @@
 		ADDF0FCDC8B48F015401DAD0 /* Connectors */ = {
 			isa = PBXGroup;
 			children = (
+				02DDD7898EAD8172B4D8F2CA /* PromethConnectorActionPolicy.swift */,
 				583C8F14F944FDEDFDDB1F50 /* PromethConnectorApproval.swift */,
 				65A427D91334D824023FF2C0 /* PromethConnectorClient.swift */,
 				716587BC3712DF0EB5A76BA9 /* PromethConnectorHost.swift */,
@@ -2774,6 +2785,7 @@
 				FD18166B4B3FAEB77E0D8C69 /* CodexCLIProfile.swift in Sources */,
 				3B72A00498574595EB2539F2 /* ComposerDraftSync.swift in Sources */,
 				F9BDEE50A3A79D2E69B5E3B3 /* ComposerEditor.swift in Sources */,
+				D39076C40BCFAC2043DEC523 /* ConnectorConsentCard.swift in Sources */,
 				5196EA3B5CC4CE166899FE19 /* ControlPanelActions.swift in Sources */,
 				276CD3A0BBC5127714E407CA /* ControlPanelDependencies.swift in Sources */,
 				C8EA1C08FDDD7F0AF87C2E47 /* ControlPanelDetail.swift in Sources */,
@@ -2906,6 +2918,7 @@
 				C03F87BD5E8649BBF42B35EE /* PowerPointDocumentTextExtractor.swift in Sources */,
 				8AEA13657B48DC1976D222CC /* PreparationCoordinator.swift in Sources */,
 				2A0D419614EA7A722676852E /* PromethBlocklist.swift in Sources */,
+				9FD824FE3E56519BF4295B41 /* PromethConnectorActionPolicy.swift in Sources */,
 				E2EE3BA750E7EC439F6258CA /* PromethConnectorApproval.swift in Sources */,
 				4506A2C6826C855DF6BDDB16 /* PromethConnectorClient.swift in Sources */,
 				214A0B828306CD9111C93802 /* PromethConnectorHost.swift in Sources */,
@@ -3238,6 +3251,7 @@
 				737E5B6221479CF7117F1107 /* PersistedDataChangeHub.swift in Sources */,
 				3C612817DDB7C3800F41F61C /* PersistedDataChangeHubTests.swift in Sources */,
 				EE06C225BEBDD9D572B62A54 /* PowerPointDocumentTextExtractor.swift in Sources */,
+				3FFFF0F9CC93A4E7D066916D /* PromethConnectorActionPolicy.swift in Sources */,
 				D63C81BA2B80B89251E51B80 /* PromethConnectorApproval.swift in Sources */,
 				1663B085EB77ACB1E9A43E96 /* PromethFlags.swift in Sources */,
 				DBB34516E23260F81529B725 /* PromethIdentity.swift in Sources */,
@@ -3318,7 +3332,9 @@
 				E57D8A60C19CC63E16A3A9BA /* ModelPickerTests.swift in Sources */,
 				039F4C61F4571ACFDB20506D /* PromethBlocklist.swift in Sources */,
 				0F732F04EDCD2E32DFEBFC84 /* PromethBlocklistTests.swift in Sources */,
+				B390158A03BEDA47A3E4B7D6 /* PromethConnectorActionPolicy.swift in Sources */,
 				F21DA790853D59565A8A248B /* PromethConnectorApproval.swift in Sources */,
+				2106032C7BDF2FF949E4F5C1 /* PromethConnectorPolicyTests.swift in Sources */,
 				7DE7B4DEDCDD37844D13A4C5 /* PromethConnectorTests.swift in Sources */,
 				F2D1DBB187F442F89B76ED32 /* PromethConversationTitle.swift in Sources */,
 				4EECF90CBE4F5BB1E07D99B6 /* PromethCredits.swift in Sources */,

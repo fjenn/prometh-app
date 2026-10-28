@@ -7,10 +7,72 @@ enum PromethConnectorApproval {
     static let catalogID = "prometh.composio"
     static let keychainService = "studio.prometh.Prometh.connectors"
     static let executeTool = "connectors_execute"
+    static let searchTool = "connectors_search"
+
+    /// Legacy modal sheet is kept compiled but never presented.
+    static let usesModalSheet = false
+
+    /// Synced from Prometh persisted state (`Snapshot.connectorAlwaysAllow`).
+    nonisolated(unsafe) static var alwaysAllowed: Set<String> = []
+
+    static let declinedPayload =
+        #"{"ok":false,"executed":false,"error":"declined_by_user","detail":"The user chose Don't allow. Nothing was sent or changed."}"#
 
     static func isExecute(_ name: String?) -> Bool {
         guard let name else { return false }
         return name == executeTool || name.hasSuffix("__" + executeTool)
+    }
+
+    static func isSearch(_ name: String?) -> Bool {
+        guard let name else { return false }
+        return name == searchTool || name.hasSuffix("__" + searchTool)
+    }
+
+    /// Action slug from a `connectors_execute` arguments JSON blob.
+    static func actionSlug(from argumentsJSON: String?) -> String? {
+        guard let argumentsJSON,
+              let data = argumentsJSON.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let tool = object["tool"] as? String
+        else { return nil }
+        let trimmed = tool.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    /// Looks back through earlier `connectors_search` tool results for tags on `slug`.
+    static func tags(for slug: String, in messages: [(toolName: String?, content: String)]) -> [String]? {
+        let needle = slug.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard !needle.isEmpty else { return nil }
+        for message in messages.reversed() {
+            guard isSearch(message.toolName) else { continue }
+            guard let data = message.content.data(using: .utf8),
+                  let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            else { continue }
+            let items = (root["items"] as? [[String: Any]])
+                ?? (root["tools"] as? [[String: Any]])
+                ?? []
+            for item in items {
+                let itemSlug = (item["slug"] as? String)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                    .uppercased()
+                guard itemSlug == needle else { continue }
+                if let tags = item["tags"] as? [String] {
+                    return tags
+                }
+                return []
+            }
+        }
+        return nil
+    }
+
+    static func syncAlwaysAllowed(_ keys: [String]) {
+        alwaysAllowed = Set(keys.map { $0.lowercased() })
+    }
+
+    static func isAlwaysAllowed(slug: String) -> Bool {
+        alwaysAllowed.contains(
+            PromethConnectorActionPolicy.alwaysAllowKey(for: slug).lowercased()
+        )
     }
 
     static func tokenFile(in support: URL) -> URL {

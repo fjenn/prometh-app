@@ -3005,9 +3005,27 @@ final class ChatViewModel: ObservableObject {
                 var operation = ChatToolOperation.classify(
                     toolName: toolName, customKind: customTool?.kind, workAction: workRequest?.action,
                     isMCP: isMCP, usesNativeFilesystem: usesNativeFilesystem, protectedWrite: protectedWrite)
-                // PROMETH-SEAM: S15 — connectors_execute always waits for the approval sheet.
-                // Standard mode would otherwise treat this MCP tool as external and skip consent.
-                if PromethConnectorApproval.isExecute(toolName) {
+                // PROMETH-SEAM: S15 — connector writes need consent in every access mode
+                // (inline card). Reads and always-allowed writes skip the prompt; the
+                // approval token is still stamped before execute below.
+                let connectorSlug = PromethConnectorApproval.isExecute(toolName)
+                    ? PromethConnectorApproval.actionSlug(from: toolCall.function?.arguments)
+                    : nil
+                if let connectorSlug {
+                    let prior = (sessionMessages(for: queuedRequest.sessionID) ?? []).map {
+                        (toolName: $0.toolName, content: $0.content)
+                    }
+                    let tags = PromethConnectorApproval.tags(for: connectorSlug, in: prior)
+                    if !PromethConnectorActionPolicy.skipsConsent(
+                        slug: connectorSlug,
+                        tags: tags,
+                        alwaysAllowed: PromethConnectorApproval.alwaysAllowed
+                    ) {
+                        operation = .command
+                    } else {
+                        operation = .routine
+                    }
+                } else if PromethConnectorApproval.isExecute(toolName) {
                     operation = .command
                 }
                 let consent = await toolConsentGate.authorize(
@@ -3031,6 +3049,8 @@ final class ChatViewModel: ObservableObject {
                         content = ChatFileWriteToolExecutor().declinedPayload()
                     } else if toolName == ChatSwitchModelToolRegistry.toolName {
                         content = ChatSwitchModelToolExecutor().declinedPayload()
+                    } else if PromethConnectorApproval.isExecute(toolName) {
+                        content = PromethConnectorApproval.declinedPayload
                     } else {
                         content = #"{"ok":false,"error":"The user declined to run this tool."}"#
                     }

@@ -236,6 +236,7 @@ targets:
       - path: Sources/Prometh/Browsing/CitationMarkup.swift
       - path: Sources/Prometh/Video/GenerateVideoTool.swift
       - path: Sources/Prometh/Connectors/PromethConnectorApproval.swift
+      - path: Sources/Prometh/Connectors/PromethConnectorActionPolicy.swift
       - path: Sources/Nativ/NativSettings.swift
       - path: Sources/Nativ/NativRuntimeSettingsController.swift
       - path: Sources/Nativ/ReleaseVersion.swift
@@ -444,6 +445,7 @@ targets:
       - path: Sources/Prometh/Connectors/ToolkitCatalog.swift
       - path: Sources/Prometh/Bridge/InlineEditKeys.swift
       - path: Sources/Prometh/Connectors/PromethConnectorApproval.swift
+      - path: Sources/Prometh/Connectors/PromethConnectorActionPolicy.swift
       - path: Sources/Prometh/UI/Design.swift
       - path: Sources/Prometh/UI/PromethCredits.swift
       - path: Sources/Prometh/UI/Domain.swift

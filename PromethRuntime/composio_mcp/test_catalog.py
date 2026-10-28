@@ -27,6 +27,16 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(result["tools"][0], tool["slug"])
         self.assertEqual(result["items"][0]["input_parameters"], tool["input_parameters"])
 
+    def test_search_summaries_carry_composio_tags_for_read_write_classification(self):
+        read = {"slug": "GITHUB_LIST_REPOSITORIES_FOR_THE_AUTHENTICATED_USER", "tags": ["openWorldHint", "readOnlyHint", 7]}
+        write = {"slug": "GITHUB_CREATE_AN_ISSUE", "tags": ["important", "createHint"]}
+        with patch.object(server, "composio_request", side_effect=[{"items": [write, read]}]):
+            result = server.composio_search("github list my repos and create issue", "test-user", "test-key")
+        tags = {item["slug"]: item["tags"] for item in result["items"]}
+        self.assertEqual(tags[read["slug"]], ["openWorldHint", "readOnlyHint"])
+        self.assertEqual(tags[write["slug"]], ["important", "createHint"])
+        self.assertEqual(result["tools"][0], read["slug"])
+
     def test_partial_failure_does_not_overwrite_cache_with_partial_catalog(self):
         pages = [{"ok": True, "items": [{"slug": "github"}], "next_cursor": "page2"},
                  {"ok": False, "error": "composio status 503"}]

@@ -178,7 +178,15 @@ def composio_search(query_text: str, user_id: str, api_key: str, toolkit_hint: s
             continue
         tools.append(slug)
         description = item.get("description") if isinstance(item.get("description"), str) else ""
-        summaries.append({"slug": slug, "description": description, "input_parameters": item.get("input_parameters", {})})
+        tags = item.get("tags") if isinstance(item.get("tags"), list) else []
+        summaries.append(
+            {
+                "slug": slug,
+                "description": description,
+                "input_parameters": item.get("input_parameters", {}),
+                "tags": [tag for tag in tags if isinstance(tag, str)],
+            }
+        )
     tools, summaries = pin_known_tool(query_text, toolkit, tools, summaries, api_key)
     return {"ok": True, "tools": tools, "items": summaries, "user_id": user_id}
 
@@ -210,8 +218,15 @@ def pin_known_tool(
         if not any(isinstance(item, dict) and item.get("slug") == preferred for item in found):
             return tools, summaries
         tools = [preferred, *tools]
+        pinned_item = next(item for item in found if isinstance(item, dict) and item.get("slug") == preferred)
+        pinned_tags = pinned_item.get("tags") if isinstance(pinned_item.get("tags"), list) else []
         summaries = [
-            {"slug": preferred, "description": "List repositories for the authenticated user", "input_parameters": next(item.get("input_parameters", {}) for item in found if item.get("slug") == preferred)},
+            {
+                "slug": preferred,
+                "description": "List repositories for the authenticated user",
+                "input_parameters": pinned_item.get("input_parameters", {}),
+                "tags": [tag for tag in pinned_tags if isinstance(tag, str)],
+            },
             *summaries,
         ]
     else:

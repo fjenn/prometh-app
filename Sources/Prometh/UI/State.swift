@@ -68,6 +68,16 @@ struct SourceLink: Codable, Equatable, Identifiable {
     var published: String? = nil
 }
 
+/// Inline connected-app approval row in the chat transcript.
+struct ConnectorCard: Codable, Equatable {
+    var toolkit: String
+    var action: String
+    var summary: String
+    var logoURL: String?
+    /// awaitingConsent | declined | running | succeeded | failed
+    var phase: String
+}
+
 struct Message: Identifiable, Codable, Equatable {
     var id = UUID()
     var role: String
@@ -81,6 +91,7 @@ struct Message: Identifiable, Codable, Equatable {
     var trimRange: [Double]?
     var appliedSkillNames: [String]?
     var sourceLinks: [SourceLink]?
+    var connectorCard: ConnectorCard?
 }
 
 struct Conversation: Identifiable, Codable {
@@ -144,6 +155,8 @@ struct Snapshot: Codable {
     var skills: [SkillRecord] = []
     var fileReadingEnabled: Bool?
     var connectorBrokerURL: String?
+    /// Persisted `toolkit:ACTION` keys the user chose Always allow for.
+    var connectorAlwaysAllow: [String]?
     var drafts: [String: String] = [:]
     var modes: [String: BehaviorMode] = [:]
     var stoppedMessageIDs: [String] = []
