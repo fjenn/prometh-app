@@ -85,6 +85,7 @@ def provision(name: str, python: Path) -> None:
             # entrypoints. Preserve the full package: lazy imports reach beyond
             # mlx_runtime. No checkout metadata, assets, docs or UI is shipped.
             shutil.copytree(source / "fastvideo", stage / "fastvideo", ignore=shutil.ignore_patterns("__pycache__", "tests", "test_*"))
+            shutil.rmtree(stage / "examples", ignore_errors=True)
             for filename in ("mlx_wan_prompt_to_video.py", "mlx_wan22_generate.py"):
                 dest = stage / "examples/inference/basic" / filename
                 dest.parent.mkdir(parents=True, exist_ok=True)
@@ -99,13 +100,16 @@ def provision(name: str, python: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--python", help="existing standalone Python 3.12")
-    for name in ("reader", "searxng", "composio", "media"):
+    for name in ("reader", "searxng", "composio", "media", "llama"):
         parser.add_argument("--" + name, action="store_true")
     args = parser.parse_args()
     python = bundled_python(args.python)
-    selected = [name for name in ("reader", "searxng", "composio", "media") if getattr(args, name)]
-    for name in selected or ["reader", "searxng", "composio", "media"]:
-        provision("composio_mcp" if name == "composio" else name, python)
+    selected = [name for name in ("reader", "searxng", "composio", "media", "llama") if getattr(args, name)]
+    for name in selected or ["reader", "searxng", "composio", "media", "llama"]:
+        if name == "llama":
+            run([os.sys.executable, str(ROOT / "scripts/prometh/provision-llama.py")])
+        else:
+            provision("composio_mcp" if name == "composio" else name, python)
 
 
 if __name__ == "__main__":

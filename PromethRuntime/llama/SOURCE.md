@@ -1,6 +1,6 @@
 # llama.cpp for Evil Mode
 
-Prometh does not vendor llama.cpp or the Qwen GGUF.
+Prometh bundles an API-only build of llama.cpp, without model weights.
 
 - Upstream: https://github.com/ggerganov/llama.cpp
 - Tag: `b11669` (MIT)
@@ -14,3 +14,12 @@ Prometh does not vendor llama.cpp or the Qwen GGUF.
 ```
 
 The Mac build looks for the binary at `PROMETH_LLAMA_BIN` or `PromethRuntime/llama/bin/llama-server`. That directory is gitignored. The vision projector catalog id `evil-vision-projector` stays disabled.
+
+Run `python3 scripts/prometh/provision-llama.py` to rebuild the exact b11669 commit
+`620d2225cc436ab0b001e3200e590e3b286ef9ab`. It builds for generic Apple Silicon,
+embeds the Metal library, and disables OpenSSL and the unused embedded Web UI.
+Prometh owns filesystem, shell and MCP tools and their approval flow. The
+provisioner therefore removes the engine's duplicate built-in tool factories
+and external tool runtime creation; inference and app-supplied tool schemas
+remain supported. This also removes unused development-directory exclusions
+from the native library, keeping the literal release audit strict.
