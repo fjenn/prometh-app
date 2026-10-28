@@ -29,3 +29,5 @@ PromethRuntime/**/__pycache__/
 WebUI/node_modules/
 WebUI/dist/
 WebUI/*.tsbuildinfo
+
+PromethRuntime/*/site-packages/
