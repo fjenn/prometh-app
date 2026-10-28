@@ -41,17 +41,73 @@ final class PromethSearchTests: XCTestCase {
     }
 
     func testEmptyToolCallIsNotShownWhenAnAnswerFollows() {
-        let shell = PromethVisibleReply.row(content: "", streaming: false, hasToolCalls: true, laterAnswer: true)
+        let shell = PromethVisibleReply.row(
+            content: "", streaming: false, hasToolCalls: true, laterAnswer: true, turnInFlight: false
+        )
         XCTAssertTrue(shell.omit)
-        let abandoned = PromethVisibleReply.row(content: "  ", streaming: false, hasToolCalls: true, laterAnswer: false)
+        let abandoned = PromethVisibleReply.row(
+            content: "  ", streaming: false, hasToolCalls: true, laterAnswer: false, turnInFlight: false
+        )
         XCTAssertFalse(abandoned.omit)
         XCTAssertEqual(abandoned.text, PromethVisibleReply.retry)
         XCTAssertEqual(abandoned.status, "failed")
-        let blank = PromethVisibleReply.row(content: "", streaming: false, hasToolCalls: false, laterAnswer: false)
+        let blank = PromethVisibleReply.row(
+            content: "", streaming: false, hasToolCalls: false, laterAnswer: false, turnInFlight: false
+        )
         XCTAssertEqual(blank.text, PromethVisibleReply.retry)
-        let writing = PromethVisibleReply.row(content: "", streaming: true, hasToolCalls: true, laterAnswer: false)
+        let writing = PromethVisibleReply.row(
+            content: "", streaming: true, hasToolCalls: true, laterAnswer: false, turnInFlight: false
+        )
         XCTAssertEqual(writing.status, "streaming")
         XCTAssertFalse(writing.omit)
+    }
+
+    func testAwaitingToolApprovalDoesNotShowRetryError() {
+        let pending = PromethVisibleReply.row(
+            content: "", streaming: false, hasToolCalls: true, laterAnswer: false, turnInFlight: true
+        )
+        XCTAssertTrue(pending.omit)
+        XCTAssertNotEqual(pending.status, "failed")
+        XCTAssertNotEqual(pending.text, PromethVisibleReply.retry)
+
+        let finishedEmpty = PromethVisibleReply.row(
+            content: "", streaming: false, hasToolCalls: true, laterAnswer: false, turnInFlight: false
+        )
+        XCTAssertFalse(finishedEmpty.omit)
+        XCTAssertEqual(finishedEmpty.text, PromethVisibleReply.retry)
+        XCTAssertEqual(finishedEmpty.status, "failed")
+
+        let assistantID = UUID()
+        let toolID = UUID()
+        let snapshots = [
+            PromethVisibleReply.TurnSnapshot(id: assistantID, isUser: false, isTool: false, toolStatus: nil),
+            PromethVisibleReply.TurnSnapshot(
+                id: toolID, isUser: false, isTool: true, toolStatus: "awaitingConsent"
+            ),
+        ]
+        XCTAssertTrue(
+            PromethVisibleReply.turnInFlight(after: assistantID, in: snapshots, requestActive: false)
+        )
+        XCTAssertTrue(
+            PromethVisibleReply.turnInFlight(after: assistantID, in: snapshots, requestActive: true)
+        )
+        let done = [
+            PromethVisibleReply.TurnSnapshot(id: assistantID, isUser: false, isTool: false, toolStatus: nil),
+            PromethVisibleReply.TurnSnapshot(
+                id: toolID, isUser: false, isTool: true, toolStatus: "succeeded"
+            ),
+        ]
+        XCTAssertFalse(
+            PromethVisibleReply.turnInFlight(after: assistantID, in: done, requestActive: false)
+        )
+        // Gap before the tool row is appended: request still active covers it.
+        XCTAssertTrue(
+            PromethVisibleReply.turnInFlight(
+                after: assistantID,
+                in: [PromethVisibleReply.TurnSnapshot(id: assistantID, isUser: false, isTool: false, toolStatus: nil)],
+                requestActive: true
+            )
+        )
     }
 
     func testMarkdownBoldIsNotLiteralAndCitationsBecomeChips() {

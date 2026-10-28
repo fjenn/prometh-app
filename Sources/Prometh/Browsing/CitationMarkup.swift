@@ -86,18 +86,62 @@ enum PromethChatTitle {
 enum PromethVisibleReply {
     static let retry = "I didn't get that out. Please try again."
 
+    /// Tool statuses that mean the turn is still working (approval sheet, prepare, run).
+    static let inFlightToolStatuses: Set<String> = [
+        "awaitingConsent", "preparing", "running",
+    ]
+
     struct Row: Equatable {
         var text: String
         var status: String
         var omit: Bool
     }
 
-    static func row(content: String, streaming: Bool, hasToolCalls: Bool, laterAnswer: Bool) -> Row {
+    /// Lightweight turn slice for `turnInFlight` — keeps the helper pure and testable.
+    struct TurnSnapshot: Equatable {
+        var id: UUID
+        var isUser: Bool
+        var isTool: Bool
+        var toolStatus: String?
+    }
+
+    /// True while the session request is active, or a later tool in the same turn is
+    /// awaiting consent / preparing / running (before the next user message).
+    static func turnInFlight(
+        after messageID: UUID,
+        in messages: [TurnSnapshot],
+        requestActive: Bool
+    ) -> Bool {
+        if requestActive { return true }
+        guard let index = messages.firstIndex(where: { $0.id == messageID }) else { return false }
+        guard index + 1 < messages.count else { return false }
+        for later in messages[(index + 1)...] {
+            if later.isUser { break }
+            if later.isTool,
+               let status = later.toolStatus,
+               inFlightToolStatuses.contains(status) {
+                return true
+            }
+        }
+        return false
+    }
+
+    static func row(
+        content: String,
+        streaming: Bool,
+        hasToolCalls: Bool,
+        laterAnswer: Bool,
+        turnInFlight: Bool
+    ) -> Row {
         let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
         if streaming {
             return Row(text: content, status: "streaming", omit: false)
         }
         if trimmed.isEmpty, hasToolCalls, laterAnswer {
+            return Row(text: "", status: "complete", omit: true)
+        }
+        // Empty tool-call carrier while approval/run is still open is not a failed reply.
+        if trimmed.isEmpty, hasToolCalls, turnInFlight {
             return Row(text: "", status: "complete", omit: true)
         }
         if trimmed.isEmpty {

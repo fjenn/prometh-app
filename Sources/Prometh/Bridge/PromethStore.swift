@@ -1591,6 +1591,15 @@ except Exception as error:
                 || (message.role == .tool && Self.showsToolCard(message.toolName))
         }
         let prompts = messages.filter { $0.role == .user }.map(\.content)
+        let requestActive = isRunning(session.id)
+        let turnSnapshots = messages.map {
+            PromethVisibleReply.TurnSnapshot(
+                id: $0.id,
+                isUser: $0.role == .user,
+                isTool: $0.role == .tool,
+                toolStatus: $0.toolStatus?.rawValue
+            )
+        }
         return Conversation(
             id: session.id,
             title: PromethConversationTitle.title(
@@ -1615,11 +1624,17 @@ except Exception as error:
                     ) {
                         item.text = text
                     } else {
+                        let inFlight = PromethVisibleReply.turnInFlight(
+                            after: message.id,
+                            in: turnSnapshots,
+                            requestActive: requestActive
+                        )
                         let decision = PromethVisibleReply.row(
                             content: message.content,
                             streaming: message.isStreaming,
                             hasToolCalls: hasToolCalls,
-                            laterAnswer: !lastInTurn
+                            laterAnswer: !lastInTurn,
+                            turnInFlight: inFlight
                         )
                         if decision.omit { return nil }
                         item.text = decision.text
