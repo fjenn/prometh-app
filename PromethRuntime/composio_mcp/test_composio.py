@@ -205,6 +205,12 @@ async def direct_checks(tmp: Path, api: DirectAPI, port: int, key: str) -> None:
             )))
             assert refused["executed"] is False
             assert api.execute == 0
+            malformed = json.loads(tool_text(await session.call_tool(
+                "connectors_execute",
+                {"tool": "GITHUB_LIST_REPOS", "arguments_json": "not-json", "approval_token": "app-minted-token"},
+            )))
+            assert malformed["executed"] is False
+            assert api.execute == 0
             approved = json.loads(tool_text(await session.call_tool(
                 "connectors_execute",
                 {

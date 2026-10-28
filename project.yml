@@ -441,6 +441,8 @@ targets:
       - path: Sources/Prometh/Bridge/ComposerDraftSync.swift
       - path: Sources/Prometh/Bridge/PromethVoice.swift
       - path: Sources/Prometh/Video/MediaPlan.swift
+      - path: Sources/Prometh/Connectors/ToolkitCatalog.swift
+      - path: Sources/Prometh/Bridge/InlineEditKeys.swift
       - path: Sources/Prometh/Connectors/PromethConnectorApproval.swift
       - path: Sources/Prometh/UI/Design.swift
       - path: Sources/Prometh/UI/PromethCredits.swift

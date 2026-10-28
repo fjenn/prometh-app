@@ -132,7 +132,7 @@ struct PromethSettingsView:View {
 }
 struct CustomizeView:View {
     @ObservedObject var store:PromethStore
-    var sections:[String] {store.connectorsAvailable ? ["Plugins","Tools","Skills"]:["Tools","Skills"]}
+    var sections:[String] {["Plugins","Tools","Skills"]}
     var section:Binding<String> {Binding(get:{sections.contains(store.customizeSection) ? store.customizeSection:sections[0]},set:{store.customizeSection=$0})}
     var body:some View {
         VStack(alignment:.leading,spacing:20) {
@@ -145,9 +145,10 @@ struct CustomizeView:View {
                 IconButton(symbol:"xmark",title:"Close Customize"){store.customizeOpen=false}
             }
             Picker("Customize",selection:section){ForEach(sections,id:\.self){Text($0).tag($0)}}.pickerStyle(.segmented).labelsHidden()
-            ScrollView {
-                Group {switch section.wrappedValue {case "Tools":ToolsPage(store:store);case "Skills":SkillsPage(store:store);default:PluginsPage(store:store)}}.frame(maxWidth:.infinity,alignment:.leading)
-            }.defaultScrollAnchor(.top).frame(maxWidth:.infinity,maxHeight:.infinity)
+            Group {
+                if section.wrappedValue == "Plugins" {PluginsPage(store:store)}
+                else {ScrollView {Group {if section.wrappedValue == "Tools" {ToolsPage(store:store)} else {SkillsPage(store:store)}}.frame(maxWidth:.infinity,alignment:.leading)}.defaultScrollAnchor(.top)}
+            }.frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.topLeading)
         }.padding(28).frame(width:720,height:640,alignment:.topLeading)
             .sheet(item:$store.consent){ConsentView(store:store,provider:$0)}
             .onExitCommand{store.customizeOpen=false}
@@ -155,13 +156,121 @@ struct CustomizeView:View {
 }
 struct PluginsPage:View {
     @ObservedObject var store:PromethStore
+    @StateObject private var model=ToolkitCatalogModel()
+    @State private var search=""
+    @State private var category="All categories"
+    @State private var consent:ComposioToolkit?
+    @Environment(\.scenePhase) private var scenePhase
+    var results:[ComposioToolkit] {
+        (model.catalog?.filtered(search:search,category:category) ?? []).sorted {
+            let left=model.statuses[$0.slug]=="connected", right=model.statuses[$1.slug]=="connected"
+            return left != right ? left : $0.name.localizedStandardCompare($1.name) == .orderedAscending
+        }
+    }
     var body:some View {
         VStack(alignment:.leading,spacing:18) {
-            Text("Apps your AI can use.").foregroundStyle(.secondary)
-            ConnectorsList(store:store)
-            TextField("Connection broker HTTPS address",text:Binding(get:{store.state.connectorBrokerURL ?? ""},set:{store.setBroker($0)})).textFieldStyle(.roundedBorder)
-            Text("Optional override. Prometh calls Composio with the key in the local config file. Local AI works without a connection.").font(.system(size:11)).foregroundStyle(.secondary)
+            HStack(alignment:.top) {
+                VStack(alignment:.leading,spacing:5) {
+                    Text("Apps your AI can use.").foregroundStyle(.secondary)
+                    if let catalog=model.catalog {
+                        Text("\(catalog.items.count.formatted()) plugins · Updated \(catalog.fetchedAt.formatted(date:.abbreviated,time:.shortened))")
+                            .font(.system(size:11)).foregroundStyle(.secondary).accessibilityIdentifier("prometh.plugins.count")
+                    }
+                }
+                Spacer()
+                Button {Task{await model.load(force:true)}} label:{Label("Refresh",systemImage:"arrow.clockwise")}
+                    .disabled(model.loading).help("Refresh catalog and connections")
+            }
+            HStack(spacing:12) {
+                HStack(spacing:8) {
+                    Image(systemName:"magnifyingglass").foregroundStyle(.secondary)
+                    TextField("Search all plugins",text:$search).textFieldStyle(.plain).accessibilityIdentifier("prometh.plugins.search")
+                    if !search.isEmpty {Button{search=""}label:{Image(systemName:"xmark.circle.fill").foregroundStyle(.secondary)}.buttonStyle(.plain).help("Clear search")}
+                }.padding(11).background(.primary.opacity(0.045),in:RoundedRectangle(cornerRadius:10))
+                Picker("Category",selection:$category) {
+                    Text("All categories").tag("All categories")
+                    ForEach(model.catalog?.categories ?? [],id:\.self){Text($0.capitalized).tag($0)}
+                }.labelsHidden().frame(width:185).accessibilityLabel("Filter plugins by category")
+            }
+            if model.loading {HStack(spacing:9){ProgressView().controlSize(.small);Text("Refreshing plugins…").font(.system(size:12)).foregroundStyle(.secondary)}}
+            if let error=model.error {
+                VStack(alignment:.leading,spacing:7) {
+                    Label("Couldn’t refresh plugins",systemImage:"exclamationmark.triangle").font(.system(size:13,weight:.medium))
+                    Text(error).font(.system(size:12))
+                    if model.catalog != nil {Text("Showing the saved catalog. Connection status may be out of date.").font(.system(size:11))}
+                    Button("Try again"){Task{await model.load(force:true)}}.disabled(model.loading)
+                }.padding(14).frame(maxWidth:.infinity,alignment:.leading)
+                    .background(Color.butter.opacity(0.18),in:RoundedRectangle(cornerRadius:12)).accessibilityIdentifier("prometh.plugins.error")
+            }
+            if model.catalog != nil {
+                Text("\(results.count.formatted()) results").font(.system(size:11)).foregroundStyle(.secondary)
+                ScrollView {LazyVStack(spacing:10) {
+                    ForEach(results){toolkit in
+                        let status=model.statuses[toolkit.slug] ?? "disconnected"
+                        let waiting=model.connecting.contains(toolkit.slug)
+                        HStack(spacing:13) {
+                            ToolkitLogo(toolkit:toolkit)
+                            VStack(alignment:.leading,spacing:5) {
+                                HStack(spacing:8) {
+                                    Text(toolkit.name).font(.system(size:14,weight:.medium))
+                                    if status=="connected" {Label("Connected",systemImage:"checkmark.circle.fill").font(.system(size:10,weight:.medium)).foregroundStyle(.secondary)}
+                                }
+                                Text(toolkit.description).font(.system(size:12)).foregroundStyle(.secondary).lineLimit(2)
+                                if !toolkit.categories.isEmpty {Text(toolkit.categories.map{$0.capitalized}.joined(separator:" · ")).font(.system(size:10)).foregroundStyle(.tertiary)}
+                                if status=="pending" {Text("Waiting for sign-in…").font(.system(size:11)).foregroundStyle(.secondary)}
+                                if status=="expired" {Text("Connection expired").font(.system(size:11)).foregroundStyle(.secondary)}
+                            }
+                            Spacer(minLength:8)
+                            if status=="connected" {
+                                Image(systemName:"checkmark").foregroundStyle(.secondary).frame(width:76).accessibilityLabel(toolkit.name+" connected")
+                            } else {
+                                Button(waiting ? "Waiting…":status=="expired" ? "Reconnect":"Connect"){consent=toolkit}
+                                    .buttonStyle(.bordered).controlSize(.small).disabled(waiting)
+                                    .accessibilityLabel("Connect "+toolkit.name)
+                            }
+                        }.padding(15).frame(maxWidth:.infinity,alignment:.leading)
+                            .background(.primary.opacity(0.025),in:RoundedRectangle(cornerRadius:14))
+                            .overlay(RoundedRectangle(cornerRadius:14).strokeBorder(.primary.opacity(0.055)))
+                    }
+                }
+                }.defaultScrollAnchor(.top)
+                if results.isEmpty {VStack(spacing:10){Image(systemName:"magnifyingglass").font(.system(size:24));Text("No plugins found").font(.system(size:16,weight:.medium));Text("Try another name or category.").font(.system(size:12)).foregroundStyle(.secondary)}.frame(maxWidth:.infinity).padding(.vertical,35)}
+            }
         }
+        .task {await model.load()}
+        .onChange(of:scenePhase){_,phase in if phase == .active {Task{await model.refreshStatuses()}}}
+        .sheet(item:$consent){toolkit in
+            VStack(alignment:.leading,spacing:20) {
+                HStack{ToolkitLogo(toolkit:toolkit);Spacer();Brand()}
+                Text("Connect \(toolkit.name)").font(.system(size:27,weight:.medium))
+                Text("Continue to the authorization page to choose what Prometh can access.").foregroundStyle(.secondary)
+                Text(toolkit.description).font(.system(size:13))
+                HStack{Button("Cancel"){consent=nil}.keyboardShortcut(.cancelAction);Spacer();Button("Continue in browser"){consent=nil;Task{await model.connect(toolkit)}}.buttonStyle(PrimaryButton())}
+            }.padding(28).frame(width:480)
+        }
+    }
+}
+
+struct ToolkitLogo:View {
+    let toolkit:ComposioToolkit
+    @State private var image:NSImage?
+    var body:some View {
+        Group {
+            if let image {Image(nsImage:image).resizable().scaledToFit()}
+            else {Text(String(toolkit.name.prefix(1))).font(.system(size:19,weight:.medium)).foregroundStyle(.secondary)}
+        }.frame(width:30,height:30).padding(7)
+            .background(.background.opacity(0.8),in:RoundedRectangle(cornerRadius:11))
+            .accessibilityHidden(true)
+            .task(id:toolkit.logo) {
+                image=nil
+                guard let url=toolkit.logo else {return}
+                do {
+                    let (data,response)=try await URLSession.shared.data(from:url)
+                    guard (response as? HTTPURLResponse)?.statusCode == 200, !Task.isCancelled else {return}
+                    // AppKit decodes Composio's SVG logos; AsyncImage's raster decoder does not.
+                    image=NSImage(data:data)
+                } catch { /* The monogram remains usable when a remote logo is unavailable. */ }
+            }
     }
 }
 struct ToolsPage:View {

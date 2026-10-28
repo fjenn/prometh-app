@@ -154,9 +154,9 @@ def toolkit_from_query(query_text: str) -> str:
     return ""
 
 
-def composio_search(query_text: str, user_id: str, api_key: str) -> dict:
+def composio_search(query_text: str, user_id: str, api_key: str, toolkit_hint: str = "") -> dict:
     query = {"query": query_text, "limit": "8", "toolkit_versions": "latest"}
-    toolkit = toolkit_from_query(query_text)
+    toolkit = toolkit_slug(toolkit_hint) if toolkit_hint else toolkit_from_query(query_text)
     if toolkit:
         query["toolkit_slug"] = toolkit
     result = composio_request(
@@ -178,7 +178,7 @@ def composio_search(query_text: str, user_id: str, api_key: str) -> dict:
             continue
         tools.append(slug)
         description = item.get("description") if isinstance(item.get("description"), str) else ""
-        summaries.append({"slug": slug, "description": description})
+        summaries.append({"slug": slug, "description": description, "input_parameters": item.get("input_parameters", {})})
     tools, summaries = pin_known_tool(query_text, toolkit, tools, summaries, api_key)
     return {"ok": True, "tools": tools, "items": summaries, "user_id": user_id}
 
@@ -192,7 +192,7 @@ def pin_known_tool(
 ) -> tuple[list[str], list[dict]]:
     """Surface the authenticated-user repo list when that is what was asked."""
     lowered = query_text.lower()
-    if toolkit != "github":
+    if toolkit not in ("", "github"):
         return tools, summaries
     asks_for_repos = any(word in lowered for word in ("repo", "repos", "repositor"))
     asks_to_list = any(word in lowered for word in ("list", "my", "show", "what"))
@@ -211,7 +211,7 @@ def pin_known_tool(
             return tools, summaries
         tools = [preferred, *tools]
         summaries = [
-            {"slug": preferred, "description": "List repositories for the authenticated user"},
+            {"slug": preferred, "description": "List repositories for the authenticated user", "input_parameters": next(item.get("input_parameters", {}) for item in found if item.get("slug") == preferred)},
             *summaries,
         ]
     else:
@@ -235,7 +235,9 @@ def composio_execute(tool: str, arguments: dict, user_id: str, api_key: str) -> 
 
 
 def toolkit_slug(name: str) -> str:
-    return TOOLKITS.get(name.strip().lower(), "")
+    value = name.strip().lower()
+    slug = TOOLKITS.get(value, value)
+    return slug if slug and all(c.isascii() and (c.isalnum() or c in "_-") for c in slug) else ""
 
 
 def ensure_auth_config(toolkit: str, api_key: str) -> dict:
@@ -338,6 +340,53 @@ def disconnect_account(toolkit: str, user_id: str, api_key: str) -> dict:
     return {"ok": True, "status": "disconnected"}
 
 
+def paginated_items(path: str, api_key: str, query: dict) -> list[dict]:
+    items: list[dict] = []
+    seen: set[str] = set()
+    while True:
+        result = composio_request("GET", path, api_key, query=query)
+        if result.get("ok") is False:
+            raise ValueError(result.get("error") or "Could not load the catalog.")
+        page = result.get("items")
+        if not isinstance(page, list):
+            raise ValueError("The connection service returned an invalid catalog.")
+        items.extend(item for item in page if isinstance(item, dict))
+        cursor = result.get("next_cursor")
+        if not cursor:
+            return items
+        if not isinstance(cursor, str) or cursor in seen:
+            raise ValueError("The connection service repeated a catalog page.")
+        seen.add(cursor)
+        query = {**query, "cursor": cursor}
+
+
+def toolkit_catalog(user_id: str, api_key: str) -> dict:
+    try:
+        items = paginated_items("/toolkits", api_key, {"limit": "1000", "type": "all", "sort_by": "alphabetically", "user_id": user_id})
+        return {"ok": True, "items": items}
+    except ValueError as error:
+        return {"ok": False, "error": str(error)}
+
+
+def all_connection_statuses(user_id: str, api_key: str) -> dict:
+    try:
+        items = paginated_items("/connected_accounts", api_key, {"user_ids": user_id, "limit": "100"})
+    except ValueError as error:
+        return {"ok": False, "error": str(error)}
+    statuses: dict[str, str] = {}
+    rank = {"disconnected": 0, "pending": 1, "expired": 2, "connected": 3}
+    for item in items:
+        toolkit = item.get("toolkit") or {}
+        slug = toolkit.get("slug") if isinstance(toolkit, dict) else None
+        if not slug:
+            continue
+        raw = str(item.get("status") or "").upper()
+        status = "connected" if raw == "ACTIVE" else "expired" if raw in {"EXPIRED", "FAILED"} else "pending" if raw in {"INITIATED", "INITIALIZING", "PENDING", "PENDING_AUTH"} else "disconnected"
+        if rank[status] >= rank.get(statuses.get(slug, "disconnected"), 0):
+            statuses[slug] = status
+    return {"ok": True, "statuses": statuses}
+
+
 def public_payload(payload: dict, api_key: str) -> str:
     text = json.dumps(payload)
     return redact(text, api_key)
@@ -347,8 +396,8 @@ def build_server(approval_file: Path, broker: str, install_file: Path) -> MCPSer
     server = MCPServer("prometh-composio")
     user_id = install_id(install_file)
 
-    @server.tool(name="connectors_search", description="Find actions the user can run in a connected app.")
-    def connectors_search(query: str) -> str:
+    @server.tool(name="connectors_search", description="Find actions in a connected app. Include the app name in query or its toolkit slug (for example github). Returns action input schemas; use those fields in connectors_execute arguments_json.")
+    def connectors_search(query: str, toolkit: str = "") -> str:
         api_key = load_api_key()
         if broker:
             result = broker_request(
@@ -358,7 +407,7 @@ def build_server(approval_file: Path, broker: str, install_file: Path) -> MCPSer
                 api_key,
             )
         else:
-            result = composio_search(query, user_id, api_key)
+            result = composio_search(query, user_id, api_key, toolkit)
         return public_payload(result, api_key)
 
     @server.tool(
@@ -378,9 +427,9 @@ def build_server(approval_file: Path, broker: str, install_file: Path) -> MCPSer
         try:
             arguments = json.loads(arguments_json) if arguments_json else {}
         except json.JSONDecodeError:
-            arguments = {}
+            return public_payload({"ok": False, "error": "arguments_json must be a JSON object, without extra escaping.", "executed": False}, api_key)
         if not isinstance(arguments, dict):
-            arguments = {}
+            return public_payload({"ok": False, "error": "arguments_json must be a JSON object.", "executed": False}, api_key)
         if broker:
             result = broker_request(
                 broker,
@@ -401,12 +450,18 @@ def main() -> None:
     parser.add_argument("--approval-file", default="")
     parser.add_argument("--broker", default="")
     parser.add_argument("--install-file", required=True)
+    parser.add_argument("--catalog", action="store_true")
+    parser.add_argument("--connections", action="store_true")
     parser.add_argument("--link", default="")
     parser.add_argument("--status", default="")
     parser.add_argument("--disconnect", default="")
     args = parser.parse_args()
     user_id = install_id(Path(args.install_file))
     api_key = load_api_key()
+    if args.catalog or args.connections:
+        payload = toolkit_catalog(user_id, api_key) if args.catalog else all_connection_statuses(user_id, api_key)
+        sys.stdout.write(public_payload(payload, api_key) + "\n")
+        return
     if args.link or args.status or args.disconnect:
         name = args.link or args.status or args.disconnect
         toolkit = toolkit_slug(name)

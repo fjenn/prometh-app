@@ -1,0 +1,11 @@
+# Stage 3 chat references
+
+Prometh's SwiftUI/AppKit implementation in `Workspace.swift` and `InlineMessageEditor.swift` adapts these interaction patterns with Prometh's existing colors, system fonts, branding, transcript engine, and edit/regenerate behavior:
+
+- [Enchanted](https://github.com/gluonfield/enchanted), shallow reference `dc9bff8`, Apache-2.0. Primary reference: Augustinas Malinauskas's `Enchanted/UI/Shared/Chat/Components/ChatMessages/ChatMessageView.swift` (2023): trailing user bubble, unboxed assistant text, grouped SF Symbol actions beneath each message, parent message hover revealing the action row. Prometh uses its own implementation, measurements, button styles, editor and state. License: [Apache-2.0](licenses/Enchanted-Apache-2.0.txt).
+- [LibreChat](https://github.com/danny-avila/LibreChat), shallow reference `8d3da9b`, MIT, Copyright (c) 2026 LibreChat. Studied `MinimalHoverButtons.tsx`, `HoverButtons.tsx`, and message styles: reserved action-row space, tooltip labels, copy/check feedback, focus and hover disclosure. Reimplemented for SwiftUI. License: [MIT](licenses/LibreChat-MIT.txt).
+- [Open WebUI](https://github.com/open-webui/open-webui), shallow reference `33c1978`: studied user/response message layouts and inline-edit behavior only. No source copied or translated into Prometh. The full-width editing state and bottom-right controls are independently implemented in AppKit/SwiftUI.
+
+References reside in `/tmp/ui-refs/{enchanted,LibreChat,open-webui}`; all three checkouts are shallow. Nativ's original chat and settings implementations remain in the source tree and are hidden by the existing Prometh shell boundary.
+
+Catalog API contract: [Composio list available toolkits v3.1](https://docs.composio.dev/reference/api-reference/toolkits/getToolkits) and [connected accounts](https://docs.composio.dev/reference/api-reference/connected-accounts/getConnectedAccounts). Fetch all pages using `next_cursor`, request native and custom toolkits (`type=all`), and join live account statuses by toolkit slug for the app's existing install user. Only toolkit metadata is written to the catalog cache; credentials remain in the local environment file and are read by the existing Python helper.

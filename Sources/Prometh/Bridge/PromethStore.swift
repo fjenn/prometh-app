@@ -999,7 +999,7 @@ final class PromethStore: ObservableObject {
     }
 
     func openCustomize(_ section: String = "Tools") {
-        customizeSection = connectorsAvailable || section != "Plugins" ? section : "Tools"
+        customizeSection = section
         customizeOpen = true
         refreshConnections()
     }
