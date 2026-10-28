@@ -495,4 +495,22 @@ final class PromethSearchTests: XCTestCase {
             chatWork: false, modelsBrowser: false, systemMonitorUI: false, developer: false
         ))
     }
+
+    func testNeedsWebIgnoresMostRecentlyInConnectorQuestions() {
+        XCTAssertFalse(
+            PromethSearchContext.needsWeb("list my 5 most recently updated GitHub repos")
+        )
+        XCTAssertTrue(PromethSearchContext.needsWeb("latest news about Apple"))
+        XCTAssertTrue(PromethSearchContext.needsWeb("what happened yesterday in Rome"))
+    }
+
+    func testNoSourcesOnNonSearchTurn() {
+        let links = [SourceLink(title: "a", url: "https://a.com", index: 1)]
+        XCTAssertNil(
+            PromethSearchContext.citedLinks(links, assistantText: "Your repos: foo, bar")
+        )
+        let cited = PromethSearchContext.citedLinks(links, assistantText: "Fact [1].")
+        XCTAssertEqual(cited?.count, 1)
+        XCTAssertEqual(cited?.first?.url, "https://a.com")
+    }
 }

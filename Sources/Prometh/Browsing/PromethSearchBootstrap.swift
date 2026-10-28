@@ -327,9 +327,7 @@ enum PromethWebPrefetch {
     }
 
     private static func needsWeb(_ text: String) -> Bool {
-        let value = text.lowercased()
-        let cues = ["news", "who won", "latest", "most recent", "what happened", "current events", "yesterday"]
-        return cues.contains { value.contains($0) }
+        PromethSearchContext.needsWeb(text)
     }
 
     private static func clearNote() {

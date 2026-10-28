@@ -1627,10 +1627,11 @@ except Exception as error:
                     }
                     // Prefetch already chose distinct domains and indices; prefer that
                     // list so a later web_search tool round cannot collapse Sources to [1].
-                    item.sourceLinks = PromethWebPrefetch.storedLinks(
-                        before: message.id,
-                        in: messages
-                    ) ?? SourcesExtractor.links(
+                    let citedPrefetch = PromethSearchContext.citedLinks(
+                        PromethWebPrefetch.storedLinks(before: message.id, in: messages),
+                        assistantText: item.text
+                    )
+                    item.sourceLinks = citedPrefetch ?? SourcesExtractor.links(
                         before: message.id,
                         in: messages,
                         assistantText: item.text
@@ -1639,7 +1640,8 @@ except Exception as error:
                     // whose fetched text best matches that sentence (deterministic).
                     if !message.isStreaming {
                         let sources: [CitationRemapper.Source]
-                        if let hits = PromethWebPrefetch.storedHits(before: message.id, in: messages),
+                        if citedPrefetch != nil,
+                           let hits = PromethWebPrefetch.storedHits(before: message.id, in: messages),
                            !hits.isEmpty {
                             sources = hits.map {
                                 CitationRemapper.Source(

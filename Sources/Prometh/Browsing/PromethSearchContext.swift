@@ -162,4 +162,21 @@ enum PromethSearchContext {
         }
         return true
     }
+
+    static func needsWeb(_ text: String) -> Bool {
+        let cues = ["news", "who won", "latest", "most recent", "what happened", "current events", "yesterday"]
+        return cues.contains { cue in
+            let pattern = "\\b\(NSRegularExpression.escapedPattern(for: cue))\\b"
+            return text.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil
+        }
+    }
+
+    /// Prefetched sources belong to this reply only if it cites them.
+    static func citedLinks(_ links: [SourceLink]?, assistantText: String) -> [SourceLink]? {
+        guard let links, !links.isEmpty else { return nil }
+        let cited = CitationMarkup.citedIndices(in: assistantText)
+        guard !cited.isEmpty else { return nil }
+        let shown = links.filter { cited.contains($0.index ?? 0) }
+        return shown.isEmpty ? nil : shown
+    }
 }
